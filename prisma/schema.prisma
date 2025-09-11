@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Song {
+  id            String   @id @default(cuid())
+  title         String
+  artist        String
+  spotifyId     String?  @unique
+  spotifyUrl    String?
+  previewUrl    String?  // 30-second preview URL from Spotify
+  album         String?
+  year          Int?
+  albumArt      String?  // Album artwork URL (640x640)
+  albumArtSmall String?  // Album thumbnail URL (300x300)  
+  language      String   @default("es")
+  lyricsRaw     String?  // only if licensed; else null
+  lyricsParsed  String?  // JSON string: [{line, sentenceIndex, tokens:[{text, lemma, pos, isVerb, tense?}]}]
+  lyricsProvider String? // which provider supplied the lyrics (genius, musixmatch, etc.)
+  lyricsLicensed Boolean @default(false) // whether lyrics are fully licensed or just excerpts
+  culturalContext String? // cultural/historical context about the song
+  genres        String?  // comma-separated list of genres from Spotify
+  popularity    Int?     // Spotify popularity score (0-100)
+  danceability  Float?   // Spotify audio features
+  energy        Float?   // Spotify audio features
+  valence       Float?   // Spotify audio features (positivity)
+  tempo         Float?   // BPM from Spotify
+  isActive      Boolean  @default(true) // soft delete flag
+  translations  Translation[]
+  metrics       Metrics?
+  level         Int?     // 1..10
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([language])
+  @@index([level])
+  @@index([isActive])
+  @@index([popularity])
+}
+
+model Translation {
+  id          String   @id @default(cuid())
+  songId      String   
+  targetLang  String   // ISO 639-1 code (en, pt, fr, etc.)
+  lyricsLines String?  // JSON array of translated lyric lines
+  title       String?  // translated song title
+  culturalNotes String? // cultural context for target language
+  provider    String   @default("deepl") // translation service used
+  confidence  Float?   // translation confidence score
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  song        Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  
+  @@unique([songId, targetLang])
+  @@index([targetLang])
+}
+
+model Metrics {
+  id               String  @id @default(cuid())
+  songId           String  @unique
+  wordCount        Int
+  uniqueWordCount  Int
+  typeTokenRatio   Float
+  avgWordFreqZipf  Float   // lower => harder
+  verbDensity      Float
+  tenseWeights     Float   // weighted sum by tense difficulty
+  idiomCount       Int
+  punctComplexity  Float
+  difficultyScore  Float   // final composite
+  song             Song    @relation(fields: [songId], references: [id], onDelete: Cascade)
+}

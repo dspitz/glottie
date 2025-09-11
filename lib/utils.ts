@@ -1,0 +1,67 @@
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function formatDifficultyScore(score: number): string {
+  return score.toFixed(1)
+}
+
+export function getLevelColor(level: number): string {
+  const colors = {
+    1: 'bg-green-100 text-green-800 border-green-200',
+    2: 'bg-green-200 text-green-900 border-green-300',
+    3: 'bg-lime-200 text-lime-900 border-lime-300',
+    4: 'bg-yellow-200 text-yellow-900 border-yellow-300',
+    5: 'bg-orange-200 text-orange-900 border-orange-300',
+    6: 'bg-orange-300 text-orange-900 border-orange-400',
+    7: 'bg-red-200 text-red-900 border-red-300',
+    8: 'bg-red-300 text-red-900 border-red-400',
+    9: 'bg-purple-200 text-purple-900 border-purple-300',
+    10: 'bg-purple-300 text-purple-900 border-purple-400',
+  }
+  return colors[level as keyof typeof colors] || colors[5]
+}
+
+export function getLevelDescription(level: number): string {
+  const descriptions = {
+    1: 'Beginner - Simple vocabulary and present tense',
+    2: 'Beginner+ - Basic past tense and common phrases',
+    3: 'Elementary - Simple future tense and descriptions',
+    4: 'Elementary+ - Mixed tenses and more vocabulary',
+    5: 'Intermediate - Complex sentences and some idioms',
+    6: 'Intermediate+ - Advanced tenses and expressions',
+    7: 'Upper-Intermediate - Subjunctive and complex grammar',
+    8: 'Upper-Intermediate+ - Sophisticated vocabulary',
+    9: 'Advanced - Literary language and complex idioms',
+    10: 'Expert - Native-level complexity and nuanced expressions',
+  }
+  return descriptions[level as keyof typeof descriptions] || 'Unknown level'
+}
+
+export function segmentIntoSentences(text: string): string[] {
+  // Simple sentence segmentation for Spanish
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+  
+  return sentences
+}
+
+export function formatPercentage(value: number): string {
+  return `${(value * 100).toFixed(1)}%`
+}
+
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  waitFor: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), waitFor)
+  }
+}
