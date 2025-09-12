@@ -165,10 +165,11 @@ export default function SongPage() {
       {/* Enhanced Song Header */}
       <SongHeader
         track={{
-          id: lyricsData.trackId || songId,
-          title: lyricsData.title,
-          artist: lyricsData.artist,
+          id: lyricsData.trackId || lyricsData.song?.id || songId,
+          title: lyricsData.title || lyricsData.song?.title || 'Unknown Title',
+          artist: lyricsData.artist || lyricsData.song?.artist || 'Unknown Artist',
           album: lyricsData.album,
+          spotifyId: lyricsData.spotifyId,
           spotifyUrl: lyricsData.spotifyUrl,
           previewUrl: lyricsData.previewUrl,
           albumArt: lyricsData.albumArt,
@@ -176,7 +177,7 @@ export default function SongPage() {
         }}
         backHref={backHref}
         backText={backText}
-        level={lyricsData.level}
+        level={lyricsData.level || lyricsData.song?.level}
         difficultyScore={lyricsData.difficultyScore}
         onColorChange={handleColorChange}
       />
@@ -187,10 +188,21 @@ export default function SongPage() {
           lines={lyricsData.lines || []}
           translations={lyricsData.translations}
           spotifyUrl={lyricsData.spotifyUrl}
-          title={lyricsData.title}
-          artist={lyricsData.artist}
+          title={lyricsData.title || lyricsData.song?.title || 'Unknown Title'}
+          artist={lyricsData.artist || lyricsData.song?.artist || 'Unknown Artist'}
           isDemo={isDemo}
           backgroundColor={pageBackgroundColor}
+          track={{
+            id: lyricsData.trackId || lyricsData.song?.id || songId,
+            title: lyricsData.title || lyricsData.song?.title || 'Unknown Title',
+            artist: lyricsData.artist || lyricsData.song?.artist || 'Unknown Artist',
+            album: lyricsData.album,
+            spotifyId: lyricsData.spotifyId,
+            spotifyUrl: lyricsData.spotifyUrl,
+            previewUrl: lyricsData.previewUrl,
+            albumArt: lyricsData.albumArt,
+            albumArtSmall: lyricsData.albumArtSmall
+          }}
         />
       </div>
     </div>

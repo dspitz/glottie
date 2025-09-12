@@ -1,0 +1,10 @@
+HTTP/1.1 302 Found
+vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url
+location: /auth/signin?callbackUrl=http%3A%2F%2F127.0.0.1%3A3000&error=spotify
+set-cookie: next-auth.csrf-token=c2d9d6ec6bb06ccdc05355af17c9077571540932220e15f40e0441624a6705b7%7Cd737e762b7fee2875a8c01147c98c9c830fd09432b28befdfa6aaa8415228e06; Path=/; HttpOnly; SameSite=Lax
+set-cookie: next-auth.callback-url=http%3A%2F%2F127.0.0.1%3A3000; Path=/; HttpOnly; SameSite=Lax
+Date: Fri, 12 Sep 2025 04:28:22 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+

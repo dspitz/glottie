@@ -146,6 +146,17 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                   artist={lyricsData.artist}
                   isDemo={lyricsData.mode === 'demo'}
                   backgroundColor={pageBackgroundColor}
+                  track={{
+                    id: lyricsData.trackId || songId,
+                    title: lyricsData.title,
+                    artist: lyricsData.artist,
+                    album: lyricsData.album,
+                    spotifyId: lyricsData.spotifyId,
+                    spotifyUrl: lyricsData.spotifyUrl,
+                    previewUrl: lyricsData.previewUrl,
+                    albumArt: lyricsData.albumArt,
+                    albumArtSmall: lyricsData.albumArtSmall
+                  }}
                 />
               </motion.div>
             </>

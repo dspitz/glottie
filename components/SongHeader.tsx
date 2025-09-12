@@ -165,19 +165,34 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
 }
 
 export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick }: SongHeaderProps) {
+  // Early return if track is not defined
+  if (!track) {
+    return (
+      <div className="mb-8">
+        <div className="p-4">
+          <Link href={backHref} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {backText}
+          </Link>
+          <h1 className="text-2xl font-bold">Loading...</h1>
+        </div>
+      </div>
+    )
+  }
+
   const [dominantColor, setDominantColor] = useState('rgb(59, 130, 246)')
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   
   console.log('SongHeader render:', { 
-    hasAlbumArt: !!track.albumArt, 
-    albumArt: track.albumArt, 
+    hasAlbumArt: !!track?.albumArt, 
+    albumArt: track?.albumArt, 
     hasCallback: !!onColorChange,
-    title: track.title 
+    title: track?.title 
   })
 
   useEffect(() => {
-    if (track.albumArt) {
+    if (track?.albumArt) {
       extractDominantColor(track.albumArt)
         .then(color => {
           console.log('Color extraction successful:', color)
@@ -202,12 +217,12 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
         'rgb(6, 182, 212)',    // cyan
         'rgb(236, 72, 153)',   // pink
       ]
-      const colorIndex = (track.title.length + track.artist.length) % fallbackColors.length
+      const colorIndex = ((track?.title?.length || 0) + (track?.artist?.length || 0)) % fallbackColors.length
       const selectedColor = fallbackColors[colorIndex]
       setDominantColor(selectedColor)
       onColorChange?.(selectedColor)
     }
-  }, [track.albumArt, track.title, track.artist, onColorChange])
+  }, [track?.albumArt, track?.title, track?.artist, onColorChange])
 
 
   // Create gradient background with the dominant color

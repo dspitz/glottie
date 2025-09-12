@@ -15,7 +15,7 @@ export default function LevelPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const level = parseInt(params?.level as string, 10)
+  const level = parseInt(params?.level as string, 10) || 1
   
   // Modal state
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
@@ -148,12 +148,12 @@ export default function LevelPage() {
             <>
               <div>
                 Difficulty range: <span className="font-medium text-foreground">
-                  {Math.min(...levelSongs.map(s => s.difficultyScore)).toFixed(1)} - {Math.max(...levelSongs.map(s => s.difficultyScore)).toFixed(1)}
+                  {Math.min(...levelSongs.map(s => s.difficultyScore || 0)).toFixed(1)} - {Math.max(...levelSongs.map(s => s.difficultyScore || 0)).toFixed(1)}
                 </span>
               </div>
               <div>
                 Avg words per song: <span className="font-medium text-foreground">
-                  {Math.round(levelSongs.reduce((sum, s) => sum + s.wordCount, 0) / levelSongs.length)}
+                  {Math.round(levelSongs.reduce((sum, s) => sum + (s.wordCount || 0), 0) / levelSongs.length) || 0}
                 </span>
               </div>
             </>

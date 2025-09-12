@@ -1,6 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { Music } from 'lucide-react'
+import { AuthButton } from '@/components/AuthButton'
 
 export function Header() {
   return (
@@ -12,6 +13,11 @@ export function Header() {
           <span className="font-bold text-xl">Recanta</span>
         </Link>
 
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Auth Button */}
+        <AuthButton />
       </div>
     </header>
   )

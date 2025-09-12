@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { AudioPlayer } from '@/components/AudioPlayer'
 import { SentenceModal } from '@/components/SentenceModal'
 import { WordPopover } from '@/components/WordPopover'
 import { segmentIntoSentences } from '@/lib/utils'
@@ -13,6 +14,17 @@ interface LyricsViewProps {
   artist?: string
   isDemo?: boolean
   backgroundColor?: string
+  track?: {
+    id: string
+    title: string
+    artist: string
+    album?: string
+    spotifyId?: string
+    spotifyUrl?: string
+    previewUrl?: string
+    albumArt?: string
+    albumArtSmall?: string
+  }
 }
 
 export function LyricsView({ 
@@ -22,7 +34,8 @@ export function LyricsView({
   title,
   artist,
   isDemo = false,
-  backgroundColor 
+  backgroundColor,
+  track
 }: LyricsViewProps) {
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
@@ -82,6 +95,10 @@ export function LyricsView({
 
   return (
     <div className="space-y-6">
+      {/* Audio Player */}
+      {track && (
+        <AudioPlayer track={track} className="mb-6" />
+      )}
 
       {/* Demo mode banner */}
       {isDemo && (
