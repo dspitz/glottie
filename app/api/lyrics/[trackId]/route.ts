@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getLyricsByTrack } from '@/packages/adapters/lyricsProvider'
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +22,8 @@ export async function GET(
         albumArt: true,
         albumArtSmall: true,
         lyricsRaw: true,
+        lyricsProvider: true,
+        lyricsLicensed: true,
         level: true,
         popularity: true,
         genres: true
@@ -34,53 +37,65 @@ export async function GET(
       )
     }
 
-    if (!song.lyricsRaw) {
-      // Return a message indicating no lyrics available
-      return NextResponse.json({
-        lyrics: null,
-        message: 'Lyrics not available for this song',
-        song: {
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          level: song.level
-        },
-        // Also provide the data at the top level for backwards compatibility
-        trackId: song.id,
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        spotifyId: song.spotifyId,
-        spotifyUrl: song.spotifyUrl,
-        previewUrl: song.previewUrl,
-        albumArt: song.albumArt,
-        albumArtSmall: song.albumArtSmall,
-        level: song.level,
-        popularity: song.popularity,
-        genres: song.genres
-      })
-    }
+    let lyricsData: any = null
+    let lyricsLines: string[] = []
 
-    // Parse the lyrics if they're stored as JSON
-    let parsedLyrics = song.lyricsRaw
-    try {
-      if (typeof song.lyricsRaw === 'string') {
-        parsedLyrics = JSON.parse(song.lyricsRaw)
+    // If we don't have lyrics yet, try to fetch them
+    if (!song.lyricsRaw) {
+      console.log(`🎵 Fetching lyrics for "${song.title}" by ${song.artist}`)
+      
+      try {
+        const lyricsResult = await getLyricsByTrack(song.artist, song.title)
+        
+        if (lyricsResult.lines.length > 0) {
+          console.log(`✅ Found lyrics using ${lyricsResult.provider} provider`)
+          
+          // Store the lyrics in the database for future use
+          await prisma.song.update({
+            where: { id: song.id },
+            data: {
+              lyricsRaw: JSON.stringify(lyricsResult),
+              lyricsProvider: lyricsResult.provider,
+              lyricsLicensed: lyricsResult.licensed
+            }
+          })
+          
+          lyricsLines = lyricsResult.lines
+          lyricsData = {
+            lines: lyricsResult.lines,
+            provider: lyricsResult.provider,
+            licensed: lyricsResult.licensed,
+            isExcerpt: lyricsResult.isExcerpt,
+            attribution: lyricsResult.attribution,
+            culturalContext: lyricsResult.culturalContext,
+            translations: lyricsResult.translations
+          }
+        } else {
+          console.log(`⚠️ No lyrics found: ${lyricsResult.error || 'No lyrics available'}`)
+        }
+        
+      } catch (error) {
+        console.error('Error fetching lyrics from provider:', error)
       }
-    } catch (e) {
-      // If parsing fails, treat as plain text
-      parsedLyrics = { text: song.lyricsRaw }
+    } else {
+      // Parse existing lyrics from database
+      try {
+        const parsedLyrics = JSON.parse(song.lyricsRaw)
+        lyricsLines = parsedLyrics.lines || []
+        lyricsData = parsedLyrics
+      } catch (e) {
+        // If parsing fails, treat as plain text and split into lines
+        lyricsLines = song.lyricsRaw.split('\n').filter(line => line.trim().length > 0)
+        lyricsData = {
+          lines: lyricsLines,
+          provider: song.lyricsProvider || 'unknown',
+          licensed: song.lyricsLicensed || false
+        }
+      }
     }
 
     return NextResponse.json({
-      lyrics: parsedLyrics,
-      song: {
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        level: song.level
-      },
-      // Also provide the data at the top level for backwards compatibility
+      // Core response data
       trackId: song.id,
       title: song.title,
       artist: song.artist,
@@ -92,7 +107,24 @@ export async function GET(
       albumArtSmall: song.albumArtSmall,
       level: song.level,
       popularity: song.popularity,
-      genres: song.genres
+      genres: song.genres,
+      
+      // Lyrics data
+      lines: lyricsLines,
+      lyrics: lyricsData,
+      lyricsProvider: lyricsData?.provider,
+      lyricsLicensed: lyricsData?.licensed,
+      attribution: lyricsData?.attribution,
+      culturalContext: lyricsData?.culturalContext,
+      translations: lyricsData?.translations,
+      
+      // Legacy compatibility
+      song: {
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        level: song.level
+      }
     })
   } catch (error) {
     console.error('Error fetching lyrics:', error)

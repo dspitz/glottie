@@ -509,22 +509,43 @@ function selectEducationalExcerpt(lines: string[], maxLines: number): string[] {
 }
 
 const providers = new Map<string, LyricsProvider>()
+let providersInitialized = false
 
-// Register providers
-providers.set('demo', new DemoLyricsProvider())
-providers.set('public-domain', new PublicDomainProvider())
+// Lazy initialization of providers
+function initializeProviders() {
+  if (providersInitialized) return
+  
+  console.log('🔧 Initializing lyrics providers...')
+  
+  // Register basic providers
+  providers.set('demo', new DemoLyricsProvider())
+  providers.set('public-domain', new PublicDomainProvider())
 
-// Initialize Musixmatch if API key is available
-if (process.env.MUSIXMATCH_API_KEY && process.env.MUSIXMATCH_API_KEY !== 'your_musixmatch_key_here') {
-  providers.set('musixmatch', new MusixmatchProvider(process.env.MUSIXMATCH_API_KEY))
-}
+  // Initialize Musixmatch if API key is available
+  if (process.env.MUSIXMATCH_API_KEY && process.env.MUSIXMATCH_API_KEY !== 'your_musixmatch_key_here') {
+    console.log('✅ Registering Musixmatch provider')
+    providers.set('musixmatch', new MusixmatchProvider(process.env.MUSIXMATCH_API_KEY))
+  } else {
+    console.log('❌ Musixmatch API key not found - provider not registered')
+    console.log('   MUSIXMATCH_API_KEY:', process.env.MUSIXMATCH_API_KEY ? 'Present' : 'Missing')
+  }
 
-// Initialize Genius if credentials are available
-if (process.env.GENIUS_CLIENT_ID && process.env.GENIUS_CLIENT_SECRET) {
-  providers.set('genius', new GeniusProvider())
+  // Initialize Genius if credentials are available
+  if (process.env.GENIUS_CLIENT_ID && process.env.GENIUS_CLIENT_SECRET) {
+    console.log('✅ Registering Genius provider')
+    providers.set('genius', new GeniusProvider())
+  } else {
+    console.log('❌ Genius credentials not found - provider not registered')
+  }
+  
+  console.log(`🎵 Total providers registered: ${providers.size}`)
+  providersInitialized = true
 }
 
 export async function getLyricsByTrack(artist: string, title: string): Promise<LyricsResult> {
+  // Ensure providers are initialized
+  initializeProviders()
+  
   const providerName = process.env.LYRICS_PROVIDER || 'smart'
   
   // Smart provider tries multiple sources in order
@@ -607,9 +628,11 @@ async function smartLyricsProvider(artist: string, title: string): Promise<Lyric
 }
 
 export function getAvailableProviders(): string[] {
+  initializeProviders()
   return Array.from(providers.keys())
 }
 
 export function isProviderConfigured(providerName: string): boolean {
+  initializeProviders()
   return providers.has(providerName)
 }
