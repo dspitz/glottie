@@ -267,44 +267,93 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
 
         {/* Centered header content */}
         <div className="flex flex-col items-center text-center space-y-6">
-          {/* Large album art */}
+          {/* Vinyl Record Album Art */}
           <div className="relative">
-            <div className="w-80 h-80 bg-muted/20 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5">
-              {track.albumArt ? (
-                <motion.img
-                  ref={imgRef}
-                  src={track.albumArt}
-                  alt={`${track.album || track.title} cover`}
-                  className="w-full h-full object-cover transition-opacity duration-300"
-                  style={{ 
-                    opacity: isImageLoaded ? 1 : 0,
-                    viewTransitionName: `album-art-${track.id}`
-                  }}
-                  layoutId={`album-art-${track.id}`}
-                  initial={{ scale: 0.275 }} // 88/320 = 0.275
-                  animate={{ scale: 1 }}
-                  transition={{ 
+            {/* Vinyl Record Container */}
+            <div className="w-80 h-80 relative">
+              {/* Outer vinyl record */}
+              <motion.div 
+                className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-900 via-gray-800 to-black shadow-2xl"
+                initial={{ scale: 0.275, rotate: 0 }}
+                animate={{ 
+                  scale: 1,
+                  rotate: 360
+                }}
+                transition={{ 
+                  scale: {
                     type: "spring", 
                     stiffness: 400, 
                     damping: 30,
                     duration: 0.5
-                  }}
-                  onLoad={() => setIsImageLoaded(true)}
-                  onError={(e) => {
-                    // Fallback to music icon if image fails to load
-                    e.currentTarget.style.display = 'none'
-                    setIsImageLoaded(true)
-                  }}
-                />
-              ) : null}
-              
-              {!track.albumArt || !isImageLoaded ? (
-                <div className="w-full h-full flex items-center justify-center bg-muted/20">
-                  <Music className="w-24 h-24 text-muted-foreground/40" />
+                  },
+                  rotate: {
+                    duration: 8,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }
+                }}
+              >
+                {/* Vinyl grooves */}
+                <div className="absolute inset-2 rounded-full border border-gray-700/30"></div>
+                <div className="absolute inset-4 rounded-full border border-gray-700/20"></div>
+                <div className="absolute inset-6 rounded-full border border-gray-700/15"></div>
+                <div className="absolute inset-8 rounded-full border border-gray-700/10"></div>
+                
+                {/* Album art in center */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full overflow-hidden shadow-lg ring-2 ring-black/20">
+                  {track.albumArt ? (
+                    <motion.img
+                      ref={imgRef}
+                      src={track.albumArt}
+                      alt={`${track.album || track.title} cover`}
+                      className="w-full h-full object-cover transition-opacity duration-300"
+                      style={{ 
+                        opacity: isImageLoaded ? 1 : 0,
+                        viewTransitionName: `album-art-${track.id}`
+                      }}
+                      layoutId={`album-art-${track.id}`}
+                      onLoad={() => setIsImageLoaded(true)}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                        setIsImageLoaded(true)
+                      }}
+                    />
+                  ) : null}
+                  
+                  {!track.albumArt || !isImageLoaded ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                      <Music className="w-16 h-16 text-gray-400" />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+                
+                {/* Center hole */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-black shadow-inner"></div>
+              </motion.div>
+              
+              {/* Needle/Tonearm */}
+              <div className="absolute -top-4 -right-8 w-24 h-1 bg-gradient-to-r from-gray-600 to-gray-400 rounded-full transform rotate-45 origin-left shadow-lg z-10">
+                <div className="absolute right-0 w-2 h-2 bg-gray-500 rounded-full transform translate-x-1"></div>
+              </div>
+              
+              {/* Glow effect */}
+              <motion.div 
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle, ${dominantColor}20 0%, transparent 70%)`,
+                  filter: 'blur(20px)',
+                }}
+                animate={{
+                  scale: [1, 1.1, 1],
+                  opacity: [0.3, 0.6, 0.3]
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
             </div>
-            
           </div>
 
           {/* Song info */}
