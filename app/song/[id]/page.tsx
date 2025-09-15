@@ -192,6 +192,7 @@ export default function SongPage() {
           artist={lyricsData.artist || lyricsData.song?.artist || 'Unknown Artist'}
           isDemo={isDemo}
           backgroundColor={pageBackgroundColor}
+          synchronized={lyricsData.synchronized}
           track={{
             id: lyricsData.trackId || lyricsData.song?.id || songId,
             title: lyricsData.title || lyricsData.song?.title || 'Unknown Title',

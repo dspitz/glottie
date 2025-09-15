@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { AudioPlayer } from '@/components/AudioPlayer'
+import { EnhancedAudioPlayer, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
+import { SynchronizedLyrics } from '@/components/SynchronizedLyrics'
 import { SentenceModal } from '@/components/SentenceModal'
 import { WordPopover } from '@/components/WordPopover'
 import { segmentIntoSentences } from '@/lib/utils'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Music2 } from 'lucide-react'
 
 interface LyricsViewProps {
   lines: string[]
@@ -25,6 +26,12 @@ interface LyricsViewProps {
     albumArt?: string
     albumArtSmall?: string
   }
+  synchronized?: {
+    lines: any[]
+    hasWordTiming: boolean
+    format: 'lrc' | 'estimated' | 'dfxp'
+    duration?: number
+  }
 }
 
 export function LyricsView({ 
@@ -35,13 +42,21 @@ export function LyricsView({
   artist,
   isDemo = false,
   backgroundColor,
-  track
+  track,
+  synchronized
 }: LyricsViewProps) {
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedWord, setSelectedWord] = useState<string>('')
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+  const [audioState, setAudioState] = useState<AudioPlayerState>({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    playbackMode: 'unavailable'
+  })
+  const [seekFunction, setSeekFunction] = useState<((time: number) => void) | null>(null)
 
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
@@ -54,78 +69,45 @@ export function LyricsView({
     setIsModalOpen(true)
   }, [translations, isDemo])
 
-  const handleWordSelection = useCallback(() => {
-    const selection = window.getSelection()
-    if (selection && selection.toString().trim()) {
-      const selectedText = selection.toString().trim()
-      // Check if selection is a single word (no spaces)
-      if (selectedText.split(/\s+/).length === 1 && selectedText.length > 1) {
-        setSelectedWord(selectedText)
-        setIsPopoverOpen(true)
-      }
-    }
+  const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
+    setAudioState(state)
   }, [])
 
-  const renderLine = useCallback((line: string, lineIndex: number) => {
-    const words = line.split(/(\s+)/)
-    
-    return (
-      <div
-        key={lineIndex}
-        className="mb-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-        data-sentence-index={lineIndex}
-        onClick={() => handleSentenceClick(line, lineIndex)}
-      >
-        <p 
-          className="text-lg leading-relaxed select-text"
-          onMouseUp={handleWordSelection}
-        >
-          {words.map((word, wordIndex) => (
-            <span
-              key={wordIndex}
-              className={word.trim() ? 'hover:bg-primary/10 rounded px-0.5' : ''}
-            >
-              {word}
-            </span>
-          ))}
-        </p>
-      </div>
-    )
-  }, [handleSentenceClick, handleWordSelection])
+  const handleSeekFunctionSet = useCallback((seekFn: (time: number) => void) => {
+    setSeekFunction(() => seekFn)
+  }, [])
+
+  const handleLyricsTimeSeek = useCallback((timeInMs: number) => {
+    if (seekFunction) {
+      seekFunction(timeInMs)
+    }
+  }, [seekFunction])
 
   return (
     <div className="space-y-6">
-      {/* Audio Player */}
+      {/* Enhanced Audio Player */}
       {track && (
-        <AudioPlayer track={track} className="mb-6" />
+        <EnhancedAudioPlayer 
+          track={track} 
+          className="mb-6"
+          onStateChange={handleAudioStateChange}
+          onTimeSeek={handleSeekFunctionSet}
+        />
       )}
 
-      {/* Demo mode banner */}
-      {isDemo && (
-        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-          <div className="flex items-start">
-            <div className="text-orange-600">
-              <p className="text-sm font-medium">Demo Mode</p>
-              <p className="text-sm">
-                Showing excerpt lines only. Full lyrics require proper licensing.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* Lyrics */}
-      <div className="space-y-2">
-        {lines.length > 0 ? (
-          lines.map((line, index) => renderLine(line, index))
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>No lyrics available</p>
-            <p className="text-sm">Try demo mode or ensure proper API configuration</p>
-          </div>
-        )}
-      </div>
+      {/* Synchronized Lyrics */}
+      <SynchronizedLyrics
+        lines={lines}
+        currentTime={audioState.currentTime}
+        duration={audioState.duration}
+        isPlaying={audioState.isPlaying}
+        playbackMode={audioState.playbackMode}
+        translations={translations}
+        isDemo={isDemo}
+        backgroundColor={backgroundColor}
+        onTimeSeek={handleLyricsTimeSeek}
+        synchronizedData={synchronized}
+      />
 
       {/* Modals */}
       <SentenceModal
@@ -136,7 +118,6 @@ export function LyricsView({
         backgroundColor={backgroundColor}
       />
 
-      {/* Word popover is handled by the selection logic */}
       {selectedWord && (
         <WordPopover
           word={selectedWord}

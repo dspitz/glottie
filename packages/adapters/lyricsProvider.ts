@@ -1,3 +1,17 @@
+export interface LyricsWord {
+  text: string
+  startTime: number
+  endTime: number
+  isWhitespace?: boolean
+}
+
+export interface LyricsLine {
+  text: string
+  words?: LyricsWord[]
+  startTime: number
+  endTime: number
+}
+
 export interface LyricsResult {
   raw?: string
   lines: string[]
@@ -8,11 +22,83 @@ export interface LyricsResult {
   culturalContext?: string
   translations?: { [targetLang: string]: string[] }
   error?: string
+  // New synchronized lyrics data
+  synchronized?: {
+    lines: LyricsLine[]
+    hasWordTiming: boolean
+    format: 'lrc' | 'estimated' | 'dfxp'
+    duration?: number
+  }
 }
 
 export interface LyricsProvider {
   name: string
   getLyrics(artist: string, title: string): Promise<LyricsResult>
+}
+
+// LRC parser for synchronized lyrics
+function parseLRC(lrcContent: string): { lines: LyricsLine[], duration: number, hasRealWordTiming: boolean } {
+  const lines: LyricsLine[] = []
+  let maxTime = 0
+  let hasRealWordTiming = false
+
+  // Split content into lines and process each line
+  const lrcLines = lrcContent.split('\n')
+
+  for (const line of lrcLines) {
+    const trimmedLine = line.trim()
+    if (!trimmedLine) continue
+
+    // Match LRC time format [mm:ss.xx] or [mm:ss:xx]
+    const timeRegex = /\[(\d+):(\d+)\.?(\d+)?\]/g
+    let match
+    const timeTags: number[] = []
+    let textContent = trimmedLine
+
+    // Extract all time tags from the line
+    while ((match = timeRegex.exec(trimmedLine)) !== null) {
+      const minutes = parseInt(match[1], 10)
+      const seconds = parseInt(match[2], 10)
+      const centiseconds = match[3] ? parseInt(match[3].padEnd(2, '0').slice(0, 2), 10) : 0
+      const timeMs = (minutes * 60 + seconds) * 1000 + centiseconds * 10
+      timeTags.push(timeMs)
+    }
+
+    // Remove time tags to get just the text
+    textContent = textContent.replace(/\[\d+:\d+\.?\d*\]/g, '').trim()
+
+    // Skip lines without text content or time tags
+    if (timeTags.length === 0 || !textContent) continue
+
+    // For each time tag, create a line entry
+    for (let i = 0; i < timeTags.length; i++) {
+      const startTime = timeTags[i]
+      const endTime = i < timeTags.length - 1 ? timeTags[i + 1] : startTime + 3000 // Default 3 second duration
+
+      maxTime = Math.max(maxTime, endTime)
+
+      // Don't create artificial word timings for real LRC data
+      // Word-level timing should only come from enhanced formats
+      lines.push({
+        text: textContent,
+        words: undefined, // No word timing for standard LRC
+        startTime,
+        endTime
+      })
+    }
+  }
+
+  // Sort lines by start time
+  lines.sort((a, b) => a.startTime - b.startTime)
+
+  // Calculate end times based on next line start time
+  for (let i = 0; i < lines.length - 1; i++) {
+    if (lines[i].endTime > lines[i + 1].startTime) {
+      lines[i].endTime = lines[i + 1].startTime - 50 // Small gap between lines
+    }
+  }
+
+  return { lines, duration: maxTime, hasRealWordTiming }
 }
 
 // Translation helper function
@@ -353,11 +439,55 @@ class MusixmatchProvider implements LyricsProvider {
           lines: [],
           licensed: false,
           provider: this.name,
+          isExcerpt: true,
           error: 'Track not found'
         }
       }
 
-      // Get lyrics for the track
+      // Try to get synchronized lyrics - try multiple formats
+      let synchronizedData: { lines: LyricsLine[], hasWordTiming: boolean, format: 'lrc' | 'estimated' | 'dfxp', duration?: number } | undefined
+
+      // Try different subtitle formats in order of preference
+      const subtitleFormats = ['lrc', 'dfxp', 'mxm']
+
+      for (const format of subtitleFormats) {
+        try {
+          const subtitleResponse = await fetch(
+            `https://api.musixmatch.com/ws/1.1/track.subtitle.get?` +
+            `format=json&callback=callback&track_id=${track.track_id}&` +
+            `subtitle_format=${format}&apikey=${this.apiKey}`
+          )
+
+          if (subtitleResponse.ok) {
+            const subtitleData = await subtitleResponse.json()
+            const subtitleBody = subtitleData.message?.body?.subtitle?.subtitle_body
+
+            if (subtitleBody) {
+              console.log(`✅ Found synchronized lyrics from Musixmatch in ${format} format`)
+
+              if (format === 'lrc') {
+                const { lines: syncLines, duration, hasRealWordTiming } = parseLRC(subtitleBody)
+                synchronizedData = {
+                  lines: syncLines,
+                  hasWordTiming: hasRealWordTiming,
+                  format: 'lrc',
+                  duration
+                }
+                break // LRC is good enough, stop here
+              } else if (format === 'dfxp' || format === 'mxm') {
+                // These formats might have word-level timing
+                // For now, we'll parse them as text and note that enhanced timing may be available
+                console.log(`⚠️ Found ${format} format but parser not yet implemented`)
+                // TODO: Implement DFXP/MXM parser for potential word-level timing
+              }
+            }
+          }
+        } catch (error) {
+          console.log(`Failed to fetch ${format} format:`, error)
+        }
+      }
+
+      // Fallback to regular lyrics if no synchronized lyrics available
       const lyricsResponse = await fetch(
         `https://api.musixmatch.com/ws/1.1/track.lyrics.get?` +
         `format=json&callback=callback&track_id=${track.track_id}&apikey=${this.apiKey}`
@@ -370,33 +500,42 @@ class MusixmatchProvider implements LyricsProvider {
       const lyricsData = await lyricsResponse.json()
       const lyrics = lyricsData.message?.body?.lyrics?.lyrics_body
 
-      if (!lyrics) {
+      if (!lyrics && !synchronizedData) {
         return {
           lines: [],
           licensed: false,
           provider: this.name,
+          isExcerpt: true,
           error: 'Lyrics not available'
         }
       }
 
-      // Split lyrics into lines and clean up
-      const allLines = lyrics
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0 && !line.includes('******* This Lyrics'))
+      // Process regular lyrics
+      let processedLines: string[] = []
+      if (lyrics) {
+        // Split lyrics into lines and clean up
+        const allLines = lyrics
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0 && !line.includes('******* This Lyrics'))
 
-      // For educational use, extract excerpt only (first 5 meaningful lines)
-      const maxExcerptLines = parseInt(process.env.MAX_EXCERPT_LINES || '5')
-      const excerptLines = selectEducationalExcerpt(allLines, maxExcerptLines)
+        // For educational use, extract excerpt only (first 5 meaningful lines)
+        const maxExcerptLines = parseInt(process.env.MAX_EXCERPT_LINES || '5')
+        processedLines = selectEducationalExcerpt(allLines, maxExcerptLines)
+      } else if (synchronizedData) {
+        // Use synchronized lyrics as fallback text
+        processedLines = synchronizedData.lines.map(line => line.text)
+      }
 
       return {
         raw: process.env.FAIR_USE_MODE === 'true' ? undefined : lyrics,
-        lines: excerptLines,
+        lines: processedLines,
         licensed: true,
         provider: this.name,
         isExcerpt: process.env.FAIR_USE_MODE === 'true',
-        attribution: `Lyrics © ${track.artist_name}. Provided by Musixmatch for educational purposes.`,
-        culturalContext: track.album_name ? `From album: ${track.album_name}` : undefined
+        attribution: `Lyrics © ${track.artist_name}. Provided by Musixmatch for educational purposes.${synchronizedData ? ' Includes synchronized timing data.' : ''}`,
+        culturalContext: track.album_name ? `From album: ${track.album_name}` : undefined,
+        synchronized: synchronizedData
       }
     } catch (error) {
       console.error('Musixmatch error:', error)

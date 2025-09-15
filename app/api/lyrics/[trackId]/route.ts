@@ -68,7 +68,8 @@ export async function GET(
             isExcerpt: lyricsResult.isExcerpt,
             attribution: lyricsResult.attribution,
             culturalContext: lyricsResult.culturalContext,
-            translations: lyricsResult.translations
+            translations: lyricsResult.translations,
+            synchronized: lyricsResult.synchronized
           }
         } else {
           console.log(`⚠️ No lyrics found: ${lyricsResult.error || 'No lyrics available'}`)
@@ -117,6 +118,7 @@ export async function GET(
       attribution: lyricsData?.attribution,
       culturalContext: lyricsData?.culturalContext,
       translations: lyricsData?.translations,
+      synchronized: lyricsData?.synchronized,
       
       // Legacy compatibility
       song: {
