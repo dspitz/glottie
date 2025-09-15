@@ -258,8 +258,24 @@ export function SynchronizedLyrics({
           behavior: 'smooth'
         })
       }
+
+      // Auto-advance in modal if it's open and we're playing
+      if (isModalOpen && isPlaying) {
+        // Update the modal content to show the current playing line
+        const currentLine = synchronizedLines[activeLineIndex]
+        if (currentLine) {
+          setSelectedSentence(currentLine.text)
+
+          // Update translations if available
+          if (isDemo && translations[activeLineIndex]) {
+            setSelectedSentenceTranslations([translations[activeLineIndex]])
+          } else {
+            setSelectedSentenceTranslations([])
+          }
+        }
+      }
     }
-  }, [activeLineIndex])
+  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, translations, isDemo])
 
   // Navigation functions
   const navigateToLine = useCallback((index: number) => {

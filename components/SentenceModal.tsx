@@ -103,13 +103,12 @@ export function SentenceModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-black/90 border-white/20 text-white">
+      <DialogContent className="max-w-2xl bg-black/90 border-white/20 text-white h-[67vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>
-            <div className="flex items-center justify-between text-white">
-              <span>Sentence Translation</span>
+            <div className="flex items-center justify-center text-white">
               {totalLines > 0 && (
-                <span className="text-sm font-normal text-white/70">
+                <span className="text-base font-medium">
                   Line {currentLineIndex + 1} of {totalLines}
                 </span>
               )}
@@ -117,69 +116,8 @@ export function SentenceModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Navigation and Playback Controls */}
-        {(onNavigatePrevious || onNavigateNext || onRepeat) && (
-          <div className="space-y-3 pb-4 border-b border-white/20">
-            {/* Navigation buttons */}
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onNavigatePrevious}
-                disabled={currentLineIndex === 0}
-                title="Previous line"
-              >
-                <SkipBack className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
 
-              {onRepeat && (
-                <Button
-                  variant={isRepeating ? "default" : "outline"}
-                  size="sm"
-                  onClick={onRepeat}
-                  title="Repeat current line"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1" />
-                  {isRepeating ? "Stop Repeat" : "Repeat"}
-                </Button>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onNavigateNext}
-                disabled={currentLineIndex === totalLines - 1}
-                title="Next line"
-              >
-                Next
-                <SkipForward className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-
-            {/* Playback Speed Control */}
-            {hasAudioControl && onPlaybackRateChange && (
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xs text-white/70">Speed:</span>
-                <div className="flex gap-1">
-                  {[0.5, 0.75, 1.0, 1.25, 1.5].map((rate) => (
-                    <Button
-                      key={rate}
-                      variant={playbackRate === rate ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => onPlaybackRateChange(rate)}
-                      className="h-7 px-2 text-xs"
-                    >
-                      {rate}x
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4 px-6 pb-4">
           {/* Original sentence */}
           <div className="rounded-lg bg-white/10 p-4">
             <h3 className="font-medium text-sm text-white/70 mb-2">
@@ -217,6 +155,77 @@ export function SentenceModal({
             </p>
           </div>
         </div>
+
+        {/* Navigation and Playback Controls - Fixed at bottom */}
+        {(onNavigatePrevious || onNavigateNext || onRepeat) && (
+          <div className="space-y-3 px-6 pt-4 pb-2 border-t border-white/20">
+              {/* Navigation buttons */}
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onNavigatePrevious}
+                  disabled={currentLineIndex === 0}
+                  title="Previous line"
+                  className="bg-white/[0.12] border-white/20 text-white hover:bg-white/20 hover:text-white disabled:opacity-50"
+                >
+                  <SkipBack className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+
+                {onRepeat && (
+                  <Button
+                    variant={isRepeating ? "default" : "outline"}
+                    size="sm"
+                    onClick={onRepeat}
+                    title="Repeat current line"
+                    className={isRepeating
+                      ? "bg-white/30 border-white/30 text-white hover:bg-white/40"
+                      : "bg-white/[0.12] border-white/20 text-white hover:bg-white/20 hover:text-white"
+                    }
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    {isRepeating ? "Stop Repeat" : "Repeat"}
+                  </Button>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onNavigateNext}
+                  disabled={currentLineIndex === totalLines - 1}
+                  title="Next line"
+                  className="bg-white/[0.12] border-white/20 text-white hover:bg-white/20 hover:text-white disabled:opacity-50"
+                >
+                  Next
+                  <SkipForward className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+
+              {/* Playback Speed Control */}
+              {hasAudioControl && onPlaybackRateChange && (
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xs text-white/70">Speed:</span>
+                  <div className="flex gap-1">
+                    {[0.5, 0.75, 1.0, 1.25, 1.5].map((rate) => (
+                      <Button
+                        key={rate}
+                        variant={playbackRate === rate ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => onPlaybackRateChange(rate)}
+                        className={playbackRate === rate
+                          ? "h-7 px-2 text-xs bg-white/30 border-white/30 text-white hover:bg-white/40"
+                          : "h-7 px-2 text-xs bg-white/[0.12] border-white/20 text-white hover:bg-white/20 hover:text-white"
+                        }
+                      >
+                        {rate}x
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
       </DialogContent>
     </Dialog>
   )
