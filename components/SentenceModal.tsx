@@ -103,13 +103,13 @@ export function SentenceModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl bg-black/90 border-white/20 text-white">
         <DialogHeader>
           <DialogTitle>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between text-white">
               <span>Sentence Translation</span>
               {totalLines > 0 && (
-                <span className="text-sm font-normal text-muted-foreground">
+                <span className="text-sm font-normal text-white/70">
                   Line {currentLineIndex + 1} of {totalLines}
                 </span>
               )}
@@ -119,7 +119,7 @@ export function SentenceModal({
 
         {/* Navigation and Playback Controls */}
         {(onNavigatePrevious || onNavigateNext || onRepeat) && (
-          <div className="space-y-3 pb-4 border-b">
+          <div className="space-y-3 pb-4 border-b border-white/20">
             {/* Navigation buttons */}
             <div className="flex items-center justify-center gap-2">
               <Button
@@ -160,7 +160,7 @@ export function SentenceModal({
             {/* Playback Speed Control */}
             {hasAudioControl && onPlaybackRateChange && (
               <div className="flex items-center justify-center gap-2">
-                <span className="text-xs text-muted-foreground">Speed:</span>
+                <span className="text-xs text-white/70">Speed:</span>
                 <div className="flex gap-1">
                   {[0.5, 0.75, 1.0, 1.25, 1.5].map((rate) => (
                     <Button
@@ -181,37 +181,37 @@ export function SentenceModal({
         
         <div className="space-y-4">
           {/* Original sentence */}
-          <div className="rounded-lg bg-muted p-4">
-            <h3 className="font-medium text-sm text-muted-foreground mb-2">
+          <div className="rounded-lg bg-white/10 p-4">
+            <h3 className="font-medium text-sm text-white/70 mb-2">
               Spanish
             </h3>
-            <p className="text-lg">{sentence}</p>
+            <p className="text-lg text-white">{sentence}</p>
           </div>
 
           {/* Translation */}
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium text-sm text-muted-foreground mb-2">
+          <div className="rounded-lg border border-white/20 p-4">
+            <h3 className="font-medium text-sm text-white/70 mb-2">
               English Translation
             </h3>
             
             {isLoading && (
-              <div className="flex items-center text-muted-foreground">
+              <div className="flex items-center text-white/70">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Translating...
               </div>
             )}
             
             {error && (
-              <p className="text-destructive">{error}</p>
+              <p className="text-red-400">{error}</p>
             )}
             
             {!isLoading && !error && translation && (
-              <p className="text-lg">{translation}</p>
+              <p className="text-lg text-white">{translation}</p>
             )}
           </div>
 
           {/* Tips */}
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-white/60">
             <p>
               💡 <strong>Tip:</strong> Click on individual words in the lyrics to see definitions and conjugations.
             </p>

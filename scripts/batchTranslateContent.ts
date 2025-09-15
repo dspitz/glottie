@@ -6,7 +6,7 @@ config({ path: '.env.local' })
 
 const prisma = new PrismaClient()
 
-const TARGET_LANGUAGES = ['en', 'pt'] // English and Portuguese
+const TARGET_LANGUAGES = ['en'] // Start with English only to test
 
 async function batchTranslateContent() {
   console.log('Starting batch translation of educational content...')
@@ -26,7 +26,7 @@ async function batchTranslateContent() {
         artist: true,
         lyricsRaw: true
       },
-      take: 10 // Limit to first 10 songs to avoid rate limits
+      take: 5 // Limit to first 5 songs for testing
     })
 
     console.log(`Found ${songsToTranslate.length} songs that need translations`)
@@ -42,14 +42,27 @@ async function batchTranslateContent() {
         try {
           console.log(`  → Translating to ${targetLang}...`)
           
-          // Translate each line
+          // Translate lines individually to avoid payload size issues
           const translatedLines: string[] = []
-          for (const line of lyrics) {
-            const translation = await translate(line, targetLang)
-            translatedLines.push(translation.text)
-            
-            // Small delay to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 100))
+          console.log(`    Translating ${lyrics.length} lines...`)
+
+          for (let i = 0; i < lyrics.length; i++) {
+            const line = lyrics[i]
+            try {
+              const translation = await translate(line, targetLang)
+              translatedLines.push(translation.text)
+
+              // Show progress for long songs
+              if (i % 10 === 0 && i > 0) {
+                console.log(`      Progress: ${i}/${lyrics.length} lines`)
+              }
+
+              // Small delay to respect API rate limits
+              await new Promise(resolve => setTimeout(resolve, 100))
+            } catch (lineError) {
+              console.error(`      Failed to translate line ${i + 1}: ${lineError}`)
+              translatedLines.push(line) // Keep original if translation fails
+            }
           }
 
           // Translate the title
@@ -86,8 +99,8 @@ async function batchTranslateContent() {
         }
       }
       
-      // Longer delay between songs
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Longer delay between songs to respect API limits
+      await new Promise(resolve => setTimeout(resolve, 1000))
     }
 
     // Summary

@@ -26,7 +26,8 @@ export async function GET(
         lyricsLicensed: true,
         level: true,
         popularity: true,
-        genres: true
+        genres: true,
+        translations: true
       }
     })
 
@@ -109,6 +110,28 @@ export async function GET(
       }
     }
 
+    // Process database translations
+    let dbTranslations: { [targetLang: string]: string[] } = {}
+    if (song.translations && song.translations.length > 0) {
+      for (const translation of song.translations) {
+        try {
+          const lines = JSON.parse(translation.lyricsLines || '[]')
+          if (Array.isArray(lines) && lines.length > 0) {
+            dbTranslations[translation.targetLang] = lines
+            console.log(`📚 Found ${lines.length} translated lines for ${translation.targetLang}`)
+          }
+        } catch (e) {
+          console.error(`Failed to parse translation for ${translation.targetLang}:`, e)
+        }
+      }
+    }
+
+    // Merge translations: database translations take priority over demo ones
+    const finalTranslations = {
+      ...(lyricsData?.translations || {}),
+      ...dbTranslations
+    }
+
     return NextResponse.json({
       // Core response data
       trackId: song.id,
@@ -131,7 +154,7 @@ export async function GET(
       lyricsLicensed: lyricsData?.licensed,
       attribution: lyricsData?.attribution,
       culturalContext: lyricsData?.culturalContext,
-      translations: lyricsData?.translations,
+      translations: finalTranslations,
       synchronized: lyricsData?.synchronized,
       
       // Legacy compatibility
