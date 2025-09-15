@@ -95,6 +95,20 @@ export async function GET(
       }
     }
 
+    // Use full raw lyrics if available and MUSIXMATCH_FULL_LYRICS is enabled
+    let finalLines = lyricsLines
+    if (process.env.MUSIXMATCH_FULL_LYRICS === 'true' && lyricsData?.raw) {
+      // Split raw lyrics into lines
+      const rawLines = lyricsData.raw
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && !line.includes('******* This Lyrics'))
+      if (rawLines.length > lyricsLines.length) {
+        console.log(`📚 Using full raw lyrics (${rawLines.length} lines instead of ${lyricsLines.length})`)
+        finalLines = rawLines
+      }
+    }
+
     return NextResponse.json({
       // Core response data
       trackId: song.id,
@@ -109,9 +123,9 @@ export async function GET(
       level: song.level,
       popularity: song.popularity,
       genres: song.genres,
-      
+
       // Lyrics data
-      lines: lyricsLines,
+      lines: finalLines,
       lyrics: lyricsData,
       lyricsProvider: lyricsData?.provider,
       lyricsLicensed: lyricsData?.licensed,

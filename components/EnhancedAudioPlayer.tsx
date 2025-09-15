@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useSession, signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -30,23 +30,26 @@ interface Track {
   albumArtSmall?: string
 }
 
-interface AudioPlayerState {
+export interface AudioPlayerState {
   isPlaying: boolean
   currentTime: number
   duration: number
   playbackMode: 'preview' | 'spotify' | 'unavailable'
+  playbackRate?: number
 }
 
 interface EnhancedAudioPlayerProps {
   track: Track
   className?: string
   onStateChange?: (state: AudioPlayerState) => void
-  onTimeSeek?: (time: number) => void
+  onTimeSeek?: (seekFn: (time: number) => void) => void
+  onPlaybackRateChange?: (changeFn: (rate: number) => void) => void
+  onPlayPauseReady?: (fn: () => void) => void
 }
 
 type PlaybackMode = 'preview' | 'spotify' | 'unavailable'
 
-export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTimeSeek }: EnhancedAudioPlayerProps) {
+export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTimeSeek, onPlaybackRateChange, onPlayPauseReady }: EnhancedAudioPlayerProps) {
   const { data: session } = useSession()
   const { isAuthenticated, hasSpotifyError } = useSpotifyPlayer()
   
@@ -72,6 +75,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   const [isMuted, setIsMuted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [playbackRate, setPlaybackRate] = useState(1.0)
   
   // Preview mode refs
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -89,7 +93,8 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
         isPlaying,
         currentTime,
         duration,
-        playbackMode
+        playbackMode,
+        playbackRate
       })
     }
   }, [isPlaying, currentTime, duration, playbackMode, onStateChange])
@@ -113,6 +118,25 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
       onTimeSeek(handleSeek)
     }
   }, [onTimeSeek, playbackMode, duration])
+
+  // Apply playback rate to audio element
+  useEffect(() => {
+    if (playbackMode === 'preview' && audioRef.current) {
+      audioRef.current.playbackRate = playbackRate
+    }
+  }, [playbackMode, playbackRate])
+
+  // Provide playback rate change function to parent
+  useEffect(() => {
+    if (onPlaybackRateChange) {
+      const handleRateChange = (rate: number) => {
+        if (playbackMode === 'preview') {
+          setPlaybackRate(rate)
+        }
+      }
+      onPlaybackRateChange(handleRateChange)
+    }
+  }, [onPlaybackRateChange, playbackMode])
 
   // Preview mode audio handling
   useEffect(() => {
@@ -202,8 +226,9 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
     }
   }, [volume, isMuted, playbackMode])
 
-  // Playback controls
-  const togglePlayPause = async () => {
+  // Playback controls - using useCallback for stability
+  const togglePlayPause = useCallback(async () => {
+    console.log('togglePlayPause called', { playbackMode, isPlaying, track })
     if (playbackMode === 'preview' && audioRef.current) {
       try {
         if (isPlaying) {
@@ -226,7 +251,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
           setIsLoading(true)
           const trackUri = `spotify:track:${track.spotifyId}`
           const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
-          
+
           if (result === 'PREMIUM_REQUIRED') {
             setError('Spotify Premium required for full playback')
           } else if (result === 'DEVICE_NOT_READY') {
@@ -249,7 +274,33 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
         setIsLoading(false)
       }
     }
-  }
+  }, [playbackMode, isPlaying, track, spotifyPlayerState])
+
+  // Store the toggle function in a ref for stable reference
+  const togglePlayPauseRef = useRef(togglePlayPause)
+  togglePlayPauseRef.current = togglePlayPause
+
+  // Provide play/pause function to parent
+  useEffect(() => {
+    console.log('🔷 EnhancedAudioPlayer: onPlayPauseReady effect triggered', {
+      hasCallback: !!onPlayPauseReady,
+      callbackType: typeof onPlayPauseReady,
+      playbackMode,
+      track: track?.title
+    })
+    if (onPlayPauseReady && typeof onPlayPauseReady === 'function') {
+      // Create a stable wrapper that always calls the latest function
+      const stableToggle = () => {
+        console.log('🎯 EnhancedAudioPlayer: Stable toggle wrapper called')
+        togglePlayPauseRef.current()
+      }
+      console.log('🔷 EnhancedAudioPlayer: Calling onPlayPauseReady with stable toggle')
+      onPlayPauseReady(stableToggle)
+      console.log('✅ EnhancedAudioPlayer: Stable toggle passed to parent')
+    } else {
+      console.log('⚠️ EnhancedAudioPlayer: No onPlayPauseReady callback provided')
+    }
+  }, [onPlayPauseReady, playbackMode, track?.title]) // Include minimal deps for logging
 
   const handleSeek = (value: number[]) => {
     const newTime = (value[0] / 100) * duration
@@ -298,28 +349,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
     signIn('spotify')
   }
 
-  // Render sign-in prompt for unauthenticated users
-  if (!isAuthenticated && track.spotifyId && !track.previewUrl) {
-    return (
-      <div className={`bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6 ${className}`}>
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center">
-            <Crown className="w-8 h-8 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg mb-1">Sign in for Full Songs</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Connect your Spotify account to play complete tracks with premium quality audio.
-            </p>
-            <Button onClick={handleSpotifySignIn} className="bg-green-600 hover:bg-green-700">
-              <LogIn className="w-4 h-4 mr-2" />
-              Sign in with Spotify
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Don't show sign-in prompt anymore - just proceed with unavailable state
 
   // Render unavailable state
   if (playbackMode === 'unavailable') {
@@ -350,7 +380,11 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   }
 
   return (
-    <div className={`bg-background border rounded-lg p-4 ${className}`}>
+    <div
+      className={`fixed left-0 right-0 border-t px-5 py-4 z-40 transition-transform duration-300 ease-in-out backdrop-blur-lg ${
+        isPlaying ? 'bottom-0 translate-y-0' : 'bottom-0 translate-y-full'
+      } ${className}`}
+      style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderTopColor: 'rgba(255, 255, 255, 0.2)' }}>
       {/* Spotify Web Player (hidden, only renders when authenticated) */}
       {playbackMode === 'spotify' && (
         <SpotifyWebPlayer
@@ -370,7 +404,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
         />
       )}
       
-      {/* Track Info */}
+      {/* Track Info with Play Button */}
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center overflow-hidden">
           {track.albumArtSmall ? (
@@ -387,36 +421,27 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
           <Music className={`w-6 h-6 text-primary ${track.albumArtSmall ? 'hidden' : ''}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{track.title}</p>
-          <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
-          {track.album && (
-            <p className="text-xs text-muted-foreground truncate">{track.album}</p>
-          )}
+          <p className="font-medium text-sm truncate text-white">{track.title}</p>
+          <p className="text-sm truncate text-white/80">{track.artist}</p>
         </div>
-        
-        {/* Playback mode indicator */}
-        <div className="flex items-center gap-2">
-          {playbackMode === 'spotify' && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-              <Crown className="w-3 h-3" />
-              Full Song
-            </div>
+
+        {/* Play/Pause button in upper right */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={togglePlayPause}
+          disabled={isLoading}
+          className="w-10 h-10 hover:bg-white/20"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
+        >
+          {isLoading ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : isPlaying ? (
+            <Pause className="w-4 h-4 text-white" />
+          ) : (
+            <Play className="w-4 h-4 text-white" />
           )}
-          {playbackMode === 'preview' && (
-            <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">
-              <Shield className="w-3 h-3" />
-              Preview
-            </div>
-          )}
-          {track.spotifyUrl && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={track.spotifyUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-3 h-3 mr-1" />
-                Spotify
-              </a>
-            </Button>
-          )}
-        </div>
+        </Button>
       </div>
 
       {/* Error State */}
@@ -434,65 +459,26 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
           onValueChange={handleSeek}
           max={100}
           step={0.1}
-          className="w-full"
+          className="w-full [&>span[data-orientation]]:h-1 [&>span[data-orientation]]:bg-white/[0.12] [&>span>span]:bg-white [&_[role=slider]]:bg-white [&_[role=slider]]:border-0 [&_[role=slider]]:rounded-full [&_[role=slider]]:shadow-md [&_[role=slider]]:w-3 [&_[role=slider]]:h-3"
           disabled={!duration}
         />
-        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+        <div className="flex justify-between text-xs text-white mt-1">
           <span>{formatTime(currentTime)}</span>
-          <span className={playbackMode === 'preview' ? 'text-orange-600' : 'text-green-600'}>
-            {playbackMode === 'preview' ? '30s Preview' : 'Full Song'}
-          </span>
+          {playbackMode === 'preview' && (
+            <span className="text-white/60">30s Preview</span>
+          )}
           <span>{formatTime(duration)}</span>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={togglePlayPause}
-            disabled={isLoading}
-            className="w-10 h-10"
-          >
-            {isLoading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : isPlaying ? (
-              <Pause className="w-4 h-4" />
-            ) : (
-              <Play className="w-4 h-4" />
-            )}
-          </Button>
-          
-          <span className="text-xs text-muted-foreground">
-            {playbackMode === 'preview' ? '30s preview' : 'Full track'}
-          </span>
-        </div>
+      {/* Speed control moved to translation modal */}
 
-        {/* Volume Controls */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleMute}
-            className="w-8 h-8 p-0"
-          >
-            {isMuted || volume === 0 ? (
-              <VolumeX className="w-4 h-4" />
-            ) : (
-              <Volume2 className="w-4 h-4" />
-            )}
-          </Button>
-          <Slider
-            value={[isMuted ? 0 : volume * 100]}
-            onValueChange={handleVolumeChange}
-            max={100}
-            step={1}
-            className="w-20"
-          />
+      {/* Preview indicator */}
+      {playbackMode === 'preview' && (
+        <div className="flex items-center justify-center">
+          <span className="text-xs text-white/60">30s preview</span>
         </div>
-      </div>
+      )}
 
       {/* Spotify Premium Notice */}
       {playbackMode === 'spotify' && hasSpotifyError && (

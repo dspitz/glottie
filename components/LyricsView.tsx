@@ -32,18 +32,22 @@ interface LyricsViewProps {
     format: 'lrc' | 'estimated' | 'dfxp'
     duration?: number
   }
+  onPlayStateChange?: (isPlaying: boolean) => void
+  onPlayPauseReady?: (fn: () => void) => void
 }
 
-export function LyricsView({ 
-  lines, 
-  translations = [], 
+export function LyricsView({
+  lines,
+  translations = [],
   spotifyUrl,
   title,
   artist,
   isDemo = false,
   backgroundColor,
   track,
-  synchronized
+  synchronized,
+  onPlayStateChange,
+  onPlayPauseReady
 }: LyricsViewProps) {
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
@@ -54,9 +58,11 @@ export function LyricsView({
     isPlaying: false,
     currentTime: 0,
     duration: 0,
-    playbackMode: 'unavailable'
+    playbackMode: 'unavailable',
+    playbackRate: 1.0
   })
   const [seekFunction, setSeekFunction] = useState<((time: number) => void) | null>(null)
+  const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
 
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
@@ -71,10 +77,17 @@ export function LyricsView({
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
     setAudioState(state)
-  }, [])
+    if (onPlayStateChange) {
+      onPlayStateChange(state.isPlaying)
+    }
+  }, [onPlayStateChange])
 
   const handleSeekFunctionSet = useCallback((seekFn: (time: number) => void) => {
     setSeekFunction(() => seekFn)
+  }, [])
+
+  const handlePlaybackRateFunctionSet = useCallback((rateFn: (rate: number) => void) => {
+    setPlaybackRateFunction(() => rateFn)
   }, [])
 
   const handleLyricsTimeSeek = useCallback((timeInMs: number) => {
@@ -84,14 +97,15 @@ export function LyricsView({
   }, [seekFunction])
 
   return (
-    <div className="space-y-6">
+    <div className={`transition-all duration-300 ${audioState.isPlaying ? 'pb-32' : 'pb-6'}`}>
       {/* Enhanced Audio Player */}
       {track && (
-        <EnhancedAudioPlayer 
-          track={track} 
-          className="mb-6"
+        <EnhancedAudioPlayer
+          track={track}
           onStateChange={handleAudioStateChange}
           onTimeSeek={handleSeekFunctionSet}
+          onPlaybackRateChange={handlePlaybackRateFunctionSet}
+          onPlayPauseReady={onPlayPauseReady}
         />
       )}
 
@@ -106,6 +120,12 @@ export function LyricsView({
         isDemo={isDemo}
         backgroundColor={backgroundColor}
         onTimeSeek={handleLyricsTimeSeek}
+        playbackRate={audioState.playbackRate}
+        onPlaybackRateChange={(rate) => {
+          if (playbackRateFunction) {
+            playbackRateFunction(rate)
+          }
+        }}
         synchronizedData={synchronized}
       />
 

@@ -10,6 +10,10 @@ interface ConjugationTable {
   futuro: { [key: string]: string }
   condicional: { [key: string]: string }
   subjuntivo_presente: { [key: string]: string }
+  subjuntivo_imperfecto?: { [key: string]: string }
+  imperativo?: { [key: string]: string }
+  gerundio?: string
+  participio?: string
 }
 
 interface WordPopoverProps {
@@ -55,7 +59,7 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
         {children}
       </PopoverTrigger>
       
-      <PopoverContent className="w-80 max-h-96 overflow-y-auto">
+      <PopoverContent className="w-96 max-h-[600px] overflow-y-auto">
         <div className="space-y-3">
           {/* Word header */}
           <div className="border-b pb-2">
@@ -126,44 +130,138 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
 
               {/* Conjugations for verbs */}
               {definition.conjugations && (
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Conjugations</h4>
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm mb-2 border-b pb-1">Full Conjugations</h4>
+
+                  {/* Non-finite forms */}
+                  {(definition.conjugations.gerundio || definition.conjugations.participio) && (
+                    <div className="bg-muted/50 rounded p-2">
+                      <p className="font-medium text-xs mb-1">Non-finite forms:</p>
+                      {definition.conjugations.gerundio && (
+                        <p className="text-xs">Gerund: <strong>{definition.conjugations.gerundio}</strong></p>
+                      )}
+                      {definition.conjugations.participio && (
+                        <p className="text-xs">Past Participle: <strong>{definition.conjugations.participio}</strong></p>
+                      )}
+                    </div>
+                  )}
+
                   <div className="space-y-2 text-xs">
                     {/* Present tense */}
-                    <div>
-                      <p className="font-medium text-muted-foreground">Presente:</p>
-                      <div className="grid grid-cols-2 gap-1 ml-2">
+                    <details className="group">
+                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                        Presente (Present)
+                      </summary>
+                      <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.presente).map(([person, form]) => (
                           <span key={person} className="text-xs">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
                       </div>
-                    </div>
-                    
+                    </details>
+
                     {/* Preterite */}
-                    <div>
-                      <p className="font-medium text-muted-foreground">Pretérito:</p>
-                      <div className="grid grid-cols-2 gap-1 ml-2">
+                    <details className="group">
+                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                        Pretérito (Preterite)
+                      </summary>
+                      <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.preterito).map(([person, form]) => (
                           <span key={person} className="text-xs">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
                       </div>
-                    </div>
+                    </details>
+
+                    {/* Imperfect */}
+                    <details className="group">
+                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                        Imperfecto (Imperfect)
+                      </summary>
+                      <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
+                        {Object.entries(definition.conjugations.imperfecto).map(([person, form]) => (
+                          <span key={person} className="text-xs">
+                            {person}: <strong>{form}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </details>
 
                     {/* Future */}
-                    <div>
-                      <p className="font-medium text-muted-foreground">Futuro:</p>
-                      <div className="grid grid-cols-2 gap-1 ml-2">
+                    <details className="group">
+                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                        Futuro (Future)
+                      </summary>
+                      <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.futuro).map(([person, form]) => (
                           <span key={person} className="text-xs">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
                       </div>
-                    </div>
+                    </details>
+
+                    {/* Conditional */}
+                    <details className="group">
+                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                        Condicional (Conditional)
+                      </summary>
+                      <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
+                        {Object.entries(definition.conjugations.condicional).map(([person, form]) => (
+                          <span key={person} className="text-xs">
+                            {person}: <strong>{form}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </details>
+
+                    {/* Subjunctive Present */}
+                    <details className="group">
+                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                        Subjuntivo Presente (Present Subjunctive)
+                      </summary>
+                      <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
+                        {Object.entries(definition.conjugations.subjuntivo_presente).map(([person, form]) => (
+                          <span key={person} className="text-xs">
+                            {person}: <strong>{form}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </details>
+
+                    {/* Subjunctive Imperfect */}
+                    {definition.conjugations.subjuntivo_imperfecto && (
+                      <details className="group">
+                        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                          Subjuntivo Imperfecto (Imperfect Subjunctive)
+                        </summary>
+                        <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
+                          {Object.entries(definition.conjugations.subjuntivo_imperfecto).map(([person, form]) => (
+                            <span key={person} className="text-xs">
+                              {person}: <strong>{form}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* Imperative */}
+                    {definition.conjugations.imperativo && (
+                      <details className="group">
+                        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                          Imperativo (Imperative)
+                        </summary>
+                        <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
+                          {Object.entries(definition.conjugations.imperativo).map(([person, form]) => (
+                            <span key={person} className="text-xs">
+                              {person}: <strong>{form}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
                 </div>
               )}

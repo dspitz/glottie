@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { SentenceModal } from '@/components/SentenceModal'
 import { WordPopover } from '@/components/WordPopover'
-import { Settings2, Zap, ZapOff } from 'lucide-react'
+import { translateText } from '@/lib/client'
+import { Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
 import { LyricsLine, LyricsWord } from '@/packages/adapters/lyricsProvider'
 
 interface Word {
@@ -24,13 +25,15 @@ interface Line {
 interface SynchronizedLyricsProps {
   lines: string[]
   currentTime: number // in milliseconds for Spotify, seconds for preview
-  duration: number // in milliseconds for Spotify, seconds for preview  
+  duration: number // in milliseconds for Spotify, seconds for preview
   isPlaying: boolean
-  playbackMode: 'spotify' | 'preview'
+  playbackMode: 'spotify' | 'preview' | 'unavailable'
   translations?: string[]
   isDemo?: boolean
   backgroundColor?: string
   onTimeSeek?: (timeInMs: number) => void
+  playbackRate?: number
+  onPlaybackRateChange?: (rate: number) => void
   // New prop for real synchronized lyrics data
   synchronizedData?: {
     lines: LyricsLine[]
@@ -50,6 +53,8 @@ export function SynchronizedLyrics({
   isDemo = false,
   backgroundColor,
   onTimeSeek,
+  playbackRate = 1.0,
+  onPlaybackRateChange,
   synchronizedData
 }: SynchronizedLyricsProps) {
   const [selectedSentence, setSelectedSentence] = useState<string>('')
@@ -57,58 +62,95 @@ export function SynchronizedLyrics({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedWord, setSelectedWord] = useState<string>('')
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
-  const [highlightingEnabled, setHighlightingEnabled] = useState(true)
+  const [highlightingEnabled, setHighlightingEnabled] = useState(true) // Always enabled now
   const [timingOffset, setTimingOffset] = useState(0) // User-adjustable timing offset in ms
+  const [simulationTime, setSimulationTime] = useState(0) // For simulating playback when audio unavailable
+  const [isSimulating, setIsSimulating] = useState(false)
+  const [currentLineIndex, setCurrentLineIndex] = useState(0)
+  const [lineTranslations, setLineTranslations] = useState<{ [key: number]: string }>({})
+  const [isLoadingTranslation, setIsLoadingTranslation] = useState<{ [key: number]: boolean }>({})
+  const [showTranslations, setShowTranslations] = useState(false) // Translations now shown inline on hover
+  const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Handle simulation mode for demonstrating sync
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isSimulating && synchronizedData?.duration) {
+      interval = setInterval(() => {
+        setSimulationTime(prev => {
+          const next = prev + 100 // Advance by 100ms
+          if (next >= synchronizedData.duration) {
+            setIsSimulating(false)
+            return 0
+          }
+          return next
+        })
+      }, 100)
+    } else if (!isSimulating) {
+      setSimulationTime(0)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isSimulating, synchronizedData?.duration])
 
   // Convert times to consistent format (milliseconds) and add timing adjustment
-  const currentTimeMs = (playbackMode === 'spotify' ? currentTime : currentTime * 1000) + timingOffset
-  const durationMs = playbackMode === 'spotify' ? duration : duration * 1000
+  // Use simulation time when simulating, otherwise use actual playback time
+  const effectiveTime = isSimulating ? simulationTime : currentTime
+  const currentTimeMs = isSimulating
+    ? simulationTime + timingOffset
+    : (playbackMode === 'spotify' ? effectiveTime : effectiveTime * 1000) + timingOffset
+  const durationMs = isSimulating && synchronizedData?.duration
+    ? synchronizedData.duration
+    : (playbackMode === 'spotify' ? duration : duration * 1000)
 
   // Generate timing data for lyrics - use real synchronized data or fallback to estimation
   const synchronizedLines = useMemo((): Line[] => {
-    // If we have real synchronized data, use it!
+    // If we have real synchronized data from the API, use it!
     if (synchronizedData?.lines && synchronizedData.lines.length > 0) {
-      console.log(`✅ Using real synchronized lyrics:`, {
+      console.log(`✅ Using real synchronized lyrics from API:`, {
         format: synchronizedData.format,
-        hasWordTiming: synchronizedData.hasWordTiming,
         lineCount: synchronizedData.lines.length,
         duration: synchronizedData.duration,
-        firstLine: synchronizedData.lines[0]
+        sampleTiming: synchronizedData.lines[0] ?
+          `Line 1 starts at ${(synchronizedData.lines[0].startTime/1000).toFixed(2)}s` :
+          'No timing data'
       })
-      return synchronizedData.lines.map((syncLine): Line => {
-        // If we have word timing, use it
-        if (syncLine.words && syncLine.words.length > 0) {
-          return {
-            text: syncLine.text,
-            words: syncLine.words.map((word): Word => ({
-              text: word.text,
-              startTime: word.startTime,
-              endTime: word.endTime,
-              isWhitespace: word.isWhitespace
-            })),
-            startTime: syncLine.startTime,
-            endTime: syncLine.endTime
-          }
-        }
 
-        // No word timing available - create words without timing for display
-        const lineWords = syncLine.text.split(/(\s+)/).filter(part => part.length > 0)
-        return {
-          text: syncLine.text,
-          words: lineWords.map((wordText): Word => ({
-            text: wordText,
-            startTime: syncLine.startTime, // All words share line timing
-            endTime: syncLine.endTime,
-            isWhitespace: !wordText.trim()
-          })),
-          startTime: syncLine.startTime,
-          endTime: syncLine.endTime
-        }
-      })
+      // Simply return the synchronized lines with their exact API timestamps
+      // The words arrays should already be included from the parseLRC function
+      return synchronizedData.lines.map((syncLine): Line => ({
+        text: syncLine.text,
+        words: syncLine.words || [], // Use provided words or empty array
+        startTime: syncLine.startTime,
+        endTime: syncLine.endTime
+      }))
     }
 
     // Fallback to estimated timing if no synchronized data
-    if (!lines.length || !durationMs) return []
+    if (!lines.length) return []
+
+    // If we don't have duration yet, just show the lyrics without timing
+    if (!durationMs) {
+      return lines.map((line): Line => {
+        const lineWords = line.split(/(\s+)/).filter(part => part.length > 0)
+        const words: Word[] = lineWords.map((wordText): Word => ({
+          text: wordText,
+          startTime: 0,
+          endTime: 0,
+          isWhitespace: !wordText.trim()
+        }))
+
+        return {
+          text: line,
+          words,
+          startTime: 0,
+          endTime: 0
+        }
+      })
+    }
 
     console.log('⚠️ Using estimated timing - no synchronized data available')
     
@@ -163,7 +205,7 @@ export function SynchronizedLyrics({
 
   // Find current active line and word
   const getCurrentHighlight = useCallback(() => {
-    if (!highlightingEnabled || !isPlaying) {
+    if (!isPlaying) {
       return { activeLineIndex: -1, activeWordIndex: -1, hasWordTiming: false }
     }
 
@@ -191,12 +233,109 @@ export function SynchronizedLyrics({
     }
 
     return { activeLineIndex: -1, activeWordIndex: -1, hasWordTiming: false }
-  }, [synchronizedLines, currentTimeMs, highlightingEnabled, isPlaying])
+  }, [synchronizedLines, currentTimeMs, isPlaying])
 
   const { activeLineIndex, activeWordIndex, hasWordTiming } = getCurrentHighlight()
 
+  // Update current line index when active line changes and auto-scroll
+  useEffect(() => {
+    if (activeLineIndex >= 0) {
+      setCurrentLineIndex(activeLineIndex)
+
+      // Auto-scroll to keep active line in view
+      const activeLine = document.querySelector(`[data-sentence-index="${activeLineIndex}"]`)
+      if (activeLine) {
+        // Calculate the desired scroll position
+        // We want the active line to be roughly 1/3 from the top of the viewport
+        const rect = activeLine.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+        const desiredPositionFromTop = viewportHeight * 0.33 // 33% from top
+        const scrollOffset = rect.top - desiredPositionFromTop + window.scrollY
+
+        // Smooth scroll to the calculated position
+        window.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        })
+      }
+    }
+  }, [activeLineIndex])
+
+  // Navigation functions
+  const navigateToLine = useCallback((index: number) => {
+    if (index >= 0 && index < synchronizedLines.length && onTimeSeek) {
+      const line = synchronizedLines[index]
+      onTimeSeek(line.startTime)
+      setCurrentLineIndex(index)
+    }
+  }, [synchronizedLines, onTimeSeek])
+
+  const navigatePrevious = useCallback(() => {
+    const newIndex = Math.max(0, currentLineIndex - 1)
+    navigateToLine(newIndex)
+  }, [currentLineIndex, navigateToLine])
+
+  const navigateNext = useCallback(() => {
+    const newIndex = Math.min(synchronizedLines.length - 1, currentLineIndex + 1)
+    navigateToLine(newIndex)
+  }, [currentLineIndex, synchronizedLines.length, navigateToLine])
+
+  const repeatCurrentLine = useCallback(() => {
+    if (currentLineIndex >= 0 && currentLineIndex < synchronizedLines.length && onTimeSeek) {
+      const line = synchronizedLines[currentLineIndex]
+
+      // Clear existing repeat
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current)
+        repeatIntervalRef.current = null
+      }
+
+      // Start repeating
+      const repeatLine = () => {
+        onTimeSeek(line.startTime)
+      }
+
+      repeatLine() // Play immediately
+      const lineDuration = line.endTime - line.startTime
+      repeatIntervalRef.current = setInterval(repeatLine, lineDuration + 500) // Add 500ms pause between repeats
+    }
+  }, [currentLineIndex, synchronizedLines, onTimeSeek])
+
+  const stopRepeat = useCallback(() => {
+    if (repeatIntervalRef.current) {
+      clearInterval(repeatIntervalRef.current)
+      repeatIntervalRef.current = null
+    }
+  }, [])
+
+  // Cleanup repeat on unmount
+  useEffect(() => {
+    return () => {
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current)
+      }
+    }
+  }, [])
+
+  // Fetch translation for a line
+  const fetchLineTranslation = useCallback(async (lineIndex: number, text: string) => {
+    if (lineTranslations[lineIndex]) return // Already have translation
+
+    setIsLoadingTranslation(prev => ({ ...prev, [lineIndex]: true }))
+    try {
+      const result = await translateText(text)
+      setLineTranslations(prev => ({ ...prev, [lineIndex]: result.translation }))
+    } catch (error) {
+      console.error('Failed to translate line:', error)
+      setLineTranslations(prev => ({ ...prev, [lineIndex]: '[Translation failed]' }))
+    } finally {
+      setIsLoadingTranslation(prev => ({ ...prev, [lineIndex]: false }))
+    }
+  }, [lineTranslations])
+
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
+    setCurrentLineIndex(index)
     if (isDemo && translations[index]) {
       setSelectedSentenceTranslations([translations[index]])
     } else {
@@ -217,23 +356,27 @@ export function SynchronizedLyrics({
   }, [])
 
   const handleLineClick = useCallback((lineIndex: number) => {
+    // Seek to line time
     if (onTimeSeek && synchronizedLines[lineIndex]) {
       const seekTime = synchronizedLines[lineIndex].startTime
       onTimeSeek(seekTime)
     }
-  }, [onTimeSeek, synchronizedLines])
+
+    setCurrentLineIndex(lineIndex)
+    stopRepeat() // Stop any active repeat
+  }, [onTimeSeek, synchronizedLines, stopRepeat])
 
   const renderLine = useCallback((line: Line, lineIndex: number) => {
     const isActiveLine = activeLineIndex === lineIndex
-    const shouldShowLineHighlight = highlightingEnabled && isActiveLine
+    const shouldShowLineHighlight = isActiveLine
 
     return (
       <div
         key={lineIndex}
-        className={`mb-4 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+        className={`mb-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
           shouldShowLineHighlight
-            ? 'bg-primary/20 border-l-4 border-primary shadow-sm scale-105'
-            : 'bg-muted/30 hover:bg-muted/50'
+            ? 'bg-white/20 border-l-4 border-white/60 shadow-sm scale-105'
+            : 'bg-white/[0.06] hover:bg-white/10'
         }`}
         data-sentence-index={lineIndex}
         onClick={() => {
@@ -242,24 +385,17 @@ export function SynchronizedLyrics({
         }}
       >
         <p
-          className="text-lg leading-relaxed select-text"
+          className="text-lg leading-relaxed select-text text-white"
           onMouseUp={handleWordSelection}
         >
           {line.words.map((word, wordIndex) => {
             // Only highlight words if we have real word timing
-            const isActiveWord = isActiveLine && hasWordTiming && activeWordIndex === wordIndex
-            const shouldShowWordHighlight = highlightingEnabled && isActiveWord && !word.isWhitespace
-
+            // Since we only have line-level timing from Musixmatch,
+            // we don't highlight individual words
             return (
               <span
                 key={wordIndex}
-                className={`${
-                  shouldShowWordHighlight
-                    ? 'bg-primary text-primary-foreground rounded px-1 font-semibold shadow-sm'
-                    : word.isWhitespace
-                      ? ''
-                      : 'hover:bg-primary/10 rounded px-0.5'
-                }`}
+                className={word.isWhitespace ? '' : 'hover:bg-white/10 rounded px-0.5'}
               >
                 {word.text}
               </span>
@@ -267,6 +403,8 @@ export function SynchronizedLyrics({
           })}
         </p>
         
+        {/* Translation removed - now only in modal */}
+
         {/* Show timing info for active line (debug mode) */}
         {shouldShowLineHighlight && process.env.NODE_ENV === 'development' && (
           <div className="text-xs text-muted-foreground mt-1 opacity-50">
@@ -275,44 +413,53 @@ export function SynchronizedLyrics({
         )}
       </div>
     )
-  }, [activeLineIndex, activeWordIndex, hasWordTiming, highlightingEnabled, handleSentenceClick, handleWordSelection, handleLineClick])
+  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick])
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Controls */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setHighlightingEnabled(!highlightingEnabled)}
-            className="flex items-center gap-2"
-          >
-            {highlightingEnabled ? (
-              <>
-                <Zap className="w-4 h-4" />
-                Sync On
-              </>
-            ) : (
-              <>
-                <ZapOff className="w-4 h-4" />
-                Sync Off
-              </>
-            )}
-          </Button>
+      <div className="space-y-4">
 
-          {highlightingEnabled && isPlaying && (
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-              {synchronizedData?.format === 'lrc' ? 'Line sync' : 'Following'}
-            </div>
+        {/* Playback Controls */}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+
+          {/* Simulation mode - show when sync data exists and no audio is playing */}
+          {synchronizedData && synchronizedData.lines?.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (isSimulating) {
+                  setIsSimulating(false)
+                  setSimulationTime(0)
+                } else {
+                  setIsSimulating(true)
+                }
+              }}
+              className="flex items-center gap-2"
+              title={`Playback mode: ${playbackMode}`}
+            >
+              {isSimulating ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  Stop Demo
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Play Demo
+                </>
+              )}
+            </Button>
           )}
+
         </div>
 
         {/* Timing Offset Control */}
-        {highlightingEnabled && synchronizedData && (
+        {synchronizedData && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Timing offset:</span>
+            <span className="text-xs text-white/60">Timing offset:</span>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -344,12 +491,8 @@ export function SynchronizedLyrics({
             </div>
           </div>
         )}
-        
-        {onTimeSeek && (
-          <p className="text-xs text-muted-foreground">
-            Click any line to jump to that part
-          </p>
-        )}
+        </div>
+
       </div>
 
       {/* Demo mode banner */}
@@ -367,7 +510,7 @@ export function SynchronizedLyrics({
       )}
 
       {/* Synchronized Lyrics */}
-      <div className="space-y-2">
+      <div>
         {synchronizedLines.length > 0 ? (
           synchronizedLines.map((line, index) => renderLine(line, index))
         ) : (
@@ -379,10 +522,13 @@ export function SynchronizedLyrics({
       </div>
 
       {/* Progress indicator */}
-      {highlightingEnabled && durationMs > 0 && (
+      {durationMs > 0 && isPlaying && (
         <div className="text-center">
-          <div className="text-xs text-muted-foreground">
-            Lyrics Progress: {Math.round((currentTimeMs / durationMs) * 100)}%
+          <div className="text-xs text-white/60">
+            {isSimulating
+              ? `Demo Progress: ${Math.round((currentTimeMs / durationMs) * 100)}%`
+              : `Lyrics Progress: ${Math.round((currentTimeMs / durationMs) * 100)}%`
+            }
           </div>
         </div>
       )}
@@ -390,10 +536,48 @@ export function SynchronizedLyrics({
       {/* Modals */}
       <SentenceModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false)
+          stopRepeat()
+        }}
         sentence={selectedSentence}
         translations={selectedSentenceTranslations}
         backgroundColor={backgroundColor}
+        currentLineIndex={currentLineIndex}
+        totalLines={synchronizedLines.length}
+        onNavigatePrevious={() => {
+          navigatePrevious()
+          if (currentLineIndex > 0 && synchronizedLines[currentLineIndex - 1]) {
+            setSelectedSentence(synchronizedLines[currentLineIndex - 1].text)
+            if (isDemo && translations[currentLineIndex - 1]) {
+              setSelectedSentenceTranslations([translations[currentLineIndex - 1]])
+            } else {
+              setSelectedSentenceTranslations([])
+            }
+          }
+        }}
+        onNavigateNext={() => {
+          navigateNext()
+          if (currentLineIndex < synchronizedLines.length - 1 && synchronizedLines[currentLineIndex + 1]) {
+            setSelectedSentence(synchronizedLines[currentLineIndex + 1].text)
+            if (isDemo && translations[currentLineIndex + 1]) {
+              setSelectedSentenceTranslations([translations[currentLineIndex + 1]])
+            } else {
+              setSelectedSentenceTranslations([])
+            }
+          }
+        }}
+        onRepeat={() => {
+          if (repeatIntervalRef.current) {
+            stopRepeat()
+          } else {
+            repeatCurrentLine()
+          }
+        }}
+        isRepeating={!!repeatIntervalRef.current}
+        playbackRate={playbackRate}
+        onPlaybackRateChange={onPlaybackRateChange}
+        hasAudioControl={playbackMode === 'preview'}
       />
 
       {selectedWord && (

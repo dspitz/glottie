@@ -77,11 +77,19 @@ function parseLRC(lrcContent: string): { lines: LyricsLine[], duration: number, 
 
       maxTime = Math.max(maxTime, endTime)
 
-      // Don't create artificial word timings for real LRC data
-      // Word-level timing should only come from enhanced formats
+      // Create words array for compatibility with SynchronizedLyrics component
+      // Since LRC only provides line-level timing, all words share the line timing
+      const lineWords = textContent.split(/(\s+)/).filter(part => part.length > 0)
+      const words: Word[] = lineWords.map((wordText): Word => ({
+        text: wordText,
+        startTime,  // All words share the line's exact start time
+        endTime,    // All words share the line's exact end time
+        isWhitespace: !wordText.trim()
+      }))
+
       lines.push({
         text: textContent,
-        words: undefined, // No word timing for standard LRC
+        words,  // Include words array for component compatibility
         startTime,
         endTime
       })
@@ -500,6 +508,15 @@ class MusixmatchProvider implements LyricsProvider {
       const lyricsData = await lyricsResponse.json()
       const lyrics = lyricsData.message?.body?.lyrics?.lyrics_body
 
+      // Debug: Check what we're getting from Musixmatch
+      if (lyrics) {
+        const lineCount = lyrics.split('\n').filter(l => l.trim()).length
+        console.log(`📝 Musixmatch returned ${lineCount} lines for "${title}" by ${artist}`)
+        if (lyrics.includes('******* This Lyrics is NOT for Commercial use')) {
+          console.log('⚠️ API returned restricted lyrics (30% excerpt)')
+        }
+      }
+
       if (!lyrics && !synchronizedData) {
         return {
           lines: [],
@@ -519,9 +536,18 @@ class MusixmatchProvider implements LyricsProvider {
           .map(line => line.trim())
           .filter(line => line.length > 0 && !line.includes('******* This Lyrics'))
 
-        // For educational use, extract excerpt only (first 5 meaningful lines)
-        const maxExcerptLines = parseInt(process.env.MAX_EXCERPT_LINES || '5')
-        processedLines = selectEducationalExcerpt(allLines, maxExcerptLines)
+        // Check if we should use full lyrics (paid account) or excerpt
+        const useFull = process.env.MUSIXMATCH_FULL_LYRICS === 'true'
+
+        if (useFull) {
+          console.log(`📚 Using FULL lyrics (${allLines.length} lines)`)
+          processedLines = allLines
+        } else {
+          // For educational use, extract excerpt only (first 5 meaningful lines)
+          const maxExcerptLines = parseInt(process.env.MAX_EXCERPT_LINES || '5')
+          console.log(`📄 Using excerpt only (${maxExcerptLines} lines from ${allLines.length} total)`)
+          processedLines = selectEducationalExcerpt(allLines, maxExcerptLines)
+        }
       } else if (synchronizedData) {
         // Use synchronized lyrics as fallback text
         processedLines = synchronizedData.lines.map(line => line.text)

@@ -23,6 +23,20 @@ export default function SongPage() {
   
   // State for background color based on album art
   const [pageBackgroundColor, setPageBackgroundColor] = useState('rgb(59, 130, 246)')
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
+
+  // Debug: Log when playPauseFunction changes
+  useEffect(() => {
+    console.log('🔵 SongPage: playPauseFunction state changed', {
+      hasFunction: !!playPauseFunction,
+      type: typeof playPauseFunction,
+      functionString: playPauseFunction ? playPauseFunction.toString().substring(0, 50) : 'null'
+    })
+  }, [playPauseFunction])
+
+  // Debug: Log what we're passing to SongHeader
+  console.log('🔵 SongPage: Rendering with playPauseFunction:', !!playPauseFunction)
   
   console.log('SongPage render - pageBackgroundColor:', pageBackgroundColor, 'isClient:', typeof window !== 'undefined')
   
@@ -180,6 +194,8 @@ export default function SongPage() {
         level={lyricsData.level || lyricsData.song?.level}
         difficultyScore={lyricsData.difficultyScore}
         onColorChange={handleColorChange}
+        isPlaying={isPlaying}
+        onPlayPause={playPauseFunction}
       />
 
       {/* Main Content - Full Width */}
@@ -203,6 +219,27 @@ export default function SongPage() {
             previewUrl: lyricsData.previewUrl,
             albumArt: lyricsData.albumArt,
             albumArtSmall: lyricsData.albumArtSmall
+          }}
+          onPlayStateChange={(playing) => {
+          console.log('🔵 SongPage: Play state changed to:', playing)
+          setIsPlaying(playing)
+        }}
+          onPlayPauseReady={(fn) => {
+            console.log('🟢 SongPage: onPlayPauseReady called', {
+              hasFunction: !!fn,
+              functionType: typeof fn,
+              functionString: fn ? fn.toString().substring(0, 50) : 'null'
+            })
+            if (fn && typeof fn === 'function') {
+              // Wrap in a stable function to avoid re-renders
+              setPlayPauseFunction(() => {
+                return () => {
+                  console.log('🎯 SongPage: Wrapped play/pause function called')
+                  fn()
+                }
+              })
+              console.log('🟢 SongPage: playPauseFunction state updated with wrapped function')
+            }
           }}
         />
       </div>
