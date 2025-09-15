@@ -48,7 +48,7 @@ export function SentenceModal({
 
   useEffect(() => {
     if (isOpen && sentence) {
-      // If we have pre-computed translations (demo mode), use those
+      // If we have pre-computed translations, use those (could be from cache or database)
       if (translations && translations.length > 0) {
         setTranslation(translations[0])
         setIsLoading(false)
@@ -59,7 +59,7 @@ export function SentenceModal({
       // Otherwise fetch translation
       setIsLoading(true)
       setError('')
-      
+
       translateText(sentence)
         .then((result) => {
           setTranslation(result.translation)

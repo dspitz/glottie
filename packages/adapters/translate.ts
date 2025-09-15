@@ -43,8 +43,10 @@ class DemoTranslator implements Translator {
 
   async translate(text: string, targetLang: string = 'en'): Promise<Translation> {
     const lowerText = text.toLowerCase().trim()
-    const translation = this.demoTranslations[lowerText] || `[Demo translation of: ${text}]`
-    
+    // If we don't have a demo translation, just return the original text
+    // This avoids showing "[Demo translation of: ...]" when real translation fails
+    const translation = this.demoTranslations[lowerText] || text
+
     return {
       text: translation,
       source: 'es',
@@ -225,13 +227,28 @@ export async function translate(text: string, targetLang: string = 'en'): Promis
     return await translator.translate(text, targetLang)
   } catch (error) {
     console.error(`Translator '${translatorName}' error:`, error)
-    
-    // Fall back to demo translator
+
+    // Only fall back to demo if we're not already using demo
+    // and the text is English (likely already translated or doesn't need translation)
     if (translatorName !== 'demo') {
-      console.warn(`Falling back to demo translator`)
-      return translators.get('demo')!.translate(text, targetLang)
+      // Check if text appears to be English already (simple heuristic)
+      const isLikelyEnglish = /^[a-zA-Z0-9\s.,!?'"()-]+$/.test(text)
+
+      if (isLikelyEnglish) {
+        // Return as-is if it's already English
+        return {
+          text: text,
+          source: 'en',
+          target: targetLang,
+          provider: 'passthrough'
+        }
+      }
+
+      // For actual Spanish text, we should throw the error instead of falling back
+      // This way the UI can handle it appropriately
+      throw error
     }
-    
+
     throw error
   }
 }

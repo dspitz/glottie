@@ -9,7 +9,7 @@ import { ExternalLink, Music2 } from 'lucide-react'
 
 interface LyricsViewProps {
   lines: string[]
-  translations?: string[]
+  translations?: string[] | { [key: string]: string[] }
   spotifyUrl?: string
   title?: string
   artist?: string
@@ -49,6 +49,17 @@ export function LyricsView({
   onPlayStateChange,
   onPlayPauseReady
 }: LyricsViewProps) {
+  // Process translations - extract English translations if it's an object
+  const processedTranslations = React.useMemo(() => {
+    if (Array.isArray(translations)) {
+      return translations
+    } else if (typeof translations === 'object' && translations !== null) {
+      // Extract English translations from the object format { en: [...], pt: [...] }
+      return translations['en'] || []
+    }
+    return []
+  }, [translations])
+
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -67,13 +78,13 @@ export function LyricsView({
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
     // In demo mode, use provided translations
-    if (isDemo && translations[index]) {
-      setSelectedSentenceTranslations([translations[index]])
+    if (isDemo && processedTranslations[index]) {
+      setSelectedSentenceTranslations([processedTranslations[index]])
     } else {
       setSelectedSentenceTranslations([])
     }
     setIsModalOpen(true)
-  }, [translations, isDemo])
+  }, [processedTranslations, isDemo])
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
     setAudioState(state)
@@ -116,7 +127,7 @@ export function LyricsView({
         duration={audioState.duration}
         isPlaying={audioState.isPlaying}
         playbackMode={audioState.playbackMode}
-        translations={translations}
+        translations={processedTranslations}
         isDemo={isDemo}
         backgroundColor={backgroundColor}
         onTimeSeek={handleLyricsTimeSeek}

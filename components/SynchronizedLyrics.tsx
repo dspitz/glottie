@@ -28,7 +28,7 @@ interface SynchronizedLyricsProps {
   duration: number // in milliseconds for Spotify, seconds for preview
   isPlaying: boolean
   playbackMode: 'spotify' | 'preview' | 'unavailable'
-  translations?: string[]
+  translations?: string[] | { [lang: string]: string[] }
   isDemo?: boolean
   backgroundColor?: string
   onTimeSeek?: (timeInMs: number) => void
@@ -49,7 +49,7 @@ export function SynchronizedLyrics({
   duration,
   isPlaying,
   playbackMode,
-  translations = [],
+  translations,
   isDemo = false,
   backgroundColor,
   onTimeSeek,
@@ -70,7 +70,80 @@ export function SynchronizedLyrics({
   const [lineTranslations, setLineTranslations] = useState<{ [key: number]: string }>({})
   const [isLoadingTranslation, setIsLoadingTranslation] = useState<{ [key: number]: boolean }>({})
   const [showTranslations, setShowTranslations] = useState(false) // Translations now shown inline on hover
+  const [isPreloadingTranslations, setIsPreloadingTranslations] = useState(false)
   const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Process translations prop to always have an array
+  const translationArray = useMemo(() => {
+    if (!translations) return []
+    if (Array.isArray(translations)) return translations
+    if (typeof translations === 'object' && translations['en']) return translations['en']
+    return []
+  }, [translations])
+
+  // Pre-load all translations when component mounts or lines change
+  useEffect(() => {
+    const preloadTranslations = async () => {
+      // If we have translations from props (from database), use those
+      if (translationArray.length > 0) {
+        console.log('📚 Loading translations from props:', translationArray.length, 'lines')
+        const translationMap: { [key: number]: string } = {}
+        translationArray.forEach((translation, index) => {
+          if (translation) {
+            translationMap[index] = translation
+          }
+        })
+        setLineTranslations(prev => {
+          // Only update if we don't already have translations
+          // This prevents overwriting when lines change
+          if (Object.keys(prev).length === 0) {
+            console.log('📚 Setting initial translation map:', Object.keys(translationMap).length, 'translations')
+            return translationMap
+          }
+          console.log('📚 Keeping existing translations, not overwriting')
+          return prev
+        })
+        return
+      }
+
+      // Otherwise, pre-fetch translations for all lines
+      // But ONLY if we don't already have translations loaded
+      if (!isDemo && lines.length > 0 && !isPreloadingTranslations && Object.keys(lineTranslations).length === 0) {
+        setIsPreloadingTranslations(true)
+        console.log(`Pre-loading translations for ${lines.length} lines...`)
+
+        const translationPromises = lines.map(async (line, index) => {
+          try {
+            const result = await translateText(line)
+            return { index, translation: result.translation }
+          } catch (error) {
+            console.error(`Failed to pre-load translation for line ${index}:`, error)
+            return { index, translation: null }
+          }
+        })
+
+        try {
+          const results = await Promise.all(translationPromises)
+          const newTranslations: { [key: number]: string } = {}
+
+          results.forEach(result => {
+            if (result.translation) {
+              newTranslations[result.index] = result.translation
+            }
+          })
+
+          setLineTranslations(prev => ({ ...prev, ...newTranslations }))
+          console.log(`Pre-loaded ${Object.keys(newTranslations).length} translations`)
+        } catch (error) {
+          console.error('Failed to pre-load translations:', error)
+        } finally {
+          setIsPreloadingTranslations(false)
+        }
+      }
+    }
+
+    preloadTranslations()
+  }, [lines, translationArray, isDemo, lineTranslations]) // Added lineTranslations back to properly check if we have them
 
   // Handle simulation mode for demonstrating sync
   useEffect(() => {
@@ -266,16 +339,18 @@ export function SynchronizedLyrics({
         if (currentLine) {
           setSelectedSentence(currentLine.text)
 
-          // Update translations if available
-          if (isDemo && translations[activeLineIndex]) {
-            setSelectedSentenceTranslations([translations[activeLineIndex]])
+          // Update translations - use cached translation first
+          if (lineTranslations[activeLineIndex]) {
+            setSelectedSentenceTranslations([lineTranslations[activeLineIndex]])
+          } else if (isDemo && translationArray[activeLineIndex]) {
+            setSelectedSentenceTranslations([translationArray[activeLineIndex]])
           } else {
             setSelectedSentenceTranslations([])
           }
         }
       }
     }
-  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, translations, isDemo])
+  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, translations, isDemo, lineTranslations])
 
   // Navigation functions
   const navigateToLine = useCallback((index: number) => {
@@ -352,13 +427,18 @@ export function SynchronizedLyrics({
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
     setCurrentLineIndex(index)
-    if (isDemo && translations[index]) {
-      setSelectedSentenceTranslations([translations[index]])
+
+    // Use cached translation if available
+    if (lineTranslations[index]) {
+      setSelectedSentenceTranslations([lineTranslations[index]])
+    } else if (isDemo && translationArray[index]) {
+      setSelectedSentenceTranslations([translationArray[index]])
     } else {
       setSelectedSentenceTranslations([])
     }
+
     setIsModalOpen(true)
-  }, [translations, isDemo])
+  }, [translations, isDemo, lineTranslations])
 
   const handleWordSelection = useCallback(() => {
     const selection = window.getSelection()
@@ -419,17 +499,15 @@ export function SynchronizedLyrics({
           })}
         </p>
         
-        {/* Translation removed - now only in modal */}
-
-        {/* Show timing info for active line (debug mode) */}
-        {shouldShowLineHighlight && process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-muted-foreground mt-1 opacity-50">
-            {Math.round(line.startTime / 1000)}s - {Math.round(line.endTime / 1000)}s
+        {/* Show translation for active line */}
+        {shouldShowLineHighlight && (
+          <div className="text-sm mt-2" style={{ color: '#FFF' }}>
+            {lineTranslations[lineIndex] || translationArray[lineIndex] || 'Loading translation...'}
           </div>
         )}
       </div>
     )
-  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick])
+  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick, lineTranslations])
 
   return (
     <div>
@@ -565,8 +643,8 @@ export function SynchronizedLyrics({
           navigatePrevious()
           if (currentLineIndex > 0 && synchronizedLines[currentLineIndex - 1]) {
             setSelectedSentence(synchronizedLines[currentLineIndex - 1].text)
-            if (isDemo && translations[currentLineIndex - 1]) {
-              setSelectedSentenceTranslations([translations[currentLineIndex - 1]])
+            if (isDemo && translationArray[currentLineIndex - 1]) {
+              setSelectedSentenceTranslations([translationArray[currentLineIndex - 1]])
             } else {
               setSelectedSentenceTranslations([])
             }
@@ -576,8 +654,8 @@ export function SynchronizedLyrics({
           navigateNext()
           if (currentLineIndex < synchronizedLines.length - 1 && synchronizedLines[currentLineIndex + 1]) {
             setSelectedSentence(synchronizedLines[currentLineIndex + 1].text)
-            if (isDemo && translations[currentLineIndex + 1]) {
-              setSelectedSentenceTranslations([translations[currentLineIndex + 1]])
+            if (isDemo && translationArray[currentLineIndex + 1]) {
+              setSelectedSentenceTranslations([translationArray[currentLineIndex + 1]])
             } else {
               setSelectedSentenceTranslations([])
             }

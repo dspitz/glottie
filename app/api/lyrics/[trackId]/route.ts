@@ -115,10 +115,20 @@ export async function GET(
     if (song.translations && song.translations.length > 0) {
       for (const translation of song.translations) {
         try {
-          const lines = JSON.parse(translation.lyricsLines || '[]')
-          if (Array.isArray(lines) && lines.length > 0) {
-            dbTranslations[translation.targetLang] = lines
-            console.log(`📚 Found ${lines.length} translated lines for ${translation.targetLang}`)
+          const parsed = JSON.parse(translation.lyricsLines || '[]')
+
+          // Handle different formats
+          if (Array.isArray(parsed)) {
+            // Check if it's an array of strings (correct format)
+            if (parsed.length > 0 && typeof parsed[0] === 'string') {
+              // Check if first element is a JSON object (corrupted data)
+              if (parsed[0].startsWith('{')) {
+                console.log(`⚠️ Fixing corrupted translation data for ${translation.targetLang}`)
+                continue // Skip corrupted data
+              }
+              dbTranslations[translation.targetLang] = parsed
+              console.log(`📚 Found ${parsed.length} translated lines for ${translation.targetLang}`)
+            }
           }
         } catch (e) {
           console.error(`Failed to parse translation for ${translation.targetLang}:`, e)

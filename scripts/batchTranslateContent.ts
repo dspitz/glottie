@@ -12,31 +12,50 @@ async function batchTranslateContent() {
   console.log('Starting batch translation of educational content...')
   
   try {
-    // Get all songs with lyrics that don't have translations yet
+    // Get all songs with lyrics (including those with partial translations)
     const songsToTranslate = await prisma.song.findMany({
       where: {
-        lyricsRaw: { not: null },
-        translations: {
-          none: {}
-        }
+        lyricsRaw: { not: null }
       },
       select: {
         id: true,
         title: true,
         artist: true,
-        lyricsRaw: true
+        lyricsRaw: true,
+        translations: {
+          where: {
+            targetLang: 'en'
+          }
+        }
       },
-      take: 5 // Limit to first 5 songs for testing
+      take: 10 // Process 10 songs at a time
     })
 
     console.log(`Found ${songsToTranslate.length} songs that need translations`)
 
     for (const song of songsToTranslate) {
+      // Skip if already has English translation
+      if (song.translations && song.translations.length > 0) {
+        console.log(`\n✓ Skipping: ${song.artist} - ${song.title} (already has translation)`)
+        continue
+      }
+
       console.log(`\nTranslating: ${song.artist} - ${song.title}`)
-      
+
       if (!song.lyricsRaw) continue
 
-      const lyrics = song.lyricsRaw.split('\n').filter(line => line.trim().length > 0)
+      // Parse lyrics - handle both string and JSON formats
+      let lyrics: string[] = []
+      try {
+        const parsed = JSON.parse(song.lyricsRaw)
+        if (parsed.lines && Array.isArray(parsed.lines)) {
+          lyrics = parsed.lines
+        } else {
+          lyrics = song.lyricsRaw.split('\n').filter(line => line.trim().length > 0)
+        }
+      } catch {
+        lyrics = song.lyricsRaw.split('\n').filter(line => line.trim().length > 0)
+      }
       
       for (const targetLang of TARGET_LANGUAGES) {
         try {
@@ -57,8 +76,8 @@ async function batchTranslateContent() {
                 console.log(`      Progress: ${i}/${lyrics.length} lines`)
               }
 
-              // Small delay to respect API rate limits
-              await new Promise(resolve => setTimeout(resolve, 100))
+              // Longer delay to respect API rate limits (DeepL free tier: 3 requests per second)
+              await new Promise(resolve => setTimeout(resolve, 500)) // 0.5 second between translations
             } catch (lineError) {
               console.error(`      Failed to translate line ${i + 1}: ${lineError}`)
               translatedLines.push(line) // Keep original if translation fails
