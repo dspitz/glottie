@@ -4,7 +4,6 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { SentenceModal } from '@/components/SentenceModal'
 import { WordPopover } from '@/components/WordPopover'
-import { translateText } from '@/lib/client'
 import { Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
 import { LyricsLine, LyricsWord } from '@/packages/adapters/lyricsProvider'
 
@@ -67,11 +66,8 @@ export function SynchronizedLyrics({
   const [isSimulating, setIsSimulating] = useState(false)
   const [currentLineIndex, setCurrentLineIndex] = useState(0)
   const [lineTranslations, setLineTranslations] = useState<{ [key: number]: string }>({})
-  const [isRepeating, setIsRepeating] = useState(false)
-  const [isLoadingTranslation, setIsLoadingTranslation] = useState<{ [key: number]: boolean }>({})
   const [showTranslations, setShowTranslations] = useState(false) // Translations now shown inline on hover
   const [isPreloadingTranslations, setIsPreloadingTranslations] = useState(false)
-  const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Process translations prop to always have an array
   const translationArray = useMemo(() => {
@@ -110,7 +106,7 @@ export function SynchronizedLyrics({
 
   // Pre-load translations from props if available
   useEffect(() => {
-    if (isDemo && translationArray.length > 0 && Object.keys(lineTranslations).length === 0) {
+    if (translationArray.length > 0 && Object.keys(lineTranslations).length === 0) {
       const translationMap: { [key: number]: string } = {}
       translationArray.forEach((translation, index) => {
         if (translation && typeof translation === 'string') {
@@ -118,10 +114,11 @@ export function SynchronizedLyrics({
         }
       })
       if (Object.keys(translationMap).length > 0) {
+        console.log(`📚 Pre-loaded ${Object.keys(translationMap).length} translations`)
         setLineTranslations(translationMap)
       }
     }
-  }, [translationArray, isDemo, lineTranslations])
+  }, [translationArray, lineTranslations])
 
   // Determine playback time based on mode
   const currentTimeMs = useMemo(() => {
@@ -302,7 +299,7 @@ export function SynchronizedLyrics({
 
           if (lineTranslations[translationIndex]) {
             setSelectedSentenceTranslations([lineTranslations[translationIndex]])
-          } else if (isDemo && translationArray[translationIndex]) {
+          } else if (translationArray[translationIndex]) {
             setSelectedSentenceTranslations([translationArray[translationIndex]])
           } else {
             setSelectedSentenceTranslations([])
@@ -331,67 +328,15 @@ export function SynchronizedLyrics({
     navigateToLine(newIndex)
   }, [currentLineIndex, synchronizedLines.length, navigateToLine])
 
-  const repeatCurrentLine = useCallback(() => {
-    if (isRepeating) {
-      // Stop repeating
-      setIsRepeating(false)
-      if (repeatIntervalRef.current) {
-        clearInterval(repeatIntervalRef.current)
-        repeatIntervalRef.current = null
-      }
-    } else if (currentLineIndex >= 0 && currentLineIndex < synchronizedLines.length && onTimeSeek) {
-      // Start repeating with synchronized lines
-      setIsRepeating(true)
+  const playCurrentPhrase = useCallback(() => {
+    if (currentLineIndex >= 0 && currentLineIndex < synchronizedLines.length && onTimeSeek) {
+      // Play the current line/phrase by seeking to its start time
       const line = synchronizedLines[currentLineIndex]
       onTimeSeek(line.startTime)
-
-      // Clear any existing interval
-      if (repeatIntervalRef.current) {
-        clearInterval(repeatIntervalRef.current)
-      }
-
-      // Set up repeat interval
-      const lineLength = line.endTime - line.startTime
-      repeatIntervalRef.current = setInterval(() => {
-        onTimeSeek(line.startTime)
-      }, lineLength + 100) // Add 100ms buffer
     }
-  }, [currentLineIndex, synchronizedLines, onTimeSeek, isRepeating])
+  }, [currentLineIndex, synchronizedLines, onTimeSeek])
 
-  // Clear repeat interval when component unmounts or line changes
-  useEffect(() => {
-    return () => {
-      if (repeatIntervalRef.current) {
-        clearInterval(repeatIntervalRef.current)
-      }
-    }
-  }, [])
 
-  useEffect(() => {
-    // Clear repeat when line changes
-    if (repeatIntervalRef.current) {
-      clearInterval(repeatIntervalRef.current)
-      repeatIntervalRef.current = null
-      setIsRepeating(false)
-    }
-  }, [activeLineIndex])
-
-  // Fetch translation for a line
-  const fetchLineTranslation = useCallback(async (lineIndex: number, text: string) => {
-    if (lineTranslations[lineIndex]) return // Already have translation
-
-    setIsLoadingTranslation(prev => ({ ...prev, [lineIndex]: true }))
-    try {
-      const result = await translateText(text, 'en')
-      // Extract the translation string from the result object
-      const translationText = typeof result === 'string' ? result : result.translation || result.text || ''
-      setLineTranslations(prev => ({ ...prev, [lineIndex]: translationText }))
-    } catch (error) {
-      console.error('Failed to fetch translation:', error)
-    } finally {
-      setIsLoadingTranslation(prev => ({ ...prev, [lineIndex]: false }))
-    }
-  }, [lineTranslations])
 
   // Handle sentence click
   const handleSentenceClick = useCallback((text: string, index: number) => {
@@ -401,18 +346,16 @@ export function SynchronizedLyrics({
       ? synchronizedLineToTranslationIndex[text]
       : index
 
+    // Always use pre-downloaded translations if available
     if (lineTranslations[translationIndex]) {
       setSelectedSentenceTranslations([lineTranslations[translationIndex]])
-    } else if (isDemo && translationArray[translationIndex]) {
+    } else if (translationArray[translationIndex]) {
       setSelectedSentenceTranslations([translationArray[translationIndex]])
     } else {
       setSelectedSentenceTranslations([])
-      if (!isDemo) {
-        fetchLineTranslation(translationIndex, text)
-      }
     }
     setIsModalOpen(true)
-  }, [isDemo, lineTranslations, translationArray, fetchLineTranslation, synchronizedData, synchronizedLineToTranslationIndex])
+  }, [lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex])
 
   // Handle word selection
   const handleWordSelection = useCallback(() => {
@@ -575,7 +518,7 @@ export function SynchronizedLyrics({
               const translationIndex = synchronizedLineToTranslationIndex[synchronizedLines[newIndex].text] ?? newIndex
               if (lineTranslations[translationIndex]) {
                 setSelectedSentenceTranslations([lineTranslations[translationIndex]])
-              } else if (isDemo && translationArray[translationIndex]) {
+              } else if (translationArray[translationIndex]) {
                 setSelectedSentenceTranslations([translationArray[translationIndex]])
               } else {
                 setSelectedSentenceTranslations([])
@@ -585,7 +528,7 @@ export function SynchronizedLyrics({
               setSelectedSentence(lines[newIndex])
               if (lineTranslations[newIndex]) {
                 setSelectedSentenceTranslations([lineTranslations[newIndex]])
-              } else if (isDemo && translationArray[newIndex]) {
+              } else if (translationArray[newIndex]) {
                 setSelectedSentenceTranslations([translationArray[newIndex]])
               } else {
                 setSelectedSentenceTranslations([])
@@ -608,7 +551,7 @@ export function SynchronizedLyrics({
               const translationIndex = synchronizedLineToTranslationIndex[synchronizedLines[newIndex].text] ?? newIndex
               if (lineTranslations[translationIndex]) {
                 setSelectedSentenceTranslations([lineTranslations[translationIndex]])
-              } else if (isDemo && translationArray[translationIndex]) {
+              } else if (translationArray[translationIndex]) {
                 setSelectedSentenceTranslations([translationArray[translationIndex]])
               } else {
                 setSelectedSentenceTranslations([])
@@ -618,7 +561,7 @@ export function SynchronizedLyrics({
               setSelectedSentence(lines[newIndex])
               if (lineTranslations[newIndex]) {
                 setSelectedSentenceTranslations([lineTranslations[newIndex]])
-              } else if (isDemo && translationArray[newIndex]) {
+              } else if (translationArray[newIndex]) {
                 setSelectedSentenceTranslations([translationArray[newIndex]])
               } else {
                 setSelectedSentenceTranslations([])
@@ -626,8 +569,7 @@ export function SynchronizedLyrics({
             }
           }
         }}
-        onRepeat={playbackMode !== 'unavailable' ? repeatCurrentLine : undefined}
-        isRepeating={isRepeating}
+        onPlayPhrase={playbackMode !== 'unavailable' ? playCurrentPhrase : undefined}
         playbackRate={playbackRate}
         onPlaybackRateChange={onPlaybackRateChange}
         backgroundColor={backgroundColor}

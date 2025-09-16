@@ -6,8 +6,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { translateText } from '@/lib/client'
-import { Loader2, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
+import { SkipBack, SkipForward, Play } from 'lucide-react'
 
 interface SentenceModalProps {
   isOpen: boolean
@@ -19,8 +18,7 @@ interface SentenceModalProps {
   totalLines?: number
   onNavigatePrevious?: () => void
   onNavigateNext?: () => void
-  onRepeat?: () => void
-  isRepeating?: boolean
+  onPlayPhrase?: () => void
   playbackRate?: number
   onPlaybackRateChange?: (rate: number) => void
   hasAudioControl?: boolean
@@ -36,41 +34,21 @@ export function SentenceModal({
   totalLines = 0,
   onNavigatePrevious,
   onNavigateNext,
-  onRepeat,
-  isRepeating = false,
+  onPlayPhrase,
   playbackRate = 1.0,
   onPlaybackRateChange,
   hasAudioControl = false
 }: SentenceModalProps) {
   const [translation, setTranslation] = useState<string>('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string>('')
 
   useEffect(() => {
     if (isOpen && sentence) {
-      // If we have pre-computed translations, use those (could be from cache or database)
+      // Always use pre-computed translations if available
       if (translations && translations.length > 0) {
         setTranslation(translations[0])
-        setIsLoading(false)
-        setError('')
-        return
+      } else {
+        setTranslation('')
       }
-
-      // Otherwise fetch translation
-      setIsLoading(true)
-      setError('')
-
-      translateText(sentence)
-        .then((result) => {
-          setTranslation(result.translation)
-        })
-        .catch((err) => {
-          setError('Failed to translate sentence')
-          console.error('Translation error:', err)
-        })
-        .finally(() => {
-          setIsLoading(false)
-        })
     }
   }, [isOpen, sentence, translations])
 
@@ -132,19 +110,10 @@ export function SentenceModal({
               English Translation
             </h3>
             
-            {isLoading && (
-              <div className="flex items-center text-white/70">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Translating...
-              </div>
-            )}
-            
-            {error && (
-              <p className="text-red-400">{error}</p>
-            )}
-            
-            {!isLoading && !error && translation && (
+            {translation ? (
               <p className="text-lg text-white">{translation}</p>
+            ) : (
+              <p className="text-white/70">Translation not available</p>
             )}
           </div>
 
@@ -157,7 +126,7 @@ export function SentenceModal({
         </div>
 
         {/* Navigation and Playback Controls - Fixed at bottom */}
-        {(onNavigatePrevious || onNavigateNext || onRepeat) && (
+        {(onNavigatePrevious || onNavigateNext || onPlayPhrase) && (
           <div className="space-y-3 px-6 pt-4 pb-2 border-t border-white/20">
               {/* Navigation buttons */}
               <div className="flex items-center justify-center gap-2">
@@ -173,19 +142,16 @@ export function SentenceModal({
                   Previous
                 </Button>
 
-                {onRepeat && (
+                {onPlayPhrase && (
                   <Button
-                    variant={isRepeating ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
-                    onClick={onRepeat}
-                    title="Repeat current line"
-                    className={isRepeating
-                      ? "bg-white/30 border-white/30 text-white hover:bg-white/40"
-                      : "bg-white/[0.12] border-white/20 text-white hover:bg-white/20 hover:text-white"
-                    }
+                    onClick={onPlayPhrase}
+                    title="Play this phrase"
+                    className="bg-white/[0.12] border-white/20 text-white hover:bg-white/20 hover:text-white"
                   >
-                    <RotateCcw className="w-4 h-4 mr-1" />
-                    {isRepeating ? "Stop Repeat" : "Repeat"}
+                    <Play className="w-4 h-4 mr-1" />
+                    Play phrase
                   </Button>
                 )}
 

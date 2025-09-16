@@ -95,14 +95,14 @@ export function LyricsView({
 
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
-    // In demo mode, use provided translations
-    if (isDemo && processedTranslations[index]) {
+    // Always use pre-downloaded translations if available
+    if (processedTranslations[index]) {
       setSelectedSentenceTranslations([processedTranslations[index]])
     } else {
       setSelectedSentenceTranslations([])
     }
     setIsModalOpen(true)
-  }, [processedTranslations, isDemo])
+  }, [processedTranslations])
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
     setAudioState(state)
