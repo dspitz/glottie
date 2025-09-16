@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { EnhancedAudioPlayer, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
-import { SynchronizedLyrics } from '@/components/SynchronizedLyrics'
+import { SynchronizedLyrics } from '@/components/SynchronizedLyricsClean'
 import { SentenceModal } from '@/components/SentenceModal'
 import { WordPopover } from '@/components/WordPopover'
 import { segmentIntoSentences } from '@/lib/utils'
@@ -58,12 +58,23 @@ export function LyricsView({
   })
   // Process translations - extract English translations if it's an object
   const processedTranslations = React.useMemo(() => {
+    console.log('🔍 LyricsView: Processing translations', {
+      type: typeof translations,
+      isArray: Array.isArray(translations),
+      keys: translations && typeof translations === 'object' ? Object.keys(translations) : null,
+      firstTranslation: Array.isArray(translations) && translations[0] ? translations[0].substring(0, 40) : null
+    })
+
     if (Array.isArray(translations)) {
+      console.log(`✅ LyricsView: Using translations array with ${translations.length} items`)
       return translations
     } else if (typeof translations === 'object' && translations !== null) {
       // Extract English translations from the object format { en: [...], pt: [...] }
-      return translations['en'] || []
+      const enTranslations = translations['en'] || []
+      console.log(`✅ LyricsView: Extracted ${enTranslations.length} English translations from object`)
+      return enTranslations
     }
+    console.log('⚠️ LyricsView: No translations available')
     return []
   }, [translations])
 

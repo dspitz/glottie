@@ -74,11 +74,82 @@ export function SynchronizedLyrics({
 
   // Process translations prop to always have an array
   const translationArray = useMemo(() => {
-    if (!translations) return []
-    if (Array.isArray(translations)) return translations
-    if (typeof translations === 'object' && translations['en']) return translations['en']
+    console.log('🔍 SynchronizedLyrics: Processing translations prop', {
+      hasTranslations: !!translations,
+      type: typeof translations,
+      isArray: Array.isArray(translations),
+      keys: translations && typeof translations === 'object' && !Array.isArray(translations) ? Object.keys(translations) : null
+    })
+
+    if (!translations) {
+      console.log('🔴 TRANSLATION DEBUG: No translations prop provided')
+      return []
+    }
+    if (Array.isArray(translations)) {
+      console.log('🟢 TRANSLATION DEBUG: Using array translations, length:', translations.length)
+      // Log first few translations for debugging
+      if (translations.length > 0) {
+        console.log('  First translation:', translations[0]?.substring(0, 40))
+        console.log('  Second translation:', translations[1]?.substring(0, 40))
+      }
+      return translations
+    }
+    if (typeof translations === 'object' && translations['en']) {
+      console.log('🟢 TRANSLATION DEBUG: Using en translations from object, length:', translations['en'].length)
+      return translations['en']
+    }
+    console.log('🔴 TRANSLATION DEBUG: Unknown translation format:', translations)
     return []
   }, [translations])
+
+  // Create a mapping from synchronized line text to translation index
+  // This handles the case where synchronized lines might be different from original lines
+  const synchronizedLineToTranslationIndex = useMemo(() => {
+    const mapping: { [lineText: string]: number } = {}
+
+    if (synchronizedData && synchronizedData.lines && lines.length > 0) {
+      console.log('📊 MAPPING DEBUG: Creating synchronized to translation mapping')
+      console.log(`  - Synchronized lines: ${synchronizedData.lines.length}`)
+      console.log(`  - Original lines: ${lines.length}`)
+      console.log(`  - Translation array: ${translationArray.length}`)
+
+      // For each synchronized line, find its match in the original lines
+      synchronizedData.lines.forEach((syncLine, syncIndex) => {
+        const originalIndex = lines.findIndex(line =>
+          line.trim().toLowerCase() === syncLine.text.trim().toLowerCase()
+        )
+        if (originalIndex !== -1) {
+          mapping[syncLine.text] = originalIndex
+          // Log first few mappings for debugging
+          if (syncIndex < 3) {
+            console.log(`  Mapping sync[${syncIndex}] "${syncLine.text.substring(0, 30)}..." -> original[${originalIndex}]`)
+            if (translationArray[originalIndex]) {
+              console.log(`    Translation: "${translationArray[originalIndex].substring(0, 30)}..."`)
+            }
+          }
+        } else if (syncIndex < 3) {
+          console.warn(`  ⚠️ No match for sync[${syncIndex}]: "${syncLine.text.substring(0, 30)}..."`)
+        }
+      })
+
+      console.log(`  Total mappings created: ${Object.keys(mapping).length}`)
+    }
+
+    return mapping
+  }, [synchronizedData, lines, translationArray])
+
+  // Debug: Track lineTranslations state changes
+  useEffect(() => {
+    console.log('📝 lineTranslations state changed:', {
+      keys: Object.keys(lineTranslations),
+      count: Object.keys(lineTranslations).length,
+      sample: Object.entries(lineTranslations).slice(0, 3).map(([k, v]) => ({
+        index: k,
+        translation: v?.substring(0, 50),
+        isSpanish: /[áéíóúñ]/i.test(v || '')
+      }))
+    })
+  }, [lineTranslations])
 
   // Pre-load all translations when component mounts or lines change
   useEffect(() => {
@@ -107,12 +178,16 @@ export function SynchronizedLyrics({
 
       // Otherwise, pre-fetch translations for all lines
       // But ONLY if we don't already have translations loaded
-      if (!isDemo && lines.length > 0 && !isPreloadingTranslations && Object.keys(lineTranslations).length === 0) {
+      // IMPORTANT: Don't fetch if we already have translations from props!
+      if (!isDemo && lines.length > 0 && !isPreloadingTranslations &&
+          Object.keys(lineTranslations).length === 0 &&
+          translationArray.length === 0) { // Also check if we have translations from props
         setIsPreloadingTranslations(true)
-        console.log(`Pre-loading translations for ${lines.length} lines...`)
+        console.log(`🔄 Pre-loading translations for ${lines.length} lines (no existing translations)...`)
 
         const translationPromises = lines.map(async (line, index) => {
           try {
+            console.log(`🔄 Fetching translation for line ${index}: "${line.substring(0, 30)}..."`)
             const result = await translateText(line)
             return { index, translation: result.translation }
           } catch (error) {
@@ -128,21 +203,33 @@ export function SynchronizedLyrics({
           results.forEach(result => {
             if (result.translation) {
               newTranslations[result.index] = result.translation
+              console.log(`✅ Got translation for line ${result.index}: "${result.translation.substring(0, 30)}..."`)
             }
           })
 
-          setLineTranslations(prev => ({ ...prev, ...newTranslations }))
-          console.log(`Pre-loaded ${Object.keys(newTranslations).length} translations`)
+          setLineTranslations(prev => {
+            console.log('🔄 Setting fetched translations, overwriting:', Object.keys(prev).length, 'existing')
+            return { ...prev, ...newTranslations }
+          })
+          console.log(`✅ Pre-loaded ${Object.keys(newTranslations).length} translations`)
         } catch (error) {
           console.error('Failed to pre-load translations:', error)
         } finally {
           setIsPreloadingTranslations(false)
         }
+      } else {
+        console.log('⏭️ Skipping translation fetch:', {
+          isDemo,
+          linesLength: lines.length,
+          isPreloadingTranslations,
+          lineTranslationsCount: Object.keys(lineTranslations).length,
+          translationArrayLength: translationArray.length
+        })
       }
     }
 
     preloadTranslations()
-  }, [lines, translationArray, isDemo, lineTranslations]) // Added lineTranslations back to properly check if we have them
+  }, [lines, translationArray, isDemo]) // Don't include lineTranslations to prevent re-running
 
   // Handle simulation mode for demonstrating sync
   useEffect(() => {
@@ -411,17 +498,22 @@ export function SynchronizedLyrics({
           setSelectedSentence(currentLine.text)
 
           // Update translations - use cached translation first
-          if (lineTranslations[activeLineIndex]) {
-            setSelectedSentenceTranslations([lineTranslations[activeLineIndex]])
-          } else if (isDemo && translationArray[activeLineIndex]) {
-            setSelectedSentenceTranslations([translationArray[activeLineIndex]])
+          // Map from synchronized line to original translation index
+          const translationIndex = synchronizedData && synchronizedLineToTranslationIndex[currentLine.text] !== undefined
+            ? synchronizedLineToTranslationIndex[currentLine.text]
+            : activeLineIndex
+
+          if (lineTranslations[translationIndex]) {
+            setSelectedSentenceTranslations([lineTranslations[translationIndex]])
+          } else if (isDemo && translationArray[translationIndex]) {
+            setSelectedSentenceTranslations([translationArray[translationIndex]])
           } else {
             setSelectedSentenceTranslations([])
           }
         }
       }
     }
-  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, translations, isDemo, lineTranslations])
+  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, translations, isDemo, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex])
 
   // Navigation functions
   const navigateToLine = useCallback((index: number) => {
@@ -500,16 +592,21 @@ export function SynchronizedLyrics({
     setCurrentLineIndex(index)
 
     // Use cached translation if available
-    if (lineTranslations[index]) {
-      setSelectedSentenceTranslations([lineTranslations[index]])
-    } else if (isDemo && translationArray[index]) {
-      setSelectedSentenceTranslations([translationArray[index]])
+    // Map from synchronized line to original translation index
+    const translationIndex = synchronizedData && synchronizedLines[index] && synchronizedLineToTranslationIndex[synchronizedLines[index].text] !== undefined
+      ? synchronizedLineToTranslationIndex[synchronizedLines[index].text]
+      : index
+
+    if (lineTranslations[translationIndex]) {
+      setSelectedSentenceTranslations([lineTranslations[translationIndex]])
+    } else if (isDemo && translationArray[translationIndex]) {
+      setSelectedSentenceTranslations([translationArray[translationIndex]])
     } else {
       setSelectedSentenceTranslations([])
     }
 
     setIsModalOpen(true)
-  }, [translations, isDemo, lineTranslations])
+  }, [translations, isDemo, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, synchronizedLines])
 
   const handleWordSelection = useCallback(() => {
     const selection = window.getSelection()
@@ -573,12 +670,57 @@ export function SynchronizedLyrics({
         {/* Show translation for active line */}
         {shouldShowLineHighlight && (
           <div className="text-sm mt-2" style={{ color: '#FFF' }}>
-            {lineTranslations[lineIndex] || translationArray[lineIndex] || 'Loading translation...'}
+            {(() => {
+              // IMPORTANT: During playback, we need to be careful about index mapping
+              // The synchronizedLines might have different indices than the original lines
+              let translationIndex = lineIndex
+
+              // Only use mapping if we have synchronized data and the line exists in mapping
+              if (synchronizedData && synchronizedData.lines) {
+                const syncLine = synchronizedData.lines[lineIndex]
+                if (syncLine) {
+                  // Find the original line index by matching text
+                  const originalIndex = lines.findIndex(originalLine =>
+                    originalLine.trim().toLowerCase() === syncLine.text.trim().toLowerCase()
+                  )
+                  if (originalIndex !== -1) {
+                    translationIndex = originalIndex
+                  }
+                }
+              }
+
+              const translation = translationArray[translationIndex] || lineTranslations[translationIndex] || 'Loading translation...'
+
+              // Debug: Log what translation we're showing ONLY for active line
+              if (shouldShowLineHighlight) {
+                // Better Spanish detection - check for accented characters or common Spanish words
+                const isSpanish = translation && (
+                  /[áéíóúñü]/i.test(translation) ||
+                  /\b(y|que|la|el|en|es|un|una|para|con|por|del|las|los|yo|tu|me|te|se|nos|le|lo|su|mi|si|no|al|mas|ya|muy|tambien|hasta|desde|está|están|ser|son|soy|era|fue|sido|hacer|hace|puede|tiene|tengo|viene|quiero|cuando|donde|como|porque|pero|siempre|nunca|ahora|hoy|ayer|mañana|noche|día|tiempo|vez|año|años|cosa|cosas|vida|mundo|hombre|mujer|gente|niño|niña|casa|trabajo|lugar|persona|parte|nada|algo|mucho|poco|todo|todos|mismo|otra|otro|cada|todos|algunas|algunos|entonces|así|más|menos|muy|bien|mal|mejor|peor|grande|pequeño|nuevo|viejo|joven|largo|corto|alto|bajo|bueno|malo|bonito|feo|fácil|difícil|posible|imposible|necesario|importante|interesante|llamaba|llama)\b/i.test(translation)
+                )
+                const logType = isSpanish ? '🔴' : '🟢'
+                console.log(`${logType} ACTIVE Translation for line ${lineIndex}:`, {
+                  lineText: line.text.substring(0, 40),
+                  syncLineIndex: lineIndex,
+                  translationIndex,
+                  isPlaying,
+                  hasSyncData: !!synchronizedData,
+                  arrayTranslation: translationArray[translationIndex] ? translationArray[translationIndex].substring(0, 40) : null,
+                  lineTranslation: lineTranslations[translationIndex] ? lineTranslations[translationIndex].substring(0, 40) : null,
+                  finalTranslation: translation.substring(0, 40),
+                  isSpanish,
+                  translationArrayLength: translationArray.length,
+                  timestamp: Date.now()
+                })
+              }
+
+              return translation
+            })()}
           </div>
         )}
       </div>
     )
-  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick, lineTranslations])
+  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex])
 
   return (
     <div>

@@ -295,40 +295,53 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
           <div className="relative">
             <div className="w-80 h-80 bg-muted/20 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5">
               {track.albumArt ? (
-                <motion.img
-                  ref={imgRef}
-                  src={track.albumArt}
-                  alt={`${track.album || track.title} cover`}
-                  className="w-full h-full object-cover transition-opacity duration-300"
-                  style={{ 
-                    opacity: isImageLoaded ? 1 : 0,
-                    viewTransitionName: `album-art-${track.id}`
+                <a
+                  href={track.spotifyUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={track.spotifyUrl ? 'cursor-pointer' : 'cursor-default'}
+                  onClick={(e) => {
+                    if (!track.spotifyUrl) {
+                      e.preventDefault()
+                    }
                   }}
-                  layoutId={`album-art-${track.id}`}
-                  initial={{ scale: 0.275 }} // 88/320 = 0.275
-                  animate={{ scale: 1 }}
-                  transition={{ 
-                    type: "spring", 
-                    stiffness: 400, 
-                    damping: 30,
-                    duration: 0.5
-                  }}
-                  onLoad={() => setIsImageLoaded(true)}
-                  onError={(e) => {
-                    // Fallback to music icon if image fails to load
-                    e.currentTarget.style.display = 'none'
-                    setIsImageLoaded(true)
-                  }}
-                />
+                >
+                  <motion.img
+                    ref={imgRef}
+                    src={track.albumArt}
+                    alt={`${track.album || track.title} cover`}
+                    className="w-full h-full object-cover transition-opacity duration-300 hover:scale-105"
+                    style={{
+                      opacity: isImageLoaded ? 1 : 0,
+                      viewTransitionName: `album-art-${track.id}`,
+                      transition: 'transform 0.2s ease-in-out'
+                    }}
+                    layoutId={`album-art-${track.id}`}
+                    initial={{ scale: 0.275 }} // 88/320 = 0.275
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 400,
+                      damping: 30,
+                      duration: 0.5
+                    }}
+                    onLoad={() => setIsImageLoaded(true)}
+                    onError={(e) => {
+                      // Fallback to music icon if image fails to load
+                      e.currentTarget.style.display = 'none'
+                      setIsImageLoaded(true)
+                    }}
+                  />
+                </a>
               ) : null}
-              
+
               {!track.albumArt || !isImageLoaded ? (
                 <div className="w-full h-full flex items-center justify-center bg-muted/20">
                   <Music className="w-24 h-24 text-muted-foreground/40" />
                 </div>
               ) : null}
             </div>
-            
+
           </div>
 
           {/* Song info */}

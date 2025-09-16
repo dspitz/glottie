@@ -112,10 +112,21 @@ export async function GET(
 
     // Process database translations
     let dbTranslations: { [targetLang: string]: string[] } = {}
+    console.log(`📚 Processing translations for song ${song.id}:`, {
+      hasTranslations: !!song.translations,
+      translationCount: song.translations?.length || 0
+    })
+
     if (song.translations && song.translations.length > 0) {
       for (const translation of song.translations) {
         try {
           const parsed = JSON.parse(translation.lyricsLines || '[]')
+          console.log(`  Translation ${translation.targetLang}:`, {
+            isParsed: !!parsed,
+            isArray: Array.isArray(parsed),
+            length: Array.isArray(parsed) ? parsed.length : 0,
+            firstItem: Array.isArray(parsed) && parsed[0] ? parsed[0].substring(0, 40) : null
+          })
 
           // Handle different formats
           if (Array.isArray(parsed)) {
@@ -127,6 +138,7 @@ export async function GET(
                 continue // Skip corrupted data
               }
               dbTranslations[translation.targetLang] = parsed
+              console.log(`✅ Added ${translation.targetLang} translation with ${parsed.length} lines`)
               console.log(`📚 Found ${parsed.length} translated lines for ${translation.targetLang}`)
             }
           }
@@ -145,6 +157,14 @@ export async function GET(
     // Keep original synchronized data without offset adjustment
     // The timings from Musixmatch are actually correct
     let adjustedSynchronized = lyricsData?.synchronized
+
+    console.log(`📤 Sending response with:`, {
+      hasTranslations: Object.keys(dbTranslations || {}).length > 0,
+      translationLanguages: Object.keys(dbTranslations || {}),
+      enTranslationCount: dbTranslations?.en?.length || 0,
+      hasSynchronized: !!adjustedSynchronized,
+      linesCount: finalLines.length
+    })
 
     return NextResponse.json({
       // Core response data
