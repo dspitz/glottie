@@ -36,7 +36,10 @@ model Song {
   isActive      Boolean  @default(true) // soft delete flag
   translations  Translation[]
   metrics       Metrics?
-  level         Int?     // 1..10
+  level         Int?     // 1..5 (difficulty level)
+  levelName     String?  // "Beginner", "Upper Beginner", etc.
+  description   String?  // Description of difficulty characteristics
+  order         Int?     // Sequential order 1-100
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   

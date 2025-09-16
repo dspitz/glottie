@@ -316,7 +316,7 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
   onPlayerReady, 
   onPlayerStateChange 
 }, ref) => {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const [isReady, setIsReady] = useState(false)
   const [isActive, setIsActive] = useState(false)
   const [playerState, setPlayerState] = useState<Spotify.PlaybackState | null>(null)
@@ -521,12 +521,25 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
     deviceId: playerManager.getDeviceId()
   }))
 
+  // Debug session status
+  console.log('SpotifyWebPlayer session check:', {
+    hasSession: !!session,
+    hasAccessToken: !!session?.accessToken,
+    sessionStatus: status,
+    isClient: typeof window !== 'undefined'
+  })
+
   // Don't render anything if user is not authenticated
+  if (status === 'loading') {
+    console.log('SpotifyWebPlayer: Session loading...')
+    return null
+  }
+
   if (!session?.accessToken) {
     console.log('SpotifyWebPlayer: No access token, not rendering')
     return null
   }
-  
+
   console.log('SpotifyWebPlayer: Rendering with access token:', !!session.accessToken)
 
   return (

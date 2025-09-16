@@ -118,10 +118,12 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                   title: lyricsData.title,
                   artist: lyricsData.artist,
                   album: lyricsData.album,
+                  spotifyId: lyricsData.spotifyId,
                   spotifyUrl: lyricsData.spotifyUrl,
                   previewUrl: lyricsData.previewUrl,
                   albumArt: lyricsData.albumArt,
-                  albumArtSmall: lyricsData.albumArtSmall
+                  albumArtSmall: lyricsData.albumArtSmall,
+                  culturalContext: lyricsData.culturalContext
                 }}
                 backHref="#"
                 backText={backText}

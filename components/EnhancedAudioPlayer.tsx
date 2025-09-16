@@ -76,6 +76,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [playbackRate, setPlaybackRate] = useState(1.0)
+  const [hasEverPlayed, setHasEverPlayed] = useState(false)
   
   // Preview mode refs
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -186,7 +187,12 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   // Spotify mode state handling
   useEffect(() => {
     if (spotifyPlayerState) {
-      setIsPlaying(!spotifyPlayerState.paused)
+      const isNowPlaying = !spotifyPlayerState.paused
+      setIsPlaying(isNowPlaying)
+      // Track if the song has ever been played
+      if (isNowPlaying) {
+        setHasEverPlayed(true)
+      }
       setCurrentTime(spotifyPlayerState.position)
       setDuration(spotifyPlayerState.track_window.current_track ? spotifyPlayerState.track_window.current_track.duration_ms : 0)
     }
@@ -237,6 +243,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
         } else {
           await audioRef.current.play()
           setIsPlaying(true)
+          setHasEverPlayed(true)
         }
       } catch (error) {
         console.error('Preview playback error:', error)
@@ -382,7 +389,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   return (
     <div
       className={`fixed left-0 right-0 border-t px-5 py-4 z-40 transition-transform duration-300 ease-in-out backdrop-blur-lg ${
-        isPlaying ? 'bottom-0 translate-y-0' : 'bottom-0 translate-y-full'
+        hasEverPlayed ? 'bottom-0 translate-y-0' : 'bottom-0 translate-y-full'
       } ${className}`}
       style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderTopColor: 'rgba(255, 255, 255, 0.2)' }}>
       {/* Spotify Web Player (hidden, only renders when authenticated) */}

@@ -103,6 +103,7 @@ export function LyricsView({
   })
   const [seekFunction, setSeekFunction] = useState<((time: number) => void) | null>(null)
   const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
+  const [hasEverPlayed, setHasEverPlayed] = useState(false)
 
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
@@ -117,6 +118,10 @@ export function LyricsView({
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
     setAudioState(state)
+    // Track if the song has ever been played
+    if (state.isPlaying) {
+      setHasEverPlayed(true)
+    }
     if (onPlayStateChange) {
       onPlayStateChange(state.isPlaying)
     }
@@ -137,7 +142,7 @@ export function LyricsView({
   }, [seekFunction])
 
   return (
-    <div className={`transition-all duration-300 ${audioState.isPlaying ? 'pb-32' : 'pb-6'}`}>
+    <div className={`transition-all duration-300 ${hasEverPlayed ? 'pb-32' : 'pb-6'}`}>
       {/* Enhanced Audio Player */}
       {track && (
         <EnhancedAudioPlayer

@@ -1,16 +1,19 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Music, Play, Pause, SkipForward, SkipBack } from 'lucide-react'
+import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
+import { useSession } from 'next-auth/react'
 
 interface Track {
   id: string
   title: string
   artist: string
   album?: string
+  spotifyId?: string
   spotifyUrl?: string
   previewUrl?: string
   albumArt?: string
@@ -66,19 +69,93 @@ const rgbToHsv = (r: number, g: number, b: number): [number, number, number] => 
   return [h * 360, s * 100, v * 100]
 }
 
+// Helper function to convert RGB to HSL
+const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
+  r /= 255
+  g /= 255
+  b /= 255
+
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const diff = max - min
+
+  let h = 0
+  let s = 0
+  const l = (max + min) / 2
+
+  if (diff !== 0) {
+    s = l > 0.5 ? diff / (2 - max - min) : diff / (max + min)
+
+    switch (max) {
+      case r:
+        h = ((g - b) / diff) % 6
+        break
+      case g:
+        h = (b - r) / diff + 2
+        break
+      case b:
+        h = (r - g) / diff + 4
+        break
+    }
+    h /= 6
+  }
+
+  if (h < 0) h += 1
+
+  return [h * 360, s * 100, l * 100]
+}
+
+// Helper function to convert HSL to RGB
+const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+  h /= 360
+  s /= 100
+  l /= 100
+
+  let r, g, b
+
+  if (s === 0) {
+    r = g = b = l
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1
+      if (t > 1) t -= 1
+      if (t < 1/6) return p + (q - p) * 6 * t
+      if (t < 1/2) return q
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6
+      return p
+    }
+
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s
+    const p = 2 * l - q
+
+    r = hue2rgb(p, q, h + 1/3)
+    g = hue2rgb(p, q, h)
+    b = hue2rgb(p, q, h - 1/3)
+  }
+
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
+}
+
+// Helper function to constrain lightness
+const constrainLightness = (h: number, s: number, l: number, minL: number = 33, maxL: number = 55): [number, number, number] => {
+  const constrainedL = Math.min(Math.max(l, minL), maxL)
+  return [h, s, constrainedL]
+}
+
 // Utility function to extract the most saturated color from image
 const extractDominantColor = (imageUrl: string): Promise<string> => {
   return new Promise((resolve) => {
     // Generate a color based on the song title hash for consistency
+    // These fallback colors are pre-constrained to the 33-55% lightness range
     const fallbackColors = [
-      'rgb(59, 130, 246)',   // blue
-      'rgb(139, 69, 19)',    // brown
-      'rgb(34, 197, 94)',    // green
-      'rgb(239, 68, 68)',    // red
-      'rgb(168, 85, 247)',   // purple
-      'rgb(245, 158, 11)',   // amber
-      'rgb(6, 182, 212)',    // cyan
-      'rgb(236, 72, 153)',   // pink
+      'rgb(86, 125, 188)',   // blue (L: 54%)
+      'rgb(139, 92, 46)',    // brown (L: 36%)
+      'rgb(71, 139, 71)',    // green (L: 41%)
+      'rgb(188, 86, 86)',    // red (L: 54%)
+      'rgb(125, 86, 188)',   // purple (L: 54%)
+      'rgb(188, 125, 31)',   // amber (L: 43%)
+      'rgb(31, 139, 156)',   // cyan (L: 37%)
+      'rgb(188, 86, 139)',   // pink (L: 54%)
     ]
     
     // Try to extract color, fallback to hash-based color
@@ -140,15 +217,22 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         
         // If we found a good saturated color, use it
         if (maxSaturation > 30) {
-          resolve(`rgb(${mostSaturatedColor.r}, ${mostSaturatedColor.g}, ${mostSaturatedColor.b})`)
+          // Convert to HSL and constrain lightness
+          const [h, s, l] = rgbToHsl(mostSaturatedColor.r, mostSaturatedColor.g, mostSaturatedColor.b)
+          const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l)
+          const [finalR, finalG, finalB] = hslToRgb(constrainedH, constrainedS, constrainedL)
+          resolve(`rgb(${finalR}, ${finalG}, ${finalB})`)
         } else if (avgCount > 0) {
-          // Fallback to average color
+          // Fallback to average color with lightness constraints
           const avgRFinal = Math.floor(avgR / avgCount)
           const avgGFinal = Math.floor(avgG / avgCount)
           const avgBFinal = Math.floor(avgB / avgCount)
-          resolve(`rgb(${avgRFinal}, ${avgGFinal}, ${avgBFinal})`)
+          const [h, s, l] = rgbToHsl(avgRFinal, avgGFinal, avgBFinal)
+          const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l)
+          const [finalR, finalG, finalB] = hslToRgb(constrainedH, constrainedS, constrainedL)
+          resolve(`rgb(${finalR}, ${finalG}, ${finalB})`)
         } else {
-          // Final fallback to hash-based color
+          // Final fallback to hash-based color (already constrained)
           const hashColor = fallbackColors[imageUrl.length % fallbackColors.length]
           resolve(hashColor)
         }
@@ -171,6 +255,9 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
 
 export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious }: SongHeaderProps) {
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
+  const { data: session } = useSession()
+  const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
+  const [hasStartedPlayback, setHasStartedPlayback] = useState(false)
 
   // Sync local state with prop
   useEffect(() => {
@@ -226,15 +313,16 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
         })
     } else {
       // Generate consistent color based on track title when no album art
+      // These fallback colors are pre-constrained to the 33-55% lightness range
       const fallbackColors = [
-        'rgb(59, 130, 246)',   // blue
-        'rgb(139, 69, 19)',    // brown
-        'rgb(34, 197, 94)',    // green
-        'rgb(239, 68, 68)',    // red
-        'rgb(168, 85, 247)',   // purple
-        'rgb(245, 158, 11)',   // amber
-        'rgb(6, 182, 212)',    // cyan
-        'rgb(236, 72, 153)',   // pink
+        'rgb(86, 125, 188)',   // blue (L: 54%)
+        'rgb(139, 92, 46)',    // brown (L: 36%)
+        'rgb(71, 139, 71)',    // green (L: 41%)
+        'rgb(188, 86, 86)',    // red (L: 54%)
+        'rgb(125, 86, 188)',   // purple (L: 54%)
+        'rgb(188, 125, 31)',   // amber (L: 43%)
+        'rgb(31, 139, 156)',   // cyan (L: 37%)
+        'rgb(188, 86, 139)',   // pink (L: 54%)
       ]
       const colorIndex = ((track?.title?.length || 0) + (track?.artist?.length || 0)) % fallbackColors.length
       const selectedColor = fallbackColors[colorIndex]
@@ -384,16 +472,38 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
 
             <Button
               size="lg"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault()
                 e.stopPropagation()
                 console.log('🎵 SongHeader: Play/pause button clicked', {
-                  hasHandler: !!onPlayPause,
-                  isPlaying,
-                  handlerType: typeof onPlayPause
+                  hasSpotifyId: !!track?.spotifyId,
+                  isAuthenticated,
+                  isReady,
+                  hasStartedPlayback,
+                  isPlaying
                 })
-                if (onPlayPause && typeof onPlayPause === 'function') {
-                  console.log('🎵 SongHeader: Calling onPlayPause handler')
+
+                // If we have Spotify Web SDK and track ID, use it
+                if (isAuthenticated && isReady && track?.spotifyId) {
+                  if (!hasStartedPlayback) {
+                    // First play - start the track
+                    console.log('🎵 SongHeader: Starting Spotify Web SDK playback')
+                    const success = await playTrack(track.spotifyId)
+                    if (success) {
+                      setHasStartedPlayback(true)
+                      setLocalIsPlaying(true)
+                    }
+                  } else {
+                    // Toggle play/pause
+                    console.log('🎵 SongHeader: Toggling Spotify Web SDK playback')
+                    const success = await sdkTogglePlay()
+                    if (success) {
+                      setLocalIsPlaying(!localIsPlaying)
+                    }
+                  }
+                } else if (onPlayPause && typeof onPlayPause === 'function') {
+                  // Fallback to preview or other player
+                  console.log('🎵 SongHeader: Using fallback player')
                   try {
                     onPlayPause()
                     console.log('✅ SongHeader: onPlayPause executed')
@@ -401,18 +511,18 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
                     console.error('❌ SongHeader: Error calling onPlayPause:', error)
                   }
                 } else {
-                  console.warn('⚠️ SongHeader: No valid onPlayPause handler yet - trying to find audio player')
-                  // Try to find and click the audio player's play button as a fallback
-                  // Updated selector to find the fixed player at the bottom
-                  const audioPlayerButton = document.querySelector('.fixed.left-0.right-0 button.w-10.h-10') as HTMLButtonElement
-                  if (audioPlayerButton) {
-                    console.log('🔄 SongHeader: Found audio player button, clicking it')
-                    audioPlayerButton.click()
-                    // Toggle local state for immediate feedback
-                    setLocalIsPlaying(!localIsPlaying)
-                    console.log('🔄 SongHeader: Toggled local state to:', !localIsPlaying)
-                  } else {
-                    console.warn('⚠️ SongHeader: Could not find audio player button')
+                  console.warn('⚠️ SongHeader: No playback method available', {
+                    isAuthenticated,
+                    hasSpotifyId: !!track?.spotifyId,
+                    spotifyId: track?.spotifyId,
+                    trackTitle: track?.title,
+                    isReady,
+                    hasOnPlayPause: !!onPlayPause
+                  })
+                  if (!isAuthenticated) {
+                    alert('Please sign in with Spotify to play songs')
+                  } else if (!track?.spotifyId) {
+                    alert(`This song is not available on Spotify (${track?.title || 'Unknown'})`)
                   }
                 }
               }}
