@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Music, Play, Pause, SkipForward, SkipBack } from 'lucide-react'
 import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
 import { useSession } from 'next-auth/react'
+import { useSharedTransition, getSharedElementTransition } from '@/contexts/SharedTransitionContext'
 
 interface Track {
   id: string
@@ -289,7 +290,8 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
   const [dominantColor, setDominantColor] = useState('rgb(59, 130, 246)')
   const [isImageLoaded, setIsImageLoaded] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
-  
+  const { isExiting } = useSharedTransition()
+
   console.log('SongHeader render:', { 
     hasAlbumArt: !!track?.albumArt, 
     albumArt: track?.albumArt, 
@@ -382,7 +384,11 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
         <div className="flex flex-col items-center text-center space-y-4">
           {/* Large album art */}
           <div className="relative">
-            <div className="w-80 h-80 bg-muted/20 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5">
+            <motion.div
+              className="w-80 h-80 bg-muted/20 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5"
+              layoutId={`album-container-${track.id}`}
+              transition={getSharedElementTransition(isExiting)}
+            >
               {track.albumArt ? (
                 <a
                   href={track.spotifyUrl || '#'}
@@ -395,24 +401,14 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
                     }
                   }}
                 >
-                  <motion.img
+                  <img
                     ref={imgRef}
                     src={track.albumArt}
                     alt={`${track.album || track.title} cover`}
                     className="w-full h-full object-cover transition-opacity duration-300 hover:scale-105"
                     style={{
                       opacity: isImageLoaded ? 1 : 0,
-                      viewTransitionName: `album-art-${track.id}`,
                       transition: 'transform 0.2s ease-in-out'
-                    }}
-                    layoutId={`album-art-${track.id}`}
-                    initial={{ scale: 0.275 }} // 88/320 = 0.275
-                    animate={{ scale: 1 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 30,
-                      duration: 0.5
                     }}
                     onLoad={() => setIsImageLoaded(true)}
                     onError={(e) => {
@@ -429,19 +425,20 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
                   <Music className="w-24 h-24 text-muted-foreground/40" />
                 </div>
               ) : null}
-            </div>
+            </motion.div>
 
           </div>
 
           {/* Song info */}
-          <motion.div 
+          <motion.div
             className="space-y-3 max-w-2xl"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              delay: 0.2, 
-              duration: 0.6, 
-              ease: "easeOut" 
+            transition={{
+              type: "spring",
+              stiffness: 600,
+              damping: 40,
+              delay: 0.1
             }}
           >
             <h1 className="text-white font-medium" style={{ fontSize: '36px', lineHeight: '42px', fontFamily: 'Outfit' }}>
@@ -458,7 +455,17 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
           </motion.div>
 
           {/* Playback Controls */}
-          <div className="flex items-center gap-2">
+          <motion.div
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 600,
+              damping: 40,
+              delay: 0.15
+            }}
+          >
             <Button
               size="lg"
               variant="outline"
@@ -548,7 +555,7 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
             >
               <SkipForward className="w-5 h-5" />
             </Button>
-          </div>
+          </motion.div>
         </div>
 
       </div>

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { LayoutGroup } from 'framer-motion'
+import { SharedTransitionProvider, useSharedTransition } from '@/contexts/SharedTransitionContext'
 import { SongListItem } from '@/components/SongListItem'
 import { SongModal } from '@/components/SongModal'
 import { Button } from '@/components/ui/button'
@@ -11,7 +13,7 @@ import { fetchLevels } from '@/lib/client'
 import { getLevelDescription } from '@/lib/utils'
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 
-export default function LevelPage() {
+function LevelPageContent() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -45,14 +47,19 @@ export default function LevelPage() {
     window.history.pushState({}, '', currentUrl.toString())
   }
 
+  const { setIsExiting } = useSharedTransition()
+
   // Handle closing modal
   const handleCloseModal = () => {
+    setIsExiting(true)
     setIsModalOpen(false)
     setSelectedSongId(null)
     // Remove song parameter from URL
     const currentUrl = new URL(window.location.href)
     currentUrl.searchParams.delete('song')
     window.history.pushState({}, '', currentUrl.toString())
+    // Reset exiting state after animation
+    setTimeout(() => setIsExiting(false), 1000)
   }
 
   // Handle browser back button
@@ -119,7 +126,7 @@ export default function LevelPage() {
   const stats = levelsData?.stats || {}
 
   return (
-    <div className="container py-8">
+    <div className="px-6 py-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
@@ -163,26 +170,28 @@ export default function LevelPage() {
 
       {/* Songs List */}
       {levelSongs.length > 0 ? (
-        <div className="space-y-4">
-          {levelSongs.map((song) => (
-            <SongListItem
-              key={song.id}
-              id={song.id}
-              title={song.title}
-              artist={song.artist}
-              album={song.album}
-              level={level}
-              difficultyScore={song.difficultyScore}
-              spotifyUrl={song.spotifyUrl}
-              previewUrl={song.previewUrl}
-              albumArt={song.albumArt}
-              albumArtSmall={song.albumArtSmall}
-              wordCount={song.wordCount}
-              verbDensity={song.verbDensity}
-              onClick={() => handleSongClick(song.id)}
-            />
-          ))}
-        </div>
+        <LayoutGroup>
+          <div className="space-y-3">
+            {levelSongs.map((song) => (
+              <SongListItem
+                key={song.id}
+                id={song.id}
+                title={song.title}
+                artist={song.artist}
+                album={song.album}
+                level={level}
+                difficultyScore={song.difficultyScore}
+                spotifyUrl={song.spotifyUrl}
+                previewUrl={song.previewUrl}
+                albumArt={song.albumArt}
+                albumArtSmall={song.albumArtSmall}
+                wordCount={song.wordCount}
+                verbDensity={song.verbDensity}
+                onClick={() => handleSongClick(song.id)}
+              />
+            ))}
+          </div>
+        </LayoutGroup>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="text-6xl mb-4">🎵</div>
@@ -229,5 +238,13 @@ export default function LevelPage() {
         onClose={handleCloseModal}
       />
     </div>
+  )
+}
+
+export default function LevelPage() {
+  return (
+    <SharedTransitionProvider>
+      <LevelPageContent />
+    </SharedTransitionProvider>
   )
 }

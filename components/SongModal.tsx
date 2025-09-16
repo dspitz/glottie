@@ -62,29 +62,47 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
   const backText = level ? `Back to Level ${level}` : 'Back to Levels'
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogPortal>
-        <DialogOverlay className="bg-black/60 backdrop-blur-sm" />
-        <DialogPrimitive.Content 
-          className="max-w-none w-full h-full m-0 p-0 rounded-none border-0 bg-transparent overflow-y-auto fixed inset-0 z-50"
-          style={{ backgroundColor: pageBackgroundColor }}
-        >
-
-        {/* Modal content with entrance animation */}
-        <motion.div
-          className="container py-8 min-h-full"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-        >
+    <AnimatePresence>
+      {isOpen && (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogPortal>
+            <DialogOverlay className="bg-black/60 backdrop-blur-sm" />
+            <DialogPrimitive.Content
+              className="max-w-none w-full h-full m-0 p-0 rounded-none border-0 bg-transparent overflow-y-auto fixed inset-0 z-50"
+              style={{ backgroundColor: pageBackgroundColor }}
+            >
+            <motion.div
+              key="modal-content"
+              className="container py-8 min-h-full"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{
+                opacity: 0,
+                y: 10,
+                transition: {
+                  type: "spring",
+                  stiffness: 600,
+                  damping: 60
+                }
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 600,
+                damping: 40
+              }}
+            >
           {isLoading ? (
             <div className="flex items-center justify-center py-12 min-h-screen">
               <motion.div
                 className="flex items-center text-white"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 600,
+                  damping: 40,
+                  delay: 0.1
+                }}
               >
                 <Loader2 className="mr-2 h-6 w-6 animate-spin" />
                 <span>Loading song...</span>
@@ -96,7 +114,12 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                 className="text-white"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 600,
+                  damping: 40,
+                  delay: 0.1
+                }}
               >
                 <AlertCircle className="mb-4 h-12 w-12 text-red-400 mx-auto" />
                 <h2 className="text-xl font-semibold mb-2">Song Not Found</h2>
@@ -134,11 +157,16 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
               />
 
               {/* Main Content */}
-              <motion.div 
+              <motion.div
                 className="max-w-4xl mx-auto"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6, ease: 'easeOut' }}
+                transition={{
+                  type: "spring",
+                  stiffness: 600,
+                  damping: 40,
+                  delay: 0.2
+                }}
               >
                 <LyricsView
                   lines={lyricsData.lines || []}
@@ -164,9 +192,11 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
               </motion.div>
             </>
           ) : null}
-        </motion.div>
-        </DialogPrimitive.Content>
-      </DialogPortal>
-    </Dialog>
+            </motion.div>
+            </DialogPrimitive.Content>
+          </DialogPortal>
+        </Dialog>
+      )}
+    </AnimatePresence>
   )
 }
