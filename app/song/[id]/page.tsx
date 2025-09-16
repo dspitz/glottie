@@ -60,7 +60,22 @@ export default function SongPage() {
     queryKey: ['lyrics', songId],
     queryFn: () => fetchLyrics(songId),
     enabled: !!songId,
+    staleTime: 0, // Force refetch
+    gcTime: 0, // Don't cache
   })
+
+  // Debug what we're getting from the API
+  useEffect(() => {
+    if (lyricsData) {
+      console.log('📡 API Response received:', {
+        hasData: !!lyricsData,
+        hasSynchronized: !!lyricsData.synchronized,
+        synchronizedFormat: lyricsData.synchronized?.format,
+        synchronizedLines: lyricsData.synchronized?.lines?.length,
+        keys: Object.keys(lyricsData)
+      })
+    }
+  }, [lyricsData])
   
   // Apply background color using CSS custom properties and aggressive styling
   useEffect(() => {
@@ -163,8 +178,15 @@ export default function SongPage() {
   }
 
   if (!lyricsData) {
+    console.log('❌ No lyricsData available')
     return null
   }
+
+  console.log('📦 lyricsData available:', {
+    hasData: !!lyricsData,
+    hasSynchronized: !!lyricsData.synchronized,
+    keys: Object.keys(lyricsData)
+  })
 
   const isDemo = lyricsData.mode === 'demo'
   
@@ -200,6 +222,19 @@ export default function SongPage() {
 
       {/* Main Content - Full Width */}
       <div className="max-w-4xl mx-auto">
+        {/* Debug logging for synchronized data */}
+        {(() => {
+          console.log('🎵 Page: Passing to LyricsView:', {
+            hasLines: !!lyricsData.lines,
+            lineCount: lyricsData.lines?.length,
+            hasSynchronized: !!lyricsData.synchronized,
+            synchronizedFormat: lyricsData.synchronized?.format,
+            synchronizedLineCount: lyricsData.synchronized?.lines?.length,
+            firstSyncLine: lyricsData.synchronized?.lines?.[0],
+            fullLyricsData: lyricsData
+          })
+          return null
+        })()}
         <LyricsView
           lines={lyricsData.lines || []}
           translations={lyricsData.translations}

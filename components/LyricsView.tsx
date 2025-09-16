@@ -49,6 +49,13 @@ export function LyricsView({
   onPlayStateChange,
   onPlayPauseReady
 }: LyricsViewProps) {
+  // Debug: Log what LyricsView receives
+  console.log('🎭 LyricsView received synchronized:', {
+    hasSynchronized: !!synchronized,
+    format: synchronized?.format,
+    lineCount: synchronized?.lines?.length,
+    firstLine: synchronized?.lines?.[0]
+  })
   // Process translations - extract English translations if it's an object
   const processedTranslations = React.useMemo(() => {
     if (Array.isArray(translations)) {
@@ -130,6 +137,7 @@ export function LyricsView({
         translations={processedTranslations}
         isDemo={isDemo}
         backgroundColor={backgroundColor}
+        synchronizedData={synchronized}
         onTimeSeek={handleLyricsTimeSeek}
         playbackRate={audioState.playbackRate}
         onPlaybackRateChange={(rate) => {
@@ -137,7 +145,6 @@ export function LyricsView({
             playbackRateFunction(rate)
           }
         }}
-        synchronizedData={synchronized}
       />
 
       {/* Modals */}

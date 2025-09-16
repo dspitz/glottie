@@ -142,6 +142,10 @@ export async function GET(
       ...dbTranslations
     }
 
+    // Keep original synchronized data without offset adjustment
+    // The timings from Musixmatch are actually correct
+    let adjustedSynchronized = lyricsData?.synchronized
+
     return NextResponse.json({
       // Core response data
       trackId: song.id,
@@ -165,7 +169,7 @@ export async function GET(
       attribution: lyricsData?.attribution,
       culturalContext: lyricsData?.culturalContext,
       translations: finalTranslations,
-      synchronized: lyricsData?.synchronized,
+      synchronized: adjustedSynchronized,
       
       // Legacy compatibility
       song: {

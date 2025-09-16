@@ -146,6 +146,7 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                   artist={lyricsData.artist}
                   isDemo={lyricsData.mode === 'demo'}
                   backgroundColor={pageBackgroundColor}
+                  synchronized={lyricsData.synchronized}
                   track={{
                     id: lyricsData.trackId || songId,
                     title: lyricsData.title,

@@ -63,7 +63,6 @@ export function SynchronizedLyrics({
   const [selectedWord, setSelectedWord] = useState<string>('')
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [highlightingEnabled, setHighlightingEnabled] = useState(true) // Always enabled now
-  const [timingOffset, setTimingOffset] = useState(0) // User-adjustable timing offset in ms
   const [simulationTime, setSimulationTime] = useState(0) // For simulating playback when audio unavailable
   const [isSimulating, setIsSimulating] = useState(false)
   const [currentLineIndex, setCurrentLineIndex] = useState(0)
@@ -172,34 +171,67 @@ export function SynchronizedLyrics({
   // Convert times to consistent format (milliseconds) and add timing adjustment
   // Use simulation time when simulating, otherwise use actual playback time
   const effectiveTime = isSimulating ? simulationTime : currentTime
+
+  // CRITICAL: Determine the correct conversion based on playback mode
+  // For Spotify: currentTime might already be in ms (if >1000) or in seconds
   const currentTimeMs = isSimulating
-    ? simulationTime + timingOffset
-    : (playbackMode === 'spotify' ? effectiveTime : effectiveTime * 1000) + timingOffset
+    ? simulationTime
+    : (playbackMode === 'spotify'
+        ? (effectiveTime > 1000 ? effectiveTime : effectiveTime * 1000)  // Auto-detect units
+        : effectiveTime * 1000)
+
   const durationMs = isSimulating && synchronizedData?.duration
     ? synchronizedData.duration
     : (playbackMode === 'spotify' ? duration : duration * 1000)
 
   // Generate timing data for lyrics - use real synchronized data or fallback to estimation
   const synchronizedLines = useMemo((): Line[] => {
+    // Debug the entire synchronizedData structure
+    if (synchronizedData) {
+      console.log('📦 FULL synchronizedData:', JSON.stringify(synchronizedData, null, 2))
+    }
+
     // If we have real synchronized data from the API, use it!
     if (synchronizedData?.lines && synchronizedData.lines.length > 0) {
       console.log(`✅ Using real synchronized lyrics from API:`, {
         format: synchronizedData.format,
         lineCount: synchronizedData.lines.length,
         duration: synchronizedData.duration,
+        firstLineRaw: synchronizedData.lines[0]?.startTime,
         sampleTiming: synchronizedData.lines[0] ?
           `Line 1 starts at ${(synchronizedData.lines[0].startTime/1000).toFixed(2)}s` :
           'No timing data'
       })
 
+      // Debug: log the actual values being used
+      console.log('🔍 First line timing details:', {
+        startTime: synchronizedData.lines[0]?.startTime,
+        endTime: synchronizedData.lines[0]?.endTime,
+        text: synchronizedData.lines[0]?.text,
+        wordsCount: synchronizedData.lines[0]?.words?.length
+      })
+
       // Simply return the synchronized lines with their exact API timestamps
       // The words arrays should already be included from the parseLRC function
-      return synchronizedData.lines.map((syncLine): Line => ({
-        text: syncLine.text,
-        words: syncLine.words || [], // Use provided words or empty array
-        startTime: syncLine.startTime,
-        endTime: syncLine.endTime
-      }))
+      return synchronizedData.lines.map((syncLine): Line => {
+        // Ensure we're using the line's timing, not aggregating word timings
+        const lineStartTime = syncLine.startTime
+        const lineEndTime = syncLine.endTime
+
+        // If words exist, ensure they all use the line's timing (for LRC format)
+        const words = syncLine.words ? syncLine.words.map(word => ({
+          ...word,
+          startTime: lineStartTime,  // Force all words to use line timing
+          endTime: lineEndTime      // Since LRC doesn't have word-level timing
+        })) : []
+
+        return {
+          text: syncLine.text,
+          words,
+          startTime: lineStartTime,  // Use the explicit line timing
+          endTime: lineEndTime
+        }
+      })
     }
 
     // Fallback to estimated timing if no synchronized data
@@ -275,6 +307,45 @@ export function SynchronizedLyrics({
       }
     })
   }, [lines, durationMs, synchronizedData])
+
+  // Debug logging to understand the timing issue
+  useEffect(() => {
+    // Log continuously for debugging
+    if (currentTime > 0) {
+      const activeIndex = synchronizedLines.findIndex(line =>
+        currentTimeMs >= line.startTime && currentTimeMs <= line.endTime
+      )
+
+      // Log every 500ms or when line changes
+      const logKey = `${Math.floor(currentTime * 2)}-${activeIndex}`
+      if (!window.lastLogKey || window.lastLogKey !== logKey) {
+        window.lastLogKey = logKey
+
+        // Debug the actual timing values
+        const firstLine = synchronizedLines[0]
+        if (firstLine && !window.debuggedFirstLine) {
+          window.debuggedFirstLine = true
+          console.log('🔍 DETAILED FIRST LINE DEBUG:', {
+            lineStartTime: firstLine.startTime,
+            lineEndTime: firstLine.endTime,
+            lineText: firstLine.text,
+            wordsCount: firstLine.words?.length,
+            firstWordStart: firstLine.words?.[0]?.startTime,
+            allWordStarts: firstLine.words?.map(w => w.startTime)
+          })
+        }
+
+        console.log('🎵 SYNC DEBUG:', {
+          time: currentTime.toFixed(2),
+          timeMs: currentTimeMs.toFixed(0),
+          mode: playbackMode,
+          firstLineAt: synchronizedLines[0]?.startTime,
+          activeLine: activeIndex,
+          activeText: synchronizedLines[activeIndex]?.text || 'none'
+        })
+      }
+    }
+  }, [currentTime, playbackMode, currentTimeMs, synchronizedLines])
 
   // Find current active line and word
   const getCurrentHighlight = useCallback(() => {
@@ -519,72 +590,8 @@ export function SynchronizedLyrics({
           <div className="flex items-center gap-2">
 
           {/* Simulation mode - show when sync data exists and no audio is playing */}
-          {synchronizedData && synchronizedData.lines?.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (isSimulating) {
-                  setIsSimulating(false)
-                  setSimulationTime(0)
-                } else {
-                  setIsSimulating(true)
-                }
-              }}
-              className="flex items-center gap-2"
-              title={`Playback mode: ${playbackMode}`}
-            >
-              {isSimulating ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  Stop Demo
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Play Demo
-                </>
-              )}
-            </Button>
-          )}
 
         </div>
-
-        {/* Timing Offset Control */}
-        {synchronizedData && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/60">Timing offset:</span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setTimingOffset(prev => prev - 100)}
-                className="h-6 w-6 p-0"
-              >
-                -
-              </Button>
-              <span className="text-xs w-16 text-center">{timingOffset}ms</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setTimingOffset(prev => prev + 100)}
-                className="h-6 w-6 p-0"
-              >
-                +
-              </Button>
-              {timingOffset !== 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTimingOffset(0)}
-                  className="h-6 px-2 text-xs"
-                >
-                  Reset
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
         </div>
 
       </div>
