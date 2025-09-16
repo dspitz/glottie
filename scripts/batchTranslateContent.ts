@@ -8,14 +8,46 @@ const prisma = new PrismaClient()
 
 const TARGET_LANGUAGES = ['en'] // Start with English only to test
 
+// Enhanced retry logic for rate limiting
+async function translateWithRetry(text: string, targetLang: string, maxRetries = 3): Promise<any> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await translate(text, targetLang)
+      return result
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+        if (attempt === maxRetries) {
+          console.error(`    ✗ Max retries reached for: "${text.substring(0, 50)}..."`)
+          throw error
+        }
+
+        // Exponential backoff: 2s, 4s, 8s
+        const waitTime = Math.pow(2, attempt) * 1000
+        console.log(`    ⏳ Rate limited, waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+      } else {
+        throw error
+      }
+    }
+  }
+  throw new Error('Failed after all retries')
+}
+
 async function batchTranslateContent() {
   console.log('Starting batch translation of educational content...')
-  
+
   try {
-    // Get all songs with lyrics (including those with partial translations)
+    // Get songs that don't have English translations
     const songsToTranslate = await prisma.song.findMany({
       where: {
-        lyricsRaw: { not: null }
+        lyricsRaw: { not: null },
+        translations: {
+          none: {
+            targetLang: 'en'
+          }
+        }
       },
       select: {
         id: true,
@@ -28,17 +60,13 @@ async function batchTranslateContent() {
           }
         }
       },
-      take: 10 // Process 10 songs at a time
+      take: 5 // Process 5 songs at a time to reduce rate limiting
     })
 
     console.log(`Found ${songsToTranslate.length} songs that need translations`)
 
     for (const song of songsToTranslate) {
-      // Skip if already has English translation
-      if (song.translations && song.translations.length > 0) {
-        console.log(`\n✓ Skipping: ${song.artist} - ${song.title} (already has translation)`)
-        continue
-      }
+      // Songs are already filtered to not have English translations, so no need to skip
 
       console.log(`\nTranslating: ${song.artist} - ${song.title}`)
 
@@ -68,7 +96,7 @@ async function batchTranslateContent() {
           for (let i = 0; i < lyrics.length; i++) {
             const line = lyrics[i]
             try {
-              const translation = await translate(line, targetLang)
+              const translation = await translateWithRetry(line, targetLang)
               translatedLines.push(translation.text)
 
               // Show progress for long songs
@@ -76,16 +104,16 @@ async function batchTranslateContent() {
                 console.log(`      Progress: ${i}/${lyrics.length} lines`)
               }
 
-              // Longer delay to respect API rate limits (DeepL free tier: 3 requests per second)
-              await new Promise(resolve => setTimeout(resolve, 500)) // 0.5 second between translations
+              // Increased delay to respect API rate limits (DeepL free tier: 3 requests per second)
+              await new Promise(resolve => setTimeout(resolve, 1000)) // 1 second between translations
             } catch (lineError) {
               console.error(`      Failed to translate line ${i + 1}: ${lineError}`)
               translatedLines.push(line) // Keep original if translation fails
             }
           }
 
-          // Translate the title
-          const titleTranslation = await translate(song.title, targetLang)
+          // Translate the title with retry logic
+          const titleTranslation = await translateWithRetry(song.title, targetLang)
           
           // Save translation to database
           await prisma.translation.upsert({
@@ -117,9 +145,9 @@ async function batchTranslateContent() {
           console.error(`    ✗ Failed to translate to ${targetLang}:`, error)
         }
       }
-      
-      // Longer delay between songs to respect API limits
-      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Much longer delay between songs to respect API limits
+      await new Promise(resolve => setTimeout(resolve, 3000)) // 3 seconds between songs
     }
 
     // Summary

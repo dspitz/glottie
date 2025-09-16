@@ -112,7 +112,7 @@ function findVerbRoot(word: string): string | null {
       if (typeof forms === 'string' && forms === lowerWord) {
         return infinitive
       }
-      if (typeof forms === 'object') {
+      if (typeof forms === 'object' && forms !== null) {
         for (const form of Object.values(forms)) {
           if (form === lowerWord) {
             return infinitive

@@ -27,6 +27,7 @@ export async function GET(
         level: true,
         popularity: true,
         genres: true,
+        culturalContext: true,
         translations: true
       }
     })
@@ -114,7 +115,13 @@ export async function GET(
     let dbTranslations: { [targetLang: string]: string[] } = {}
     console.log(`📚 Processing translations for song ${song.id}:`, {
       hasTranslations: !!song.translations,
-      translationCount: song.translations?.length || 0
+      translationCount: song.translations?.length || 0,
+      translations: song.translations?.map(t => ({
+        targetLang: t.targetLang,
+        provider: t.provider,
+        confidence: t.confidence,
+        lyricsLines: t.lyricsLines ? `${t.lyricsLines.length} chars` : 'null'
+      }))
     })
 
     if (song.translations && song.translations.length > 0) {
@@ -187,7 +194,7 @@ export async function GET(
       lyricsProvider: lyricsData?.provider,
       lyricsLicensed: lyricsData?.licensed,
       attribution: lyricsData?.attribution,
-      culturalContext: lyricsData?.culturalContext,
+      culturalContext: song.culturalContext || lyricsData?.culturalContext,
       translations: finalTranslations,
       synchronized: adjustedSynchronized,
       

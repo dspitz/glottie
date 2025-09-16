@@ -106,19 +106,31 @@ export function SynchronizedLyrics({
 
   // Pre-load translations from props if available
   useEffect(() => {
+    console.log('🔍 SynchronizedLyricsClean: Translation preload check', {
+      translationArrayLength: translationArray.length,
+      lineTranslationsCount: Object.keys(lineTranslations).length,
+      translationArraySample: translationArray.slice(0, 3),
+      linesCount: lines.length
+    })
+
     if (translationArray.length > 0 && Object.keys(lineTranslations).length === 0) {
       const translationMap: { [key: number]: string } = {}
       translationArray.forEach((translation, index) => {
         if (translation && typeof translation === 'string') {
           translationMap[index] = translation
+          console.log(`📝 Translation[${index}]: "${translation.substring(0, 50)}${translation.length > 50 ? '...' : ''}"`)
+        } else {
+          console.warn(`⚠️ Invalid translation at index ${index}:`, translation)
         }
       })
       if (Object.keys(translationMap).length > 0) {
-        console.log(`📚 Pre-loaded ${Object.keys(translationMap).length} translations`)
+        console.log(`📚 Pre-loaded ${Object.keys(translationMap).length} translations out of ${translationArray.length} total`)
         setLineTranslations(translationMap)
+      } else {
+        console.warn('⚠️ No valid translations found in translationArray')
       }
     }
-  }, [translationArray, lineTranslations])
+  }, [translationArray, lineTranslations, lines.length])
 
   // Determine playback time based on mode
   const currentTimeMs = useMemo(() => {
@@ -340,18 +352,76 @@ export function SynchronizedLyrics({
 
   // Handle sentence click
   const handleSentenceClick = useCallback((text: string, index: number) => {
+    console.log('🎯 SynchronizedLyricsClean: Sentence click debug', {
+      text: text.substring(0, 50),
+      clickedIndex: index,
+      hasSynchronizedData: !!synchronizedData,
+      lineTranslationsCount: Object.keys(lineTranslations).length,
+      translationArrayLength: translationArray.length
+    })
+
     setSelectedSentence(text)
 
     const translationIndex = synchronizedData && synchronizedLineToTranslationIndex[text] !== undefined
       ? synchronizedLineToTranslationIndex[text]
       : index
 
-    // Always use pre-downloaded translations if available
+    console.log('🔍 Translation lookup debug', {
+      originalIndex: index,
+      translationIndex: translationIndex,
+      hasLineTranslation: !!lineTranslations[translationIndex],
+      hasArrayTranslation: !!translationArray[translationIndex],
+      lineTranslation: lineTranslations[translationIndex]?.substring(0, 50),
+      arrayTranslation: translationArray[translationIndex]?.substring(0, 50)
+    })
+
+    // Always use pre-downloaded translations if available with multiple fallback strategies
+    let foundTranslation = null
+    let foundMethod = ''
+
+    // Strategy 1: Use mapped translation index (for synchronized lyrics)
     if (lineTranslations[translationIndex]) {
-      setSelectedSentenceTranslations([lineTranslations[translationIndex]])
+      foundTranslation = lineTranslations[translationIndex]
+      foundMethod = `lineTranslations[${translationIndex}]`
     } else if (translationArray[translationIndex]) {
-      setSelectedSentenceTranslations([translationArray[translationIndex]])
+      foundTranslation = translationArray[translationIndex]
+      foundMethod = `translationArray[${translationIndex}]`
+    }
+    // Strategy 2: Fallback to original index if mapped index failed
+    else if (translationIndex !== index) {
+      if (lineTranslations[index]) {
+        foundTranslation = lineTranslations[index]
+        foundMethod = `lineTranslations[${index}] (fallback)`
+      } else if (translationArray[index]) {
+        foundTranslation = translationArray[index]
+        foundMethod = `translationArray[${index}] (fallback)`
+      }
+    }
+    // Strategy 3: Try nearby indices (±1) for slight misalignments
+    else {
+      for (const offset of [-1, 1, -2, 2]) {
+        const tryIndex = index + offset
+        if (tryIndex >= 0) {
+          if (lineTranslations[tryIndex]) {
+            foundTranslation = lineTranslations[tryIndex]
+            foundMethod = `lineTranslations[${tryIndex}] (nearby offset ${offset})`
+            break
+          } else if (translationArray[tryIndex]) {
+            foundTranslation = translationArray[tryIndex]
+            foundMethod = `translationArray[${tryIndex}] (nearby offset ${offset})`
+            break
+          }
+        }
+      }
+    }
+
+    if (foundTranslation) {
+      console.log(`✅ Found translation via ${foundMethod}: "${foundTranslation.substring(0, 50)}..."`)
+      setSelectedSentenceTranslations([foundTranslation])
     } else {
+      console.warn(`⚠️ No translation found for "${text.substring(0, 30)}" at index ${translationIndex} (original: ${index})`)
+      console.warn(`   Available lineTranslations indices:`, Object.keys(lineTranslations))
+      console.warn(`   translationArray length:`, translationArray.length)
       setSelectedSentenceTranslations([])
     }
     setIsModalOpen(true)

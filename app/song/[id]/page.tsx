@@ -209,7 +209,8 @@ export default function SongPage() {
           spotifyUrl: lyricsData.spotifyUrl,
           previewUrl: lyricsData.previewUrl,
           albumArt: lyricsData.albumArt,
-          albumArtSmall: lyricsData.albumArtSmall
+          albumArtSmall: lyricsData.albumArtSmall,
+          culturalContext: lyricsData.culturalContext
         }}
         backHref={backHref}
         backText={backText}

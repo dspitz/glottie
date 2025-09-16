@@ -62,16 +62,27 @@ export function LyricsView({
       type: typeof translations,
       isArray: Array.isArray(translations),
       keys: translations && typeof translations === 'object' ? Object.keys(translations) : null,
-      firstTranslation: Array.isArray(translations) && translations[0] ? translations[0].substring(0, 40) : null
+      firstTranslation: Array.isArray(translations) && translations[0] ? translations[0].substring(0, 40) : null,
+      rawTranslations: translations
     })
 
     if (Array.isArray(translations)) {
       console.log(`✅ LyricsView: Using translations array with ${translations.length} items`)
+      translations.forEach((trans, idx) => {
+        if (idx < 3) { // Log first 3 translations for debugging
+          console.log(`  Translation[${idx}]: "${trans?.substring(0, 50)}${trans?.length > 50 ? '...' : ''}"`)
+        }
+      })
       return translations
     } else if (typeof translations === 'object' && translations !== null) {
       // Extract English translations from the object format { en: [...], pt: [...] }
       const enTranslations = translations['en'] || []
       console.log(`✅ LyricsView: Extracted ${enTranslations.length} English translations from object`)
+      enTranslations.forEach((trans, idx) => {
+        if (idx < 3) { // Log first 3 translations for debugging
+          console.log(`  EnTranslation[${idx}]: "${trans?.substring(0, 50)}${trans?.length > 50 ? '...' : ''}"`)
+        }
+      })
       return enTranslations
     }
     console.log('⚠️ LyricsView: No translations available')

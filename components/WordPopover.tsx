@@ -59,20 +59,20 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
         {children}
       </PopoverTrigger>
       
-      <PopoverContent className="w-96 max-h-[600px] overflow-y-auto">
+      <PopoverContent className="w-96 max-h-[600px] overflow-y-auto text-white">
         <div className="space-y-3">
           {/* Word header */}
-          <div className="border-b pb-2">
+          <div className="border-b border-white/20 pb-2">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg">{word}</h3>
+              <h3 className="font-semibold text-lg text-white">{word}</h3>
               {definition && (
-                <span className="text-xs bg-muted px-2 py-1 rounded">
+                <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">
                   {definition.pos}
                 </span>
               )}
             </div>
             {definition && definition.lemma !== word && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/70">
                 Lemma: {definition.lemma}
               </p>
             )}
@@ -80,7 +80,7 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
 
           {/* Loading state */}
           {isLoading && (
-            <div className="flex items-center justify-center py-4 text-muted-foreground">
+            <div className="flex items-center justify-center py-4 text-white/70">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading definition...
             </div>
@@ -88,7 +88,7 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
 
           {/* Error state */}
           {error && (
-            <div className="text-destructive text-sm">
+            <div className="text-red-400 text-sm">
               <p>{error}</p>
             </div>
           )}
@@ -98,13 +98,9 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
             <>
               {/* Definitions */}
               <div>
-                <h4 className="flex items-center font-medium text-sm mb-2">
-                  <Book className="mr-1 h-4 w-4" />
-                  Definitions
-                </h4>
                 <ul className="space-y-1">
                   {definition.definitions.map((def: string, index: number) => (
-                    <li key={index} className="text-sm">
+                    <li key={index} className="text-lg text-white">
                       • {def}
                     </li>
                   ))}
@@ -114,13 +110,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
               {/* Examples */}
               {definition.examples && definition.examples.length > 0 && (
                 <div>
-                  <h4 className="flex items-center font-medium text-sm mb-2">
+                  <h4 className="flex items-center font-medium text-sm mb-2 text-white">
                     <MessageSquare className="mr-1 h-4 w-4" />
                     Examples
                   </h4>
                   <ul className="space-y-1">
                     {definition.examples.slice(0, 2).map((example: string, index: number) => (
-                      <li key={index} className="text-sm italic text-muted-foreground">
+                      <li key={index} className="text-sm italic text-white/70">
                         "{example}"
                       </li>
                     ))}
@@ -131,30 +127,30 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
               {/* Conjugations for verbs */}
               {definition.conjugations && (
                 <div className="space-y-3">
-                  <h4 className="font-medium text-sm mb-2 border-b pb-1">Full Conjugations</h4>
+                  <h4 className="font-medium text-sm mb-2 border-b border-white/20 pb-1 text-white">Full Conjugations</h4>
 
                   {/* Non-finite forms */}
                   {(definition.conjugations.gerundio || definition.conjugations.participio) && (
-                    <div className="bg-muted/50 rounded p-2">
-                      <p className="font-medium text-xs mb-1">Non-finite forms:</p>
+                    <div className="bg-white/10 rounded p-2">
+                      <p className="font-medium text-xs mb-1 text-white">Non-finite forms:</p>
                       {definition.conjugations.gerundio && (
-                        <p className="text-xs">Gerund: <strong>{definition.conjugations.gerundio}</strong></p>
+                        <p className="text-xs text-white">Gerund: <strong>{definition.conjugations.gerundio}</strong></p>
                       )}
                       {definition.conjugations.participio && (
-                        <p className="text-xs">Past Participle: <strong>{definition.conjugations.participio}</strong></p>
+                        <p className="text-xs text-white">Past Participle: <strong>{definition.conjugations.participio}</strong></p>
                       )}
                     </div>
                   )}
 
                   <div className="space-y-2 text-xs">
                     {/* Present tense */}
-                    <details className="group">
-                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    <details className="group" open>
+                      <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                         Presente (Present)
                       </summary>
                       <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.presente).map(([person, form]) => (
-                          <span key={person} className="text-xs">
+                          <span key={person} className="text-xs text-white">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
@@ -162,13 +158,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
                     </details>
 
                     {/* Preterite */}
-                    <details className="group">
-                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    <details className="group" open>
+                      <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                         Pretérito (Preterite)
                       </summary>
                       <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.preterito).map(([person, form]) => (
-                          <span key={person} className="text-xs">
+                          <span key={person} className="text-xs text-white">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
@@ -176,13 +172,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
                     </details>
 
                     {/* Imperfect */}
-                    <details className="group">
-                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    <details className="group" open>
+                      <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                         Imperfecto (Imperfect)
                       </summary>
                       <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.imperfecto).map(([person, form]) => (
-                          <span key={person} className="text-xs">
+                          <span key={person} className="text-xs text-white">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
@@ -190,13 +186,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
                     </details>
 
                     {/* Future */}
-                    <details className="group">
-                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    <details className="group" open>
+                      <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                         Futuro (Future)
                       </summary>
                       <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.futuro).map(([person, form]) => (
-                          <span key={person} className="text-xs">
+                          <span key={person} className="text-xs text-white">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
@@ -204,13 +200,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
                     </details>
 
                     {/* Conditional */}
-                    <details className="group">
-                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    <details className="group" open>
+                      <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                         Condicional (Conditional)
                       </summary>
                       <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.condicional).map(([person, form]) => (
-                          <span key={person} className="text-xs">
+                          <span key={person} className="text-xs text-white">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
@@ -218,13 +214,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
                     </details>
 
                     {/* Subjunctive Present */}
-                    <details className="group">
-                      <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                    <details className="group" open>
+                      <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                         Subjuntivo Presente (Present Subjunctive)
                       </summary>
                       <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                         {Object.entries(definition.conjugations.subjuntivo_presente).map(([person, form]) => (
-                          <span key={person} className="text-xs">
+                          <span key={person} className="text-xs text-white">
                             {person}: <strong>{form}</strong>
                           </span>
                         ))}
@@ -233,13 +229,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
 
                     {/* Subjunctive Imperfect */}
                     {definition.conjugations.subjuntivo_imperfecto && (
-                      <details className="group">
-                        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                      <details className="group" open>
+                        <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                           Subjuntivo Imperfecto (Imperfect Subjunctive)
                         </summary>
                         <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                           {Object.entries(definition.conjugations.subjuntivo_imperfecto).map(([person, form]) => (
-                            <span key={person} className="text-xs">
+                            <span key={person} className="text-xs text-white">
                               {person}: <strong>{form}</strong>
                             </span>
                           ))}
@@ -249,13 +245,13 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
 
                     {/* Imperative */}
                     {definition.conjugations.imperativo && (
-                      <details className="group">
-                        <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">
+                      <details className="group" open>
+                        <summary className="cursor-pointer font-medium text-white/70 hover:text-white">
                           Imperativo (Imperative)
                         </summary>
                         <div className="grid grid-cols-2 gap-1 ml-2 mt-1">
                           {Object.entries(definition.conjugations.imperativo).map(([person, form]) => (
-                            <span key={person} className="text-xs">
+                            <span key={person} className="text-xs text-white">
                               {person}: <strong>{form}</strong>
                             </span>
                           ))}
