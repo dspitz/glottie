@@ -7,6 +7,8 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { SkipBack, SkipForward, Play } from 'lucide-react'
+import { ClickableWord } from '@/components/ClickableWord'
+import { parseTextIntoWords } from '@/lib/utils'
 
 interface SentenceModalProps {
   isOpen: boolean
@@ -97,19 +99,29 @@ export function SentenceModal({
 
         <div className="flex-1 overflow-y-auto space-y-4 px-6 pb-4">
           {/* Original sentence */}
-          <div className="rounded-lg bg-white/10 p-4">
+          <div className="rounded-lg bg-white/10 p-4" style={{ minHeight: '124px' }}>
             <h3 className="font-medium text-sm text-white/70 mb-2">
               Spanish
             </h3>
-            <p className="text-lg text-white">{sentence}</p>
+            <div className="text-lg text-white">
+              {parseTextIntoWords(sentence).map((token, index) => (
+                <ClickableWord
+                  key={index}
+                  word={token.word}
+                  cleanWord={token.cleanWord}
+                >
+                  {token.word}
+                </ClickableWord>
+              ))}
+            </div>
           </div>
 
           {/* Translation */}
-          <div className="rounded-lg border border-white/20 p-4">
+          <div className="rounded-lg border border-white/20 p-4" style={{ minHeight: '124px' }}>
             <h3 className="font-medium text-sm text-white/70 mb-2">
               English Translation
             </h3>
-            
+
             {translation ? (
               <p className="text-lg text-white">{translation}</p>
             ) : (

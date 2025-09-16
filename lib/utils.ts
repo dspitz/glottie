@@ -65,3 +65,54 @@ export function debounce<T extends (...args: any[]) => any>(
     timeout = setTimeout(() => func(...args), waitFor)
   }
 }
+
+export interface WordToken {
+  word: string           // Original word with punctuation
+  cleanWord: string      // Cleaned word for dictionary lookup
+  isWord: boolean        // Whether this token is a meaningful word
+}
+
+export function parseTextIntoWords(text: string): WordToken[] {
+  // Split by whitespace while preserving spaces
+  const tokens = text.split(/(\s+)/)
+
+  const wordTokens: WordToken[] = []
+
+  for (const token of tokens) {
+    if (/^\s+$/.test(token)) {
+      // This is just whitespace, add as-is
+      wordTokens.push({
+        word: token,
+        cleanWord: '',
+        isWord: false
+      })
+    } else if (token.trim().length > 0) {
+      // This is a word (potentially with punctuation)
+      const cleanWord = cleanWordForLookup(token)
+      wordTokens.push({
+        word: token,
+        cleanWord,
+        isWord: cleanWord.length > 1 && /[a-záéíóúñüA-ZÁÉÍÓÚÑÜ]/.test(cleanWord)
+      })
+    }
+  }
+
+  return wordTokens
+}
+
+export function cleanWordForLookup(word: string): string {
+  // Remove punctuation and convert to lowercase for dictionary lookup
+  return word
+    .toLowerCase()
+    .replace(/[¡¿""''"",.:;!?()[\]{}\-–—]/g, '') // Remove common punctuation
+    .trim()
+}
+
+export function normalizeSpanishText(text: string): string {
+  // Helper function to normalize Spanish text for better matching
+  return text
+    .toLowerCase()
+    .normalize('NFD') // Decompose accented characters
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
+    .trim()
+}
