@@ -565,7 +565,10 @@ export function SynchronizedLyrics({
           const newIndex = currentLineIndex - 1
           // Handle both synchronized and non-synchronized scenarios
           if (newIndex >= 0) {
-            // If we have synchronized lines, use them
+            // Navigate to the line with time seeking
+            navigateToLine(newIndex)
+
+            // Update modal content
             if (synchronizedLines.length > 0 && synchronizedLines[newIndex]) {
               setSelectedSentence(synchronizedLines[newIndex].text)
               // Map to correct translation index
@@ -588,7 +591,6 @@ export function SynchronizedLyrics({
                 setSelectedSentenceTranslations([])
               }
             }
-            setCurrentLineIndex(newIndex)
           }
         }}
         onNavigateNext={() => {
@@ -596,7 +598,10 @@ export function SynchronizedLyrics({
           const maxIndex = synchronizedLines.length > 0 ? synchronizedLines.length - 1 : lines.length - 1
           // Handle both synchronized and non-synchronized scenarios
           if (newIndex <= maxIndex) {
-            // If we have synchronized lines, use them
+            // Navigate to the line with time seeking
+            navigateToLine(newIndex)
+
+            // Update modal content
             if (synchronizedLines.length > 0 && synchronizedLines[newIndex]) {
               setSelectedSentence(synchronizedLines[newIndex].text)
               // Map to correct translation index
@@ -619,7 +624,6 @@ export function SynchronizedLyrics({
                 setSelectedSentenceTranslations([])
               }
             }
-            setCurrentLineIndex(newIndex)
           }
         }}
         onRepeat={playbackMode !== 'unavailable' ? repeatCurrentLine : undefined}
