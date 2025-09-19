@@ -11,6 +11,7 @@ import { SongModal } from '@/components/SongModal'
 import { Button } from '@/components/ui/button'
 import { fetchLevels } from '@/lib/client'
 import { getLevelDescription } from '@/lib/utils'
+import { getLevelTags } from '@/lib/levelTags'
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 
 function LevelPageContent() {
@@ -124,48 +125,76 @@ function LevelPageContent() {
 
   const levelSongs = levelsData?.levels[level.toString()] || []
   const stats = levelsData?.stats || {}
+  const tags = getLevelTags(level)
 
   return (
     <div className="px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <Link href="/">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              All Levels
-            </Button>
-          </Link>
-          
-        </div>
+        <div className="flex items-center justify-between gap-4 mb-4">
+          {/* Left Navigation */}
+          {level === 1 ? (
+            <Link href="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                All Levels
+              </Button>
+            </Link>
+          ) : (
+            <Link href={`/levels/${level - 1}`}>
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Level {level - 1}
+              </Button>
+            </Link>
+          )}
 
-        <h1 className="text-3xl font-bold mb-2 text-center">
-          Level {level} Songs
-        </h1>
-        
-        <p className="text-lg text-muted-foreground mb-4 text-center">
-          {getLevelDescription(level)}
-        </p>
-
-        <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-          <div>
-            <span className="font-medium text-foreground">{levelSongs.length}</span> songs
-          </div>
-          {levelSongs.length > 0 && (
-            <>
-              <div>
-                Difficulty range: <span className="font-medium text-foreground">
-                  {Math.min(...levelSongs.map(s => s.difficultyScore || 0)).toFixed(1)} - {Math.max(...levelSongs.map(s => s.difficultyScore || 0)).toFixed(1)}
-                </span>
-              </div>
-              <div>
-                Avg words per song: <span className="font-medium text-foreground">
-                  {Math.round(levelSongs.reduce((sum, s) => sum + (s.wordCount || 0), 0) / levelSongs.length) || 0}
-                </span>
-              </div>
-            </>
+          {/* Right Navigation */}
+          {level < 5 && (
+            <Link href={`/levels/${level + 1}`}>
+              <Button variant="outline" size="sm">
+                Level {level + 1}
+                <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+              </Button>
+            </Link>
           )}
         </div>
+
+        <h1 className="text-5xl font-medium mt-6 mb-2 text-center">
+          Level {level}
+        </h1>
+
+        <p className="text-lg text-muted-foreground mb-4 text-center">
+          {tags?.focus || getLevelDescription(level)}
+        </p>
+
+        {/* Educational Tags */}
+        {tags && (
+          <div className="mb-10">
+            <div className="flex flex-wrap justify-center gap-2">
+              {/* Grammar Tags */}
+              {tags.grammar.map((tag, index) => (
+                <span
+                  key={`grammar-${index}`}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-gray-700"
+                  style={{ backgroundColor: '#f7f7f7' }}
+                >
+                  {tag.label}
+                </span>
+              ))}
+              {/* Theme Tags */}
+              {tags.themes.map((tag, index) => (
+                <span
+                  key={`theme-${index}`}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-gray-700"
+                  style={{ backgroundColor: '#f7f7f7' }}
+                >
+                  {tag.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Songs List */}
@@ -185,8 +214,10 @@ function LevelPageContent() {
                 previewUrl={song.previewUrl}
                 albumArt={song.albumArt}
                 albumArtSmall={song.albumArtSmall}
-                wordCount={song.wordCount}
-                verbDensity={song.verbDensity}
+                wordCount={song.metrics?.wordCount}
+                verbDensity={song.metrics?.verbDensity}
+                genres={song.genres}
+                difficultyScore={song.metrics?.difficultyScore || song.difficultyScore}
                 onClick={() => handleSongClick(song.id)}
               />
             ))}
@@ -202,31 +233,6 @@ function LevelPageContent() {
           <p className="text-sm text-muted-foreground">
             Try seeding more data or check other levels.
           </p>
-        </div>
-      )}
-
-      {/* Navigation */}
-      {levelSongs.length > 0 && (
-        <div className="flex justify-between items-center mt-12 pt-8 border-t">
-          {level > 1 && (
-            <Link href={`/levels/${level - 1}`}>
-              <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Level {level - 1}
-              </Button>
-            </Link>
-          )}
-          
-          <div></div>
-          
-          {level < 10 && (
-            <Link href={`/levels/${level + 1}`}>
-              <Button variant="outline">
-                Level {level + 1}
-                <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
-              </Button>
-            </Link>
-          )}
         </div>
       )}
 

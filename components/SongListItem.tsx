@@ -18,6 +18,7 @@ interface SongListItemProps {
   albumArtSmall?: string
   wordCount?: number
   verbDensity?: number
+  genres?: string | null
   onClick?: () => void
 }
 
@@ -34,6 +35,7 @@ export function SongListItem({
   albumArtSmall,
   wordCount,
   verbDensity,
+  genres,
   onClick
 }: SongListItemProps) {
   const { isExiting } = useSharedTransition()
@@ -52,8 +54,8 @@ export function SongListItem({
   
   return (
     <Link href={songUrl} onClick={handleClick} className="block">
-      <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer">
-        <CardContent className="flex items-center gap-3 p-4">
+      <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer" style={{ borderRadius: '20px' }}>
+        <CardContent className="flex items-center p-4" style={{ gap: '16px' }}>
           {/* Album Thumbnail */}
           <motion.div
             className="bg-muted rounded-lg flex items-center justify-center overflow-hidden shrink-0"
@@ -80,16 +82,24 @@ export function SongListItem({
             <h3 className="font-semibold text-lg truncate">
               {title}
             </h3>
-            <p className="text-muted-foreground truncate">
-              by {artist}
+            <p className="text-sm text-muted-foreground truncate" style={{ marginTop: '8px' }}>
+              {artist}
             </p>
 
-            {/* Word count */}
-            {wordCount && (
-              <div className="mt-2 text-sm text-muted-foreground">
-                {wordCount} words
-              </div>
-            )}
+            {/* Genre and word count - always show the row */}
+            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+              {genres ? (
+                <span>{genres.split(',')[0].trim().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
+              ) : (
+                <span className="italic">Genre pending</span>
+              )}
+              <span className="text-muted-foreground/50">•</span>
+              {wordCount ? (
+                <span>{wordCount} words</span>
+              ) : (
+                <span className="italic">Word count pending</span>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

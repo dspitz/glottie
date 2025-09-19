@@ -17,7 +17,15 @@ export async function GET(request: NextRequest) {
         albumArtSmall: true,
         previewUrl: true,
         spotifyId: true,
-        spotifyUrl: true
+        spotifyUrl: true,
+        genres: true,
+        metrics: {
+          select: {
+            wordCount: true,
+            verbDensity: true,
+            difficultyScore: true
+          }
+        }
       },
       orderBy: [
         { level: 'asc' },
