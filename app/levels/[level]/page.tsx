@@ -144,7 +144,7 @@ function LevelPageContent() {
             <Link href={`/levels/${level - 1}`}>
               <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Level {level - 1}
+                Spanish {level - 1}
               </Button>
             </Link>
           )}
@@ -153,18 +153,18 @@ function LevelPageContent() {
           {level < 5 && (
             <Link href={`/levels/${level + 1}`}>
               <Button variant="outline" size="sm">
-                Level {level + 1}
+                Spanish {level + 1}
                 <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
               </Button>
             </Link>
           )}
         </div>
 
-        <h1 className="text-5xl font-medium mt-6 mb-2 text-center">
-          Level {level}
+        <h1 className="text-5xl font-medium mt-14 mb-2 text-center">
+          Spanish {level}
         </h1>
 
-        <p className="text-lg text-muted-foreground mb-4 text-center">
+        <p className="text-lg text-muted-foreground mb-8 text-center whitespace-pre-line">
           {tags?.focus || getLevelDescription(level)}
         </p>
 
@@ -228,7 +228,7 @@ function LevelPageContent() {
           <div className="text-6xl mb-4">🎵</div>
           <h3 className="text-xl font-semibold mb-2">No Songs Yet</h3>
           <p className="text-muted-foreground mb-4">
-            There are no songs available for Level {level} at the moment.
+            There are no songs available for Spanish {level} at the moment.
           </p>
           <p className="text-sm text-muted-foreground">
             Try seeding more data or check other levels.

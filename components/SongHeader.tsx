@@ -9,6 +9,7 @@ import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
 import { useSession } from 'next-auth/react'
 import { useSharedTransition, getSharedElementTransition } from '@/contexts/SharedTransitionContext'
 import DevRating from '@/components/DevRating'
+import UserFeedback from '@/components/UserFeedback'
 
 interface Track {
   id: string
@@ -36,6 +37,10 @@ interface SongHeaderProps {
   onNext?: () => void
   onPrevious?: () => void
   devRating?: number | null
+  userRating?: number | null
+  hasLyrics?: boolean
+  hasTranslations?: boolean
+  synced?: boolean
 }
 
 // Helper function to convert RGB to HSV
@@ -270,7 +275,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
   })
 }
 
-export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating }: SongHeaderProps) {
+export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced }: SongHeaderProps) {
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
   const { data: session } = useSession()
   const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
@@ -385,6 +390,17 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
             </Button>
           </Link>
         )}
+
+        {/* User Feedback */}
+        <div className="pointer-events-auto">
+          <UserFeedback
+            songId={track.id}
+            initialRating={userRating}
+            initialHasLyrics={hasLyrics}
+            initialHasTranslations={hasTranslations}
+            initialSynced={synced}
+          />
+        </div>
 
         {/* Dev Rating on the right (only shows in development) */}
         {process.env.NODE_ENV === 'development' && (

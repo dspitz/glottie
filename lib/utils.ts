@@ -27,16 +27,16 @@ export function getLevelColor(level: number): string {
 
 export function getLevelDescription(level: number): string {
   const descriptions = {
-    1: 'Beginner - Simple vocabulary and present tense',
-    2: 'Beginner+ - Basic past tense and common phrases',
-    3: 'Elementary - Simple future tense and descriptions',
-    4: 'Elementary+ - Mixed tenses and more vocabulary',
-    5: 'Intermediate - Complex sentences and some idioms',
-    6: 'Intermediate+ - Advanced tenses and expressions',
-    7: 'Upper-Intermediate - Subjunctive and complex grammar',
-    8: 'Upper-Intermediate+ - Sophisticated vocabulary',
-    9: 'Advanced - Literary language and complex idioms',
-    10: 'Expert - Native-level complexity and nuanced expressions',
+    1: 'Beginner - Simple vocabulary\nand present tense',
+    2: 'Beginner+ - Basic past tense\nand common phrases',
+    3: 'Elementary - Simple future tense\nand descriptions',
+    4: 'Elementary+ - Mixed tenses\nand more vocabulary',
+    5: 'Intermediate - Complex sentences\nand some idioms',
+    6: 'Intermediate+ - Advanced tenses\nand expressions',
+    7: 'Upper-Intermediate - Subjunctive\nand complex grammar',
+    8: 'Upper-Intermediate+\nSophisticated vocabulary',
+    9: 'Advanced - Literary language\nand complex idioms',
+    10: 'Expert - Native-level complexity\nand nuanced expressions',
   }
   return descriptions[level as keyof typeof descriptions] || 'Unknown level'
 }

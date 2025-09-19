@@ -38,6 +38,10 @@ model Song {
   tempo         Float?   // BPM from Spotify
   isActive      Boolean  @default(true) // soft delete flag
   devRating     Int?     // Developer rating 1-5 stars (hidden in production)
+  userRating    Int?     // User rating 1-5 stars
+  hasLyrics     Boolean  @default(true) // User feedback: song has lyrics
+  hasTranslations Boolean @default(true) // User feedback: song has translations
+  synced        Boolean  @default(true) // User feedback: song is synced
   translations  Translation[]
   metrics       Metrics?
   level         Int?     // 1..5 (difficulty level)

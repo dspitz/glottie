@@ -152,6 +152,11 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                 backText={backText}
                 level={lyricsData.level}
                 difficultyScore={lyricsData.difficultyScore}
+                devRating={lyricsData.devRating}
+                userRating={lyricsData.userRating}
+                hasLyrics={lyricsData.hasLyrics}
+                hasTranslations={lyricsData.hasTranslations}
+                synced={lyricsData.synced}
                 onColorChange={handleColorChange}
                 onBackClick={onClose}
               />

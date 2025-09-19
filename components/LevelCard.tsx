@@ -25,20 +25,25 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
 
   return (
     <Link href={`/levels/${level}`} className="block transition-transform hover:scale-105">
-      <Card className={cn('h-full cursor-pointer hover:shadow-lg', className)}>
+      <Card className={cn('h-full cursor-pointer hover:shadow-lg @container', className)}>
         <CardHeader className="pb-3 text-center">
-          <CardTitle className="text-lg">Level {level}</CardTitle>
+          <CardTitle className="text-lg">Spanish {level}</CardTitle>
           <p className="text-sm text-muted-foreground">
             {getLevelDescription(level)}
           </p>
         </CardHeader>
-        
+
         <CardContent className="pt-0">
           <div className="space-y-4 flex flex-col items-center">
-            {/* Fanned stack of album art */}
+            {/* Fanned stack of album art - container for scaling */}
             {featuredSongs.length > 0 && (
-              <div className="relative h-32 mb-4 flex justify-center pt-6">
-                <div className="relative" style={{ width: `${80 + (featuredSongs.length - 1) * 30}px` }}>
+              <div className="flex justify-center items-center mt-8 mb-3 @sm:mt-10 @sm:mb-5 @md:mt-12 @md:mb-7 @lg:mt-16 @lg:mb-11 @xl:mt-20 @xl:mb-15 @2xl:mt-24 @2xl:mb-19">
+                <div
+                  className="relative h-32 transition-transform duration-300 origin-center scale-100 @sm:scale-110 @md:scale-125 @lg:scale-[1.5] @xl:scale-[1.75] @2xl:scale-[2.0]"
+                  style={{
+                    width: `${80 + (featuredSongs.length - 1) * 30}px`,
+                  }}
+                >
                   {featuredSongs.map((song, index) => {
                     // Determine position type
                     const positionType = featuredSongs.length === 3
@@ -48,7 +53,7 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
                     // Base styles for all thumbnails
                     const baseStyles = "absolute transition-all hover:translate-y-[-4px] rounded-md overflow-hidden border-[3px] border-white";
 
-                    // Position-specific styles
+                    // Base sizes (will be scaled by container)
                     const positionStyles = {
                       left: {
                         className: "w-[86px] h-[86px]",
@@ -57,8 +62,6 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
                           top: 0,
                           zIndex: 1,
                           transform: 'rotate(-8deg)',
-                          width: '86px',
-                          height: '86px',
                           boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
                         }
                       },
@@ -69,8 +72,6 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
                           top: -8,
                           zIndex: 3,
                           transform: 'none',
-                          width: '102px',
-                          height: '102px',
                           boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
                         }
                       },
@@ -81,8 +82,6 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
                           top: 0,
                           zIndex: 2,
                           transform: 'rotate(8deg)',
-                          width: '86px',
-                          height: '86px',
                           boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
                         }
                       },
@@ -93,8 +92,6 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
                           top: 0,
                           zIndex: index === 0 ? 2 : 1,
                           transform: 'none',
-                          width: '86px',
-                          height: '86px',
                           boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
                         }
                       }
@@ -112,8 +109,8 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
                           <Image
                             src={song.albumArt}
                             alt={`${song.title} album cover`}
-                            width={positionType === 'center' ? 96 : 80}
-                            height={positionType === 'center' ? 96 : 80}
+                            width={positionType === 'center' ? 102 : 86}
+                            height={positionType === 'center' ? 102 : 86}
                             className="w-full h-full object-cover"
                           />
                         ) : (

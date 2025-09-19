@@ -77,7 +77,7 @@ export default function SignInPage() {
             <div className="flex justify-center mb-4">
               <Music className="h-12 w-12 text-primary" />
             </div>
-            <CardTitle>Sign In to Recanta</CardTitle>
+            <CardTitle>Sign In to diddydum</CardTitle>
             <CardDescription>
               Sign in with your Spotify account to unlock full song playback and personalized features
             </CardDescription>

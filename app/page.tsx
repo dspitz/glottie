@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { LevelCard } from '@/components/LevelCard'
 import { fetchLevels } from '@/lib/client'
 import { Loader2, AlertCircle } from 'lucide-react'
+import Image from 'next/image'
 
 export default function HomePage() {
   const { data: levelsData, isLoading, error } = useQuery({
@@ -47,14 +48,23 @@ export default function HomePage() {
     <div className="container py-8">
       {/* Hero Section */}
       <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">
-          Learn Language Through Music
+        <div className="mb-6">
+          <Image
+            src="/images/mascot_music.png"
+            alt="Music Mascot"
+            width={200}
+            height={200}
+            className="mx-auto"
+            priority
+          />
+        </div>
+        <h1 className="text-[44px] leading-[52px] font-medium tracking-tight mb-4">
+          Learn Language<br />Through Music
         </h1>
-        <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
-          La la la your way to a new language and discover some of the<br />
-          world's greatest music along the way
+        <p className="text-lg leading-6 text-muted-foreground max-w-3xl mx-auto mb-6">
+          La la la your way to a new language and discover some of the world's greatest music along the way
         </p>
-        
+
       </div>
 
       {/* Levels Grid */}
@@ -75,7 +85,7 @@ export default function HomePage() {
 
       {/* Getting Started Guide */}
       <div className="bg-muted/50 rounded-lg p-8">
-        <h3 className="text-xl font-semibold mb-4 text-center">How to Use Recanta</h3>
+        <h3 className="text-xl font-semibold mb-4 text-center">How to Use diddydum</h3>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
@@ -83,7 +93,7 @@ export default function HomePage() {
             </div>
             <h4 className="font-medium mb-2">Choose Your Level</h4>
             <p className="text-sm text-muted-foreground">
-              Start with Level 1 for beginners or pick a level that matches your Spanish proficiency
+              Start with Spanish 1 for beginners or pick a level that matches your Spanish proficiency
             </p>
           </div>
           

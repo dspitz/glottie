@@ -1,65 +1,51 @@
-#!/usr/bin/env tsx
+import { PrismaClient } from '@prisma/client'
 
-import { prisma } from '../lib/prisma'
+const prisma = new PrismaClient()
 
 async function cleanupIncompleteSongs() {
-  console.log('🧹 Starting cleanup of songs without full lyrics or sync data...')
+  console.log('🧹 Cleaning up incomplete songs from database')
+  console.log('==========================================\n')
 
   try {
-    // Get all songs from the database
+    // Get all songs to analyze
     const songs = await prisma.song.findMany({
-      where: {
-        isActive: true
-      },
       select: {
         id: true,
         title: true,
         artist: true,
+        spotifyId: true,
         lyricsRaw: true,
-        lyricsProvider: true
+        albumArt: true,
+        albumArtSmall: true,
+        isActive: true
       }
     })
 
-    console.log(`📊 Found ${songs.length} active songs to check`)
+    console.log(`Found ${songs.length} total songs in database\n`)
 
     const songsToDelete: Array<{ id: string, title: string, artist: string, reason: string }> = []
 
     for (const song of songs) {
-      let shouldDelete = false
-      let reason = ''
+      const missingItems = []
 
-      if (!song.lyricsRaw) {
-        shouldDelete = true
-        reason = 'No lyrics data'
-      } else {
-        try {
-          const lyricsData = JSON.parse(song.lyricsRaw as string)
-
-          // Check if song has synchronized data
-          const hasSyncData = lyricsData.synchronized?.lines?.length > 0
-
-          // Check if song has full lyrics (more than 5 lines)
-          const hasFullLyrics = lyricsData.lines?.length > 5
-
-          if (!hasSyncData) {
-            shouldDelete = true
-            reason = 'No synchronized lyrics data'
-          } else if (!hasFullLyrics) {
-            shouldDelete = true
-            reason = `Only ${lyricsData.lines?.length || 0} lines (excerpt only)`
-          }
-        } catch (error) {
-          shouldDelete = true
-          reason = 'Invalid lyrics data format'
-        }
+      if (!song.spotifyId) {
+        missingItems.push('Spotify ID')
       }
 
-      if (shouldDelete) {
+      if (!song.lyricsRaw) {
+        missingItems.push('lyrics')
+      }
+
+      if (!song.albumArt && !song.albumArtSmall) {
+        missingItems.push('album art')
+      }
+
+      if (missingItems.length > 0) {
         songsToDelete.push({
           id: song.id,
           title: song.title,
           artist: song.artist,
-          reason
+          reason: `Missing: ${missingItems.join(', ')}`
         })
       }
     }
@@ -86,7 +72,7 @@ async function cleanupIncompleteSongs() {
 
       console.log(`\n✅ Successfully deleted ${deleteResult.count} songs`)
     } else {
-      console.log('\n✅ All songs have full lyrics with sync data!')
+      console.log('\n✅ All songs have complete data (Spotify ID, lyrics, and album art)!')
     }
 
     // Show remaining song count
