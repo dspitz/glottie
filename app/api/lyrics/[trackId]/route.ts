@@ -175,7 +175,13 @@ export async function GET(
       translationLanguages: Object.keys(dbTranslations || {}),
       enTranslationCount: dbTranslations?.en?.length || 0,
       hasSynchronized: !!adjustedSynchronized,
-      linesCount: finalLines.length
+      linesCount: finalLines.length,
+      feedbackValues: {
+        userRating: song.userRating,
+        hasLyrics: song.hasLyrics,
+        hasTranslations: song.hasTranslations,
+        synced: song.synced
+      }
     })
 
     return NextResponse.json({

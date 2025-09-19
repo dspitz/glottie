@@ -1,32 +1,64 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Star, Check, X } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface UserFeedbackProps {
   songId: string
   initialRating?: number | null
-  initialHasLyrics?: boolean
-  initialHasTranslations?: boolean
-  initialSynced?: boolean
+  initialHasLyrics?: boolean | null
+  initialHasTranslations?: boolean | null
+  initialSynced?: boolean | null
 }
 
 export default function UserFeedback({
   songId,
   initialRating,
-  initialHasLyrics = true,
-  initialHasTranslations = true,
-  initialSynced = true
+  initialHasLyrics,
+  initialHasTranslations,
+  initialSynced
 }: UserFeedbackProps) {
+  const queryClient = useQueryClient()
   const [rating, setRating] = useState(initialRating || 0)
   const [hover, setHover] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Checkbox states
-  const [hasLyrics, setHasLyrics] = useState(initialHasLyrics)
-  const [hasTranslations, setHasTranslations] = useState(initialHasTranslations)
-  const [synced, setSynced] = useState(initialSynced)
+  // Checkbox states - Default to true if undefined/null
+  const [hasLyrics, setHasLyrics] = useState(initialHasLyrics ?? true)
+  const [hasTranslations, setHasTranslations] = useState(initialHasTranslations ?? true)
+  const [synced, setSynced] = useState(initialSynced ?? true)
+
+  // Update state when props change (e.g., when navigating to a different song)
+  useEffect(() => {
+    console.log('UserFeedback: Props changed', {
+      songId,
+      initialRating,
+      initialHasLyrics,
+      initialHasTranslations,
+      initialSynced
+    })
+    setRating(initialRating || 0)
+    setHasLyrics(initialHasLyrics ?? true)
+    setHasTranslations(initialHasTranslations ?? true)
+    setSynced(initialSynced ?? true)
+  }, [songId, initialRating, initialHasLyrics, initialHasTranslations, initialSynced])
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
 
   const updateFeedback = async (updates: {
     userRating?: number | null
@@ -35,6 +67,7 @@ export default function UserFeedback({
     synced?: boolean
   }) => {
     setIsSaving(true)
+    console.log('UserFeedback: Sending update', { songId, updates })
 
     try {
       const response = await fetch(`/api/song/${songId}/feedback`, {
@@ -50,6 +83,8 @@ export default function UserFeedback({
       }
 
       const data = await response.json()
+      console.log('UserFeedback: Response received', data)
+
       if (data.success) {
         // Update local state with server response
         if (updates.userRating !== undefined) {
@@ -64,6 +99,17 @@ export default function UserFeedback({
         if (updates.synced !== undefined) {
           setSynced(data.feedback.synced)
         }
+        console.log('UserFeedback: State updated', {
+          rating: data.feedback.userRating,
+          hasLyrics: data.feedback.hasLyrics,
+          hasTranslations: data.feedback.hasTranslations,
+          synced: data.feedback.synced
+        })
+
+        // Invalidate the React Query cache for this song
+        // This ensures fresh data is loaded when navigating back to this song
+        queryClient.invalidateQueries({ queryKey: ['lyrics', songId] })
+        console.log('UserFeedback: Cache invalidated for song', songId)
       }
     } catch (error) {
       console.error('Error updating feedback:', error)
@@ -72,13 +118,13 @@ export default function UserFeedback({
         setRating(initialRating || 0)
       }
       if (updates.hasLyrics !== undefined) {
-        setHasLyrics(initialHasLyrics)
+        setHasLyrics(initialHasLyrics ?? true)
       }
       if (updates.hasTranslations !== undefined) {
-        setHasTranslations(initialHasTranslations)
+        setHasTranslations(initialHasTranslations ?? true)
       }
       if (updates.synced !== undefined) {
-        setSynced(initialSynced)
+        setSynced(initialSynced ?? true)
       }
     } finally {
       setIsSaving(false)
@@ -111,7 +157,7 @@ export default function UserFeedback({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}

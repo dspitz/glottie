@@ -8,7 +8,6 @@ import { ArrowLeft, Music, Play, Pause, SkipForward, SkipBack } from 'lucide-rea
 import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
 import { useSession } from 'next-auth/react'
 import { useSharedTransition, getSharedElementTransition } from '@/contexts/SharedTransitionContext'
-import DevRating from '@/components/DevRating'
 import UserFeedback from '@/components/UserFeedback'
 
 interface Track {
@@ -402,15 +401,6 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
           />
         </div>
 
-        {/* Dev Rating on the right (only shows in development) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="pointer-events-auto">
-            <DevRating
-              songId={track.id}
-              initialRating={devRating}
-            />
-          </div>
-        )}
       </header>
 
       <div className="relative mb-8">

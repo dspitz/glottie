@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { LevelCard } from '@/components/LevelCard'
 import { fetchLevels } from '@/lib/client'
@@ -12,6 +12,16 @@ export default function HomePage() {
     queryKey: ['levels'],
     queryFn: fetchLevels,
   })
+
+  useEffect(() => {
+    // Apply brand background to body on homepage
+    document.body.style.backgroundColor = 'hsl(19 68% 71%)'
+
+    // Cleanup: reset when leaving the page
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [])
 
   if (isLoading) {
     return (
@@ -45,7 +55,8 @@ export default function HomePage() {
   const stats = levelsData?.stats || {}
 
   return (
-    <div className="container py-8">
+    <div className="bg-brand min-h-screen">
+      <div className="container py-8">
       {/* Hero Section */}
       <div className="mb-12 text-center">
         <div className="mb-6">
@@ -117,6 +128,7 @@ export default function HomePage() {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

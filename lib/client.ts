@@ -4,7 +4,8 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true, // Refetch when window regains focus
+      refetchOnMount: true, // Always refetch when component mounts
     },
   },
 })

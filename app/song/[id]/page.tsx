@@ -220,6 +220,10 @@ export default function SongPage() {
         isPlaying={isPlaying}
         onPlayPause={playPauseFunction}
         devRating={lyricsData.devRating}
+        userRating={lyricsData.userRating}
+        hasLyrics={lyricsData.hasLyrics}
+        hasTranslations={lyricsData.hasTranslations}
+        synced={lyricsData.synced}
       />
 
       {/* Main Content - Full Width */}

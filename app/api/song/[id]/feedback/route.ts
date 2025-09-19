@@ -10,6 +10,15 @@ export async function PATCH(
     const { userRating, hasLyrics, hasTranslations, synced } = body
     const songId = params.id
 
+    console.log('Feedback API: Received request', {
+      songId,
+      body,
+      userRating,
+      hasLyrics,
+      hasTranslations,
+      synced
+    })
+
     if (!songId) {
       return NextResponse.json({ error: 'Song ID is required' }, { status: 400 })
     }
@@ -26,6 +35,8 @@ export async function PATCH(
     if (hasTranslations !== undefined) updateData.hasTranslations = hasTranslations
     if (synced !== undefined) updateData.synced = synced
 
+    console.log('Feedback API: Updating with data', updateData)
+
     // Update song with provided feedback
     const updatedSong = await prisma.song.update({
       where: { id: songId },
@@ -38,6 +49,8 @@ export async function PATCH(
         synced: true
       }
     })
+
+    console.log('Feedback API: Update successful', updatedSong)
 
     return NextResponse.json({
       success: true,
