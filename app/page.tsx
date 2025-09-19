@@ -48,35 +48,19 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="mb-12 text-center">
         <h1 className="text-4xl font-bold tracking-tight mb-4">
-          Learn Spanish Through Music
+          Learn Language Through Music
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
-          Discover Spanish through song lyrics organized by difficulty level. 
-          Click on sentences for translations and words for definitions and conjugations.
+          La la la your way to a new language and discover some of the<br />
+          world's greatest music along the way
         </p>
         
-        {/* Stats */}
-        <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
-          <div>
-            <span className="font-semibold text-foreground">{stats.totalSongs || 0}</span> songs
-          </div>
-          <div>
-            <span className="font-semibold text-foreground">10</span> difficulty levels
-          </div>
-          <div>
-            Average difficulty: <span className="font-semibold text-foreground">
-              {stats.averageDifficulty?.toFixed(1) || 'N/A'}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Levels Grid */}
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Difficulty Levels</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((level) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {Array.from({ length: 5 }, (_, i) => i + 1).map((level) => {
             const levelSongs = levels[level.toString()] || []
             return (
               <LevelCard

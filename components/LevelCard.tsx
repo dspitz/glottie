@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScoreBadge } from '@/components/ScoreBadge'
 import { cn, getLevelColor, getLevelDescription } from '@/lib/utils'
 import { Music } from 'lucide-react'
 
@@ -10,6 +10,7 @@ interface LevelSummary {
   title: string
   artist: string
   difficultyScore: number
+  albumArt?: string
 }
 
 interface LevelCardProps {
@@ -25,49 +26,132 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
   return (
     <Link href={`/levels/${level}`} className="block transition-transform hover:scale-105">
       <Card className={cn('h-full cursor-pointer hover:shadow-lg', className)}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Level {level}</CardTitle>
-            <ScoreBadge 
-              level={level} 
-              score={songs[0]?.difficultyScore || level} 
-              size="sm"
-              showTooltip={false}
-            />
-          </div>
+        <CardHeader className="pb-3 text-center">
+          <CardTitle className="text-lg">Level {level}</CardTitle>
           <p className="text-sm text-muted-foreground">
             {getLevelDescription(level)}
           </p>
         </CardHeader>
         
         <CardContent className="pt-0">
-          <div className="space-y-3">
-            {/* Song count */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center text-muted-foreground">
-                <Music className="mr-1 h-4 w-4" />
-                {totalSongs} {totalSongs === 1 ? 'song' : 'songs'}
-              </span>
-            </div>
-
-            {/* Featured songs */}
+          <div className="space-y-4 flex flex-col items-center">
+            {/* Fanned stack of album art */}
             {featuredSongs.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Featured Songs:</h4>
-                {featuredSongs.map((song) => (
-                  <div key={song.id} className="rounded-md bg-muted/50 p-2">
-                    <p className="text-sm font-medium truncate">{song.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      by {song.artist}
-                    </p>
-                  </div>
-                ))}
+              <div className="relative h-32 mb-4 flex justify-center pt-6">
+                <div className="relative" style={{ width: `${80 + (featuredSongs.length - 1) * 30}px` }}>
+                  {featuredSongs.map((song, index) => {
+                    // Determine position type
+                    const positionType = featuredSongs.length === 3
+                      ? (index === 0 ? 'left' : index === 1 ? 'center' : 'right')
+                      : (index === 1 ? 'center' : 'side');
+
+                    // Base styles for all thumbnails
+                    const baseStyles = "absolute transition-all hover:translate-y-[-4px] rounded-md overflow-hidden border-[3px] border-white";
+
+                    // Position-specific styles
+                    const positionStyles = {
+                      left: {
+                        className: "w-[86px] h-[86px]",
+                        style: {
+                          left: `${index * 30 - 12}px`,
+                          top: 0,
+                          zIndex: 1,
+                          transform: 'rotate(-8deg)',
+                          width: '86px',
+                          height: '86px',
+                          boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
+                        }
+                      },
+                      center: {
+                        className: "w-[102px] h-[102px]",
+                        style: {
+                          left: featuredSongs.length === 3 ? '22px' : `${index * 30}px`,
+                          top: -8,
+                          zIndex: 3,
+                          transform: 'none',
+                          width: '102px',
+                          height: '102px',
+                          boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
+                        }
+                      },
+                      right: {
+                        className: "w-[86px] h-[86px]",
+                        style: {
+                          left: `${index * 30 + 12}px`,
+                          top: 0,
+                          zIndex: 2,
+                          transform: 'rotate(8deg)',
+                          width: '86px',
+                          height: '86px',
+                          boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
+                        }
+                      },
+                      side: {
+                        className: "w-[86px] h-[86px]",
+                        style: {
+                          left: `${index * 30}px`,
+                          top: 0,
+                          zIndex: index === 0 ? 2 : 1,
+                          transform: 'none',
+                          width: '86px',
+                          height: '86px',
+                          boxShadow: '0 12px 28px rgba(0,0,0,0.16)',
+                        }
+                      }
+                    };
+
+                    const currentStyle = positionStyles[positionType];
+
+                    return (
+                      <div
+                        key={song.id}
+                        className={`${baseStyles} ${currentStyle.className}`}
+                        style={currentStyle.style}
+                      >
+                        {song.albumArt ? (
+                          <Image
+                            src={song.albumArt}
+                            alt={`${song.title} album cover`}
+                            width={positionType === 'center' ? 96 : 80}
+                            height={positionType === 'center' ? 96 : 80}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <Music className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
+            {/* Song details */}
+            <div className="space-y-2 mt-2 text-center w-full">
+              <div className="flex items-center justify-center text-sm text-muted-foreground">
+                <Music className="mr-1 h-4 w-4" />
+                {totalSongs} {totalSongs === 1 ? 'song' : 'songs'}
+              </div>
+
+              {featuredSongs.length > 0 && (
+                <div className="space-y-1">
+                  {featuredSongs.map((song) => (
+                    <div key={song.id} className="text-xs">
+                      <span className="font-medium truncate block">{song.title}</span>
+                      <span className="text-muted-foreground truncate block">
+                        {song.artist}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Empty state */}
             {featuredSongs.length === 0 && (
-              <div className="flex h-20 items-center justify-center text-sm text-muted-foreground">
+              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
                 No songs available yet
               </div>
             )}
