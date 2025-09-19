@@ -219,6 +219,7 @@ export default function SongPage() {
         onColorChange={handleColorChange}
         isPlaying={isPlaying}
         onPlayPause={playPauseFunction}
+        devRating={lyricsData.devRating}
       />
 
       {/* Main Content - Full Width */}

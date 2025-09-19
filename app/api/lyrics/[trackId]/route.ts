@@ -28,7 +28,8 @@ export async function GET(
         popularity: true,
         genres: true,
         culturalContext: true,
-        translations: true
+        translations: true,
+        devRating: true
       }
     })
 
@@ -187,6 +188,7 @@ export async function GET(
       level: song.level,
       popularity: song.popularity,
       genres: song.genres,
+      devRating: song.devRating,
 
       // Lyrics data
       lines: finalLines,

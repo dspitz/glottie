@@ -388,7 +388,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
 
   return (
     <div
-      className={`fixed left-0 right-0 border-t px-5 py-4 z-40 transition-transform duration-300 ease-in-out backdrop-blur-lg ${
+      className={`fixed left-0 right-0 border-t px-5 py-4 z-[60] transition-transform duration-300 ease-in-out backdrop-blur-lg ${
         hasEverPlayed ? 'bottom-0 translate-y-0' : 'bottom-0 translate-y-full'
       } ${className}`}
       style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderTopColor: 'rgba(255, 255, 255, 0.2)' }}>

@@ -54,6 +54,76 @@ export function SentenceModal({
     }
   }, [isOpen, sentence, translations])
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if target is an input element to avoid interfering with text input
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault()
+          if (onNavigatePrevious && currentLineIndex > 0) {
+            onNavigatePrevious()
+          }
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          if (onNavigateNext && currentLineIndex < totalLines - 1) {
+            onNavigateNext()
+          }
+          break
+        case 'Escape':
+          event.preventDefault()
+          onClose()
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onNavigatePrevious, onNavigateNext, onClose, currentLineIndex, totalLines])
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if target is an input element to avoid interfering with text input
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault()
+          if (onNavigatePrevious && currentLineIndex > 0) {
+            onNavigatePrevious()
+          }
+          break
+        case 'ArrowRight':
+          event.preventDefault()
+          if (onNavigateNext && currentLineIndex < totalLines - 1) {
+            onNavigateNext()
+          }
+          break
+        case 'Escape':
+          event.preventDefault()
+          onClose()
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onNavigatePrevious, onNavigateNext, onClose, currentLineIndex, totalLines])
+
   // Apply background color when modal opens
   useEffect(() => {
     if (isOpen && backgroundColor && typeof window !== 'undefined') {

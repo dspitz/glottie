@@ -20,7 +20,10 @@ model Song {
   album         String?
   year          Int?
   albumArt      String?  // Album artwork URL (640x640)
-  albumArtSmall String?  // Album thumbnail URL (300x300)  
+  albumArtSmall String?  // Album thumbnail URL (300x300)
+  albumArtColor String?  // Dominant color from album art (hex format)
+  albumArtColorRGB String? // RGB values as "r,g,b" string
+  albumArtColorHSL String? // HSL values as "h,s,l" string
   language      String   @default("es")
   lyricsRaw     String?  // only if licensed; else null
   lyricsParsed  String?  // JSON string: [{line, sentenceIndex, tokens:[{text, lemma, pos, isVerb, tense?}]}]
@@ -34,6 +37,7 @@ model Song {
   valence       Float?   // Spotify audio features (positivity)
   tempo         Float?   // BPM from Spotify
   isActive      Boolean  @default(true) // soft delete flag
+  devRating     Int?     // Developer rating 1-5 stars (hidden in production)
   translations  Translation[]
   metrics       Metrics?
   level         Int?     // 1..5 (difficulty level)

@@ -8,6 +8,7 @@ import { ArrowLeft, Music, Play, Pause, SkipForward, SkipBack } from 'lucide-rea
 import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
 import { useSession } from 'next-auth/react'
 import { useSharedTransition, getSharedElementTransition } from '@/contexts/SharedTransitionContext'
+import DevRating from '@/components/DevRating'
 
 interface Track {
   id: string
@@ -34,6 +35,7 @@ interface SongHeaderProps {
   onPlayPause?: () => void
   onNext?: () => void
   onPrevious?: () => void
+  devRating?: number | null
 }
 
 // Helper function to convert RGB to HSV
@@ -138,7 +140,7 @@ const hslToRgb = (h: number, s: number, l: number): [number, number, number] => 
 }
 
 // Helper function to constrain lightness
-const constrainLightness = (h: number, s: number, l: number, minL: number = 33, maxL: number = 55): [number, number, number] => {
+const constrainLightness = (h: number, s: number, l: number, minL: number = 33, maxL: number = 50): [number, number, number] => {
   const constrainedL = Math.min(Math.max(l, minL), maxL)
   return [h, s, constrainedL]
 }
@@ -147,16 +149,16 @@ const constrainLightness = (h: number, s: number, l: number, minL: number = 33, 
 const extractDominantColor = (imageUrl: string): Promise<string> => {
   return new Promise((resolve) => {
     // Generate a color based on the song title hash for consistency
-    // These fallback colors are pre-constrained to the 33-55% lightness range
+    // These fallback colors are pre-constrained to the 33-50% lightness range
     const fallbackColors = [
-      'rgb(86, 125, 188)',   // blue (L: 54%)
+      'rgb(77, 112, 168)',   // blue (L: 48%)
       'rgb(139, 92, 46)',    // brown (L: 36%)
       'rgb(71, 139, 71)',    // green (L: 41%)
-      'rgb(188, 86, 86)',    // red (L: 54%)
-      'rgb(125, 86, 188)',   // purple (L: 54%)
-      'rgb(188, 125, 31)',   // amber (L: 43%)
+      'rgb(168, 77, 77)',    // red (L: 48%)
+      'rgb(112, 77, 168)',   // purple (L: 48%)
+      'rgb(168, 112, 28)',   // amber (L: 38%)
       'rgb(31, 139, 156)',   // cyan (L: 37%)
-      'rgb(188, 86, 139)',   // pink (L: 54%)
+      'rgb(168, 77, 125)',   // pink (L: 48%)
     ]
     
     // Try to extract color, fallback to hash-based color
@@ -220,8 +222,15 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
         if (maxSaturation > 30) {
           // Convert to HSL and constrain lightness
           const [h, s, l] = rgbToHsl(mostSaturatedColor.r, mostSaturatedColor.g, mostSaturatedColor.b)
-          const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l)
+          const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l, 33, 50)
           const [finalR, finalG, finalB] = hslToRgb(constrainedH, constrainedS, constrainedL)
+
+          console.log('🎨 Color Extraction (Saturated):')
+          console.log('  Original RGB:', `rgb(${mostSaturatedColor.r}, ${mostSaturatedColor.g}, ${mostSaturatedColor.b})`)
+          console.log('  Original HSL:', `H: ${h.toFixed(0)}°, S: ${s.toFixed(0)}%, L: ${l.toFixed(0)}%`)
+          console.log('  Constrained HSL:', `H: ${constrainedH.toFixed(0)}°, S: ${constrainedS.toFixed(0)}%, L: ${constrainedL.toFixed(0)}%`)
+          console.log('  Final RGB:', `rgb(${finalR}, ${finalG}, ${finalB})`)
+
           resolve(`rgb(${finalR}, ${finalG}, ${finalB})`)
         } else if (avgCount > 0) {
           // Fallback to average color with lightness constraints
@@ -229,8 +238,15 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           const avgGFinal = Math.floor(avgG / avgCount)
           const avgBFinal = Math.floor(avgB / avgCount)
           const [h, s, l] = rgbToHsl(avgRFinal, avgGFinal, avgBFinal)
-          const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l)
+          const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l, 33, 50)
           const [finalR, finalG, finalB] = hslToRgb(constrainedH, constrainedS, constrainedL)
+
+          console.log('🎨 Color Extraction (Average):')
+          console.log('  Average RGB:', `rgb(${avgRFinal}, ${avgGFinal}, ${avgBFinal})`)
+          console.log('  Original HSL:', `H: ${h.toFixed(0)}°, S: ${s.toFixed(0)}%, L: ${l.toFixed(0)}%`)
+          console.log('  Constrained HSL:', `H: ${constrainedH.toFixed(0)}°, S: ${constrainedS.toFixed(0)}%, L: ${constrainedL.toFixed(0)}%`)
+          console.log('  Final RGB:', `rgb(${finalR}, ${finalG}, ${finalB})`)
+
           resolve(`rgb(${finalR}, ${finalG}, ${finalB})`)
         } else {
           // Final fallback to hash-based color (already constrained)
@@ -254,7 +270,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
   })
 }
 
-export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious }: SongHeaderProps) {
+export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating }: SongHeaderProps) {
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
   const { data: session } = useSession()
   const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
@@ -341,8 +357,9 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
 
   return (
     <>
-      {/* Fixed header with back button */}
-      <header className="fixed top-0 left-0 w-auto h-20 bg-transparent z-50 flex items-center px-6 pointer-events-none">
+      {/* Fixed header with back button and dev rating */}
+      <header className="fixed top-0 left-0 right-0 h-20 bg-transparent z-50 flex items-center justify-between px-6 pointer-events-none">
+        {/* Back button on the left */}
         {onBackClick ? (
           <Button
             variant="outline"
@@ -368,6 +385,16 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
             </Button>
           </Link>
         )}
+
+        {/* Dev Rating on the right (only shows in development) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="pointer-events-auto">
+            <DevRating
+              songId={track.id}
+              initialRating={devRating}
+            />
+          </div>
+        )}
       </header>
 
       <div className="relative mb-8">
@@ -378,7 +405,7 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
         />
 
         {/* Content */}
-        <div className="relative px-8 pt-16">
+        <div className="relative px-2 pt-16">
 
         {/* Centered header content */}
         <div className="flex flex-col items-center text-center space-y-4">

@@ -1,3 +1,6 @@
+import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
+
 export interface Translation {
   text: string
   source: string
@@ -8,6 +11,7 @@ export interface Translation {
 export interface Translator {
   name: string
   translate(text: string, targetLang: string): Promise<Translation>
+  batchTranslate?(texts: string[], targetLang: string): Promise<Translation[]>
 }
 
 class DemoTranslator implements Translator {
@@ -108,7 +112,10 @@ class DeepLTranslator implements Translator {
 
   async translate(text: string, targetLang: string = 'EN'): Promise<Translation> {
     try {
-      const response = await fetch('https://api-free.deepl.com/v2/translate', {
+      // Always use free endpoint for now - the :fx suffix detection is unreliable
+      const apiUrl = 'https://api-free.deepl.com/v2/translate'
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Authorization': `DeepL-Auth-Key ${this.apiKey}`,
@@ -127,7 +134,7 @@ class DeepLTranslator implements Translator {
 
       const data = await response.json()
       const translation = data.translations?.[0]
-      
+
       if (!translation) {
         throw new Error('No translation returned from DeepL')
       }
@@ -140,6 +147,67 @@ class DeepLTranslator implements Translator {
       }
     } catch (error) {
       console.error('DeepL error:', error)
+      throw error
+    }
+  }
+
+  async batchTranslate(texts: string[], targetLang: string = 'EN'): Promise<Translation[]> {
+    try {
+      // Deduplicate texts while preserving order
+      const uniqueTexts = Array.from(new Set(texts))
+      const textToTranslation = new Map<string, Translation>()
+
+      // Always use free endpoint for now - the :fx suffix detection is unreliable
+      const apiUrl = 'https://api-free.deepl.com/v2/translate'
+
+      // DeepL supports up to 50 texts per request
+      const chunks: string[][] = []
+      for (let i = 0; i < uniqueTexts.length; i += 50) {
+        chunks.push(uniqueTexts.slice(i, i + 50))
+      }
+
+      for (const chunk of chunks) {
+        const params = new URLSearchParams()
+        chunk.forEach(text => params.append('text', text))
+        params.append('source_lang', 'ES')
+        params.append('target_lang', targetLang.toUpperCase())
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `DeepL-Auth-Key ${this.apiKey}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params
+        })
+
+        if (!response.ok) {
+          throw new Error(`DeepL batch failed: ${response.status}`)
+        }
+
+        const data = await response.json()
+        const translations = data.translations || []
+
+        // Map translations back to original texts
+        for (let i = 0; i < chunk.length && i < translations.length; i++) {
+          textToTranslation.set(chunk[i], {
+            text: translations[i].text,
+            source: 'es',
+            target: targetLang.toLowerCase(),
+            provider: this.name
+          })
+        }
+      }
+
+      // Return translations in the original order (including duplicates)
+      return texts.map(text => textToTranslation.get(text) || {
+        text: text,
+        source: 'es',
+        target: targetLang.toLowerCase(),
+        provider: this.name
+      })
+    } catch (error) {
+      console.error('DeepL batch error:', error)
       throw error
     }
   }
@@ -177,7 +245,7 @@ class GoogleTranslateAdapter implements Translator {
 
       const data = await response.json()
       const translation = data.data?.translations?.[0]
-      
+
       if (!translation) {
         throw new Error('No translation returned from Google')
       }
@@ -192,6 +260,282 @@ class GoogleTranslateAdapter implements Translator {
       console.error('Google Translate error:', error)
       throw error
     }
+  }
+}
+
+class OpenAITranslator implements Translator {
+  name = 'openai'
+  private client: OpenAI
+
+  constructor(apiKey: string) {
+    this.client = new OpenAI({ apiKey })
+  }
+
+  async translate(text: string, targetLang: string = 'en'): Promise<Translation> {
+    try {
+      // Don't translate proper names or already English text
+      if (this.isProperName(text) || this.isAlreadyEnglish(text)) {
+        return {
+          text: text,
+          source: 'es',
+          target: targetLang,
+          provider: this.name
+        }
+      }
+
+      const prompt = `Translate the following Spanish song lyric to English. Preserve the meaning and emotion while making it natural in English. If it's a proper name (artist name, place, etc.) or already in English, keep it unchanged.
+
+Spanish: "${text}"
+
+Provide ONLY the English translation, nothing else:`
+
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{
+          role: 'system',
+          content: 'You are a professional translator specializing in song lyrics. Translate accurately while preserving emotion and artistic intent.'
+        }, {
+          role: 'user',
+          content: prompt
+        }],
+        temperature: 0.3,
+        max_tokens: 150
+      })
+
+      const translatedText = response.choices[0]?.message?.content?.trim() || text
+
+      return {
+        text: translatedText,
+        source: 'es',
+        target: targetLang,
+        provider: this.name
+      }
+    } catch (error) {
+      console.error('OpenAI translation error:', error)
+      throw error
+    }
+  }
+
+  async batchTranslate(texts: string[], targetLang: string = 'en'): Promise<Translation[]> {
+    try {
+      // For very small batches, translate individually
+      if (texts.length <= 3) {
+        return Promise.all(texts.map(text => this.translate(text, targetLang)))
+      }
+
+      // Create a numbered list for batch translation
+      const numberedTexts = texts
+        .map((text, i) => `${i + 1}. ${text}`)
+        .join('\n')
+
+      const prompt = `Translate these Spanish song lyrics to English. For each line:
+- Preserve the meaning and emotion while making it natural in English
+- Keep proper names (artists, places) unchanged
+- Keep text that's already in English unchanged
+- Maintain the exact same number of lines
+
+Spanish lyrics:
+${numberedTexts}
+
+Provide ONLY the translations in the same numbered format, nothing else:`
+
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [{
+          role: 'system',
+          content: 'You are a professional translator specializing in song lyrics. Translate accurately while preserving emotion and artistic intent.'
+        }, {
+          role: 'user',
+          content: prompt
+        }],
+        temperature: 0.3,
+        max_tokens: 2000
+      })
+
+      const responseText = response.choices[0]?.message?.content?.trim() || ''
+
+      // Parse the numbered response
+      const translations = responseText
+        .split('\n')
+        .map(line => {
+          // Remove the number prefix (e.g., "1. " or "1) ")
+          const match = line.match(/^\d+[\.\)]\s*(.*)/)
+          return match ? match[1] : line
+        })
+        .filter(line => line.length > 0)
+
+      // Ensure we have the right number of translations
+      if (translations.length !== texts.length) {
+        console.warn(`Translation count mismatch: expected ${texts.length}, got ${translations.length}`)
+        // Fall back to individual translation
+        return Promise.all(texts.map(text => this.translate(text, targetLang)))
+      }
+
+      return translations.map((text, i) => ({
+        text,
+        source: 'es',
+        target: targetLang,
+        provider: this.name
+      }))
+    } catch (error) {
+      console.error('OpenAI batch translation error:', error)
+      // Fall back to individual translations
+      return Promise.all(texts.map(text => this.translate(text, targetLang)))
+    }
+  }
+
+  private isProperName(text: string): boolean {
+    // List of known artist names and proper nouns in the songs
+    const properNames = [
+      'Enrique Iglesias', 'Gente de Zona', 'Descemer', 'Shakira',
+      'Maluma', 'Bad Bunny', 'J Balvin', 'Daddy Yankee'
+    ]
+    return properNames.some(name => text.includes(name))
+  }
+
+  private isAlreadyEnglish(text: string): boolean {
+    // Check if the text is already in English
+    const englishPhrases = [
+      'One love', 'one love', 'Oh', 'oh', 'Ha', 'ha',
+      'Yeah', 'yeah', 'Baby', 'baby'
+    ]
+    return englishPhrases.some(phrase => text.toLowerCase() === phrase.toLowerCase())
+  }
+}
+
+class ClaudeTranslator implements Translator {
+  name = 'claude'
+  private client: Anthropic
+
+  constructor(apiKey: string) {
+    this.client = new Anthropic({ apiKey })
+  }
+
+  async translate(text: string, targetLang: string = 'en'): Promise<Translation> {
+    try {
+      // Don't translate proper names or already English text
+      if (this.isProperName(text) || this.isAlreadyEnglish(text)) {
+        return {
+          text: text,
+          source: 'es',
+          target: targetLang,
+          provider: this.name
+        }
+      }
+
+      const prompt = `Translate the following Spanish song lyric to English. Preserve the meaning and emotion while making it natural in English. If it's a proper name (artist name, place, etc.) or already in English, keep it unchanged.
+
+Spanish: "${text}"
+
+Provide ONLY the English translation, nothing else:`
+
+      const response = await this.client.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 150,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      })
+
+      const translatedText = response.content[0].type === 'text'
+        ? response.content[0].text.trim()
+        : text
+
+      return {
+        text: translatedText,
+        source: 'es',
+        target: targetLang,
+        provider: this.name
+      }
+    } catch (error) {
+      console.error('Claude translation error:', error)
+      throw error
+    }
+  }
+
+  async batchTranslate(texts: string[], targetLang: string = 'en'): Promise<Translation[]> {
+    try {
+      // For very small batches, translate individually
+      if (texts.length <= 3) {
+        return Promise.all(texts.map(text => this.translate(text, targetLang)))
+      }
+
+      // Create a numbered list for batch translation
+      const numberedTexts = texts
+        .map((text, i) => `${i + 1}. ${text}`)
+        .join('\n')
+
+      const prompt = `Translate these Spanish song lyrics to English. For each line:
+- Preserve the meaning and emotion while making it natural in English
+- Keep proper names (artists, places) unchanged
+- Keep text that's already in English unchanged
+- Maintain the exact same number of lines
+
+Spanish lyrics:
+${numberedTexts}
+
+Provide ONLY the translations in the same numbered format, nothing else:`
+
+      const response = await this.client.messages.create({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: prompt
+        }]
+      })
+
+      const responseText = response.content[0].type === 'text'
+        ? response.content[0].text.trim()
+        : ''
+
+      // Parse the numbered response
+      const translations = responseText
+        .split('\n')
+        .map(line => {
+          // Remove the number prefix (e.g., "1. " or "1) ")
+          const match = line.match(/^\d+[\.\)]\s*(.*)/)
+          return match ? match[1] : line
+        })
+        .filter(line => line.length > 0)
+
+      // Ensure we have the right number of translations
+      if (translations.length !== texts.length) {
+        console.warn(`Translation count mismatch: expected ${texts.length}, got ${translations.length}`)
+        // Fall back to individual translation
+        return Promise.all(texts.map(text => this.translate(text, targetLang)))
+      }
+
+      return translations.map((text, i) => ({
+        text,
+        source: 'es',
+        target: targetLang,
+        provider: this.name
+      }))
+    } catch (error) {
+      console.error('Claude batch translation error:', error)
+      // Fall back to individual translations
+      return Promise.all(texts.map(text => this.translate(text, targetLang)))
+    }
+  }
+
+  private isProperName(text: string): boolean {
+    // List of known artist names and proper nouns in the songs
+    const properNames = [
+      'Enrique Iglesias', 'Gente de Zona', 'Descemer', 'Shakira',
+      'Maluma', 'Bad Bunny', 'J Balvin', 'Daddy Yankee'
+    ]
+    return properNames.some(name => text.includes(name))
+  }
+
+  private isAlreadyEnglish(text: string): boolean {
+    // Check if the text is already in English
+    const englishPhrases = [
+      'One love', 'one love', 'Oh', 'oh', 'Ha', 'ha',
+      'Yeah', 'yeah', 'Baby', 'baby'
+    ]
+    return englishPhrases.some(phrase => text.toLowerCase() === phrase.toLowerCase())
   }
 }
 
@@ -212,6 +556,16 @@ if (process.env.DEEPL_API_KEY) {
 // Initialize Google Translate if API key is available
 if (process.env.GOOGLE_TRANSLATE_API_KEY) {
   translators.set('google', new GoogleTranslateAdapter(process.env.GOOGLE_TRANSLATE_API_KEY))
+}
+
+// Initialize OpenAI if API key is available
+if (process.env.OPENAI_API_KEY) {
+  translators.set('openai', new OpenAITranslator(process.env.OPENAI_API_KEY))
+}
+
+// Initialize Claude if API key is available
+if (process.env.ANTHROPIC_API_KEY) {
+  translators.set('claude', new ClaudeTranslator(process.env.ANTHROPIC_API_KEY))
 }
 
 export async function translate(text: string, targetLang: string = 'en'): Promise<Translation> {
@@ -249,6 +603,31 @@ export async function translate(text: string, targetLang: string = 'en'): Promis
       throw error
     }
 
+    throw error
+  }
+}
+
+export async function batchTranslate(texts: string[], targetLang: string = 'en'): Promise<Translation[]> {
+  const translatorName = process.env.TRANSLATOR || 'demo'
+  const translator = translators.get(translatorName)
+
+  if (!translator) {
+    console.warn(`Translator '${translatorName}' not found, falling back to demo`)
+    const demoTranslator = translators.get('demo')!
+    // Demo translator doesn't have batch, fall back to sequential
+    return Promise.all(texts.map(text => demoTranslator.translate(text, targetLang)))
+  }
+
+  try {
+    // Use batch if available, otherwise fall back to sequential
+    if (translator.batchTranslate) {
+      return await translator.batchTranslate(texts, targetLang)
+    } else {
+      // Sequential fallback
+      return Promise.all(texts.map(text => translator.translate(text, targetLang)))
+    }
+  } catch (error) {
+    console.error(`Batch translator '${translatorName}' error:`, error)
     throw error
   }
 }
