@@ -33,6 +33,7 @@ interface SynchronizedLyricsProps {
   onTimeSeek?: (timeInMs: number) => void
   playbackRate?: number
   onPlaybackRateChange?: (rate: number) => void
+  displayLanguage?: 'spanish' | 'english'
   // New prop for real synchronized lyrics data
   synchronizedData?: {
     lines: LyricsLine[]
@@ -54,6 +55,7 @@ export function SynchronizedLyrics({
   onTimeSeek,
   playbackRate = 1.0,
   onPlaybackRateChange,
+  displayLanguage = 'spanish',
   synchronizedData
 }: SynchronizedLyricsProps) {
   const [selectedSentence, setSelectedSentence] = useState<string>('')
@@ -255,27 +257,39 @@ export function SynchronizedLyrics({
       return { activeLineIndex: -1, activeWordIndex: -1, hasWordTiming: false }
     }
 
+    // Find the last line that has started playing
+    let lastActiveLineIndex = -1
+
     for (let lineIndex = 0; lineIndex < synchronizedLines.length; lineIndex++) {
       const line = synchronizedLines[lineIndex]
 
-      if (currentTimeMs >= line.startTime && currentTimeMs <= line.endTime) {
-        const hasWordTiming = line.words.length > 0 &&
-          line.words.some(w => w.startTime !== line.startTime || w.endTime !== line.endTime)
+      if (currentTimeMs >= line.startTime) {
+        lastActiveLineIndex = lineIndex
 
-        if (hasWordTiming) {
-          for (let wordIndex = 0; wordIndex < line.words.length; wordIndex++) {
-            const word = line.words[wordIndex]
-            if (currentTimeMs >= word.startTime && currentTimeMs <= word.endTime) {
-              return { activeLineIndex: lineIndex, activeWordIndex: wordIndex, hasWordTiming: true }
+        // Check if we're still within this line's duration
+        if (currentTimeMs <= line.endTime) {
+          const hasWordTiming = line.words.length > 0 &&
+            line.words.some(w => w.startTime !== line.startTime || w.endTime !== line.endTime)
+
+          if (hasWordTiming) {
+            for (let wordIndex = 0; wordIndex < line.words.length; wordIndex++) {
+              const word = line.words[wordIndex]
+              if (currentTimeMs >= word.startTime && currentTimeMs <= word.endTime) {
+                return { activeLineIndex: lineIndex, activeWordIndex: wordIndex, hasWordTiming: true }
+              }
             }
           }
-        }
 
-        return { activeLineIndex: lineIndex, activeWordIndex: -1, hasWordTiming: false }
+          return { activeLineIndex: lineIndex, activeWordIndex: -1, hasWordTiming: false }
+        }
+      } else {
+        // If we haven't reached this line yet, break
+        break
       }
     }
 
-    return { activeLineIndex: -1, activeWordIndex: -1, hasWordTiming: false }
+    // Keep the last line that started playing highlighted
+    return { activeLineIndex: lastActiveLineIndex, activeWordIndex: -1, hasWordTiming: false }
   }, [synchronizedLines, currentTimeMs, isPlaying])
 
   const { activeLineIndex, activeWordIndex, hasWordTiming } = getCurrentHighlight()
@@ -453,11 +467,14 @@ export function SynchronizedLyrics({
     return (
       <div
         key={lineIndex}
-        className={`mb-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+        className={`mb-2 px-6 rounded-lg cursor-pointer transition-all duration-200 ${
           shouldShowLineHighlight
-            ? 'bg-white/20 border-l-4 border-white/60 shadow-sm scale-105'
-            : 'bg-white/[0.06] hover:bg-white/10'
+            ? 'py-4 bg-white/[0.06] border border-white/[0.08] scale-105'
+            : 'py-3 bg-white/0 border border-white/0 hover:bg-white/10'
         }`}
+        style={shouldShowLineHighlight ? {
+          boxShadow: '0 10px 24px rgba(0, 0, 0, 0.08)'
+        } : {}}
         data-sentence-index={lineIndex}
         onClick={() => {
           handleSentenceClick(line.text, lineIndex)
@@ -482,7 +499,7 @@ export function SynchronizedLyrics({
 
         {/* Show translation for active line */}
         {shouldShowLineHighlight && (
-          <div className="text-sm mt-2" style={{ color: '#FFF' }}>
+          <div className="text-sm opacity-80 mt-0.5" style={{ color: '#FFF' }}>
             {(() => {
               // IMPORTANT: During playback, we need to be careful about index mapping
               let translationIndex = lineIndex

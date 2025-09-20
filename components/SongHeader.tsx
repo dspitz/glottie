@@ -368,7 +368,7 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
           <Button
             variant="outline"
             size="icon"
-            className="bg-background/80 backdrop-blur-sm rounded-full w-10 h-10 pointer-events-auto"
+            className="bg-background/80 backdrop-blur-sm rounded-full w-9 h-9 pointer-events-auto"
             onClick={() => {
               console.log('Back button clicked in modal!')
               onBackClick()
@@ -382,7 +382,7 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
             <Button
               variant="outline"
               size="icon"
-              className="bg-background/80 backdrop-blur-sm rounded-full w-10 h-10"
+              className="bg-background/80 backdrop-blur-sm rounded-full w-9 h-9"
               aria-label={backText}
             >
               <ArrowLeft className="h-5 w-5" />

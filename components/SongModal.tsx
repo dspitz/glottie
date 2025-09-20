@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { SongHeader } from '@/components/SongHeader'
 import { LyricsView } from '@/components/LyricsView'
 import { Button } from '@/components/ui/button'
+import { LanguageToggle } from '@/components/LanguageToggle'
 import { fetchLyrics } from '@/lib/client'
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 
@@ -21,6 +22,7 @@ interface SongModalProps {
 
 export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
   const [pageBackgroundColor, setPageBackgroundColor] = useState('rgb(59, 130, 246)')
+  const [displayLanguage, setDisplayLanguage] = useState<'spanish' | 'english'>('spanish')
 
   // React Query for lyrics data
   const { data: lyricsData, isLoading, error } = useQuery({
@@ -161,6 +163,14 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                 onBackClick={onClose}
               />
 
+              {/* Language Toggle */}
+              <div className="flex justify-center mb-6">
+                <LanguageToggle
+                  value={displayLanguage}
+                  onChange={setDisplayLanguage}
+                />
+              </div>
+
               {/* Main Content */}
               <motion.div
                 className="max-w-4xl mx-auto"
@@ -182,6 +192,7 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                   isDemo={lyricsData.mode === 'demo'}
                   backgroundColor={pageBackgroundColor}
                   synchronized={lyricsData.synchronized}
+                  displayLanguage={displayLanguage}
                   track={{
                     id: lyricsData.trackId || songId,
                     title: lyricsData.title,

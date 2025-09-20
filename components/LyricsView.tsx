@@ -15,6 +15,7 @@ interface LyricsViewProps {
   artist?: string
   isDemo?: boolean
   backgroundColor?: string
+  displayLanguage?: 'spanish' | 'english'
   track?: {
     id: string
     title: string
@@ -44,6 +45,7 @@ export function LyricsView({
   artist,
   isDemo = false,
   backgroundColor,
+  displayLanguage = 'spanish',
   track,
   synchronized,
   onPlayStateChange,
@@ -156,15 +158,26 @@ export function LyricsView({
 
       {/* Synchronized Lyrics */}
       <SynchronizedLyrics
-        lines={lines}
+        lines={displayLanguage === 'english' && processedTranslations.length > 0 ? processedTranslations : lines}
         currentTime={audioState.currentTime}
         duration={audioState.duration}
         isPlaying={audioState.isPlaying}
         playbackMode={audioState.playbackMode}
-        translations={processedTranslations}
+        translations={displayLanguage === 'spanish' ? processedTranslations : []}
         isDemo={isDemo}
         backgroundColor={backgroundColor}
-        synchronizedData={synchronized}
+        synchronizedData={displayLanguage === 'english' && processedTranslations.length > 0 && synchronized ? {
+          ...synchronized,
+          lines: synchronized.lines.map((line, index) => {
+            const englishText = processedTranslations[index] || line.text
+            return {
+              ...line,
+              text: englishText,
+              // When in English mode, we lose word-level timing since translations are line-based
+              words: undefined
+            }
+          })
+        } : synchronized}
         onTimeSeek={handleLyricsTimeSeek}
         playbackRate={audioState.playbackRate}
         onPlaybackRateChange={(rate) => {
@@ -172,6 +185,7 @@ export function LyricsView({
             playbackRateFunction(rate)
           }
         }}
+        displayLanguage={displayLanguage}
       />
 
       {/* Modals */}

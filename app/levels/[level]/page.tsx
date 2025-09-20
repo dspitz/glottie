@@ -131,42 +131,13 @@ function LevelPageContent() {
     <div className="px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          {/* Left Navigation */}
-          {level === 1 ? (
-            <Link href="/">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                All Levels
-              </Button>
-            </Link>
-          ) : (
-            <Link href={`/levels/${level - 1}`}>
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Spanish {level - 1}
-              </Button>
-            </Link>
-          )}
-
-          {/* Right Navigation */}
-          {level < 5 && (
-            <Link href={`/levels/${level + 1}`}>
-              <Button variant="outline" size="sm">
-                Spanish {level + 1}
-                <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
-              </Button>
-            </Link>
-          )}
-        </div>
-
-        <h1 className="text-5xl font-medium mt-14 mb-2 text-center">
+        <h5 className="font-medium mt-2 mb-2 text-center text-muted-foreground">
           Spanish {level}
-        </h1>
+        </h5>
 
-        <p className="text-lg text-muted-foreground mb-8 text-center whitespace-pre-line">
+        <h2 className="text-muted-foreground mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem' }}>
           {tags?.focus || getLevelDescription(level)}
-        </p>
+        </h2>
 
         {/* Educational Tags */}
         {tags && (
@@ -243,6 +214,38 @@ function LevelPageContent() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
+
+      {/* Bottom Navigation */}
+      <div className="flex items-center justify-between gap-4 mt-12 pt-8 border-t">
+        {/* Previous Level or Home */}
+        {level === 1 ? (
+          <Link href="/">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              All Levels
+            </Button>
+          </Link>
+        ) : (
+          <Link href={`/levels/${level - 1}`}>
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Spanish {level - 1}
+            </Button>
+          </Link>
+        )}
+
+        {/* Next Level */}
+        {level < 5 ? (
+          <Link href={`/levels/${level + 1}`}>
+            <Button variant="outline" size="sm">
+              Spanish {level + 1}
+              <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+            </Button>
+          </Link>
+        ) : (
+          <div /> // Empty div to maintain spacing when there's no next level
+        )}
+      </div>
     </div>
   )
 }
