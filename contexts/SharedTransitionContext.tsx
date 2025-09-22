@@ -22,7 +22,11 @@ export function SharedTransitionProvider({ children }: { children: React.ReactNo
 export function useSharedTransition() {
   const context = useContext(SharedTransitionContext)
   if (!context) {
-    throw new Error('useSharedTransition must be used within a SharedTransitionProvider')
+    // Return default values when not in a provider
+    return {
+      isExiting: false,
+      setIsExiting: () => {}
+    }
   }
   return context
 }

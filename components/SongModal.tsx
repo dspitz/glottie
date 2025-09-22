@@ -22,7 +22,7 @@ interface SongModalProps {
 
 export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
   const [pageBackgroundColor, setPageBackgroundColor] = useState('rgb(59, 130, 246)')
-  const [displayLanguage, setDisplayLanguage] = useState<'spanish' | 'english'>('spanish')
+  const [displayLanguage, setDisplayLanguage] = useState<'spanish' | 'english' | 'both'>('spanish')
 
   // React Query for lyrics data
   const { data: lyricsData, isLoading, error } = useQuery({
@@ -153,7 +153,11 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                 backHref="#"
                 backText={backText}
                 level={lyricsData.level}
+                levelName={lyricsData.levelName}
                 difficultyScore={lyricsData.difficultyScore}
+                genres={lyricsData.genres}
+                wordCount={lyricsData.wordCount}
+                verbDensity={lyricsData.verbDensity}
                 devRating={lyricsData.devRating}
                 userRating={lyricsData.userRating}
                 hasLyrics={lyricsData.hasLyrics}

@@ -16,7 +16,7 @@ interface LyricsViewProps {
   artist?: string
   isDemo?: boolean
   backgroundColor?: string
-  displayLanguage?: 'spanish' | 'english'
+  displayLanguage?: 'spanish' | 'english' | 'both'
   track?: {
     id: string
     title: string
@@ -164,7 +164,7 @@ export function LyricsView({
         duration={audioState.duration}
         isPlaying={audioState.isPlaying}
         playbackMode={audioState.playbackMode}
-        translations={displayLanguage === 'spanish' ? processedTranslations : displayLanguage === 'english' ? lines : []}
+        translations={displayLanguage === 'spanish' ? processedTranslations : displayLanguage === 'english' ? lines : displayLanguage === 'both' ? processedTranslations : []}
         isDemo={isDemo}
         backgroundColor={backgroundColor}
         synchronizedData={displayLanguage === 'english' && processedTranslations.length > 0 && synchronized ? {

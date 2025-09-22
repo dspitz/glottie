@@ -44,13 +44,14 @@ model Song {
   synced        Boolean  @default(true) // User feedback: song is synced
   translations  Translation[]
   metrics       Metrics?
+  savedBy       SavedSong[]
   level         Int?     // 1..5 (difficulty level)
   levelName     String?  // "Beginner", "Upper Beginner", etc.
   description   String?  // Description of difficulty characteristics
   order         Int?     // Sequential order 1-100
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  
+
   @@index([language])
   @@index([level])
   @@index([isActive])
@@ -127,6 +128,7 @@ model User {
   country         String?   // User's country from Spotify
   accounts        Account[]
   sessions        Session[]
+  savedSongs      SavedSong[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -137,4 +139,17 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model SavedSong {
+  id        String   @id @default(cuid())
+  userId    String
+  songId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, songId])
+  @@index([userId])
+  @@index([songId])
 }

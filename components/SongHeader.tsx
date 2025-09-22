@@ -9,6 +9,7 @@ import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
 import { useSession } from 'next-auth/react'
 import { useSharedTransition, getSharedElementTransition } from '@/contexts/SharedTransitionContext'
 import UserFeedback from '@/components/UserFeedback'
+import { BookmarkButton } from '@/components/BookmarkButton'
 
 interface Track {
   id: string
@@ -28,7 +29,11 @@ interface SongHeaderProps {
   backHref: string
   backText: string
   level?: number
+  levelName?: string
   difficultyScore?: number
+  genres?: string | null
+  wordCount?: number
+  verbDensity?: number
   onColorChange?: (color: string) => void
   onBackClick?: () => void
   isPlaying?: boolean
@@ -274,7 +279,7 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
   })
 }
 
-export function SongHeader({ track, backHref, backText, level, difficultyScore, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced }: SongHeaderProps) {
+export function SongHeader({ track, backHref, backText, level, levelName, difficultyScore, genres, wordCount, verbDensity, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced }: SongHeaderProps) {
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
   const { data: session } = useSession()
   const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
@@ -390,8 +395,29 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
           </Link>
         )}
 
-        {/* User Feedback */}
-        <div className="pointer-events-auto">
+        {/* Right side controls */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Bookmark button */}
+          <div className="bg-background/80 backdrop-blur-sm rounded-full">
+            <BookmarkButton
+              songId={track.id}
+              songTitle={track.title}
+              songArtist={track.artist}
+              songAlbum={track.album}
+              songAlbumArt={track.albumArt}
+              songAlbumArtSmall={track.albumArtSmall}
+              songLevel={level}
+              songLevelName={levelName}
+              songDifficultyScore={difficultyScore}
+              songGenres={genres}
+              songWordCount={wordCount}
+              songVerbDensity={verbDensity}
+              size="icon"
+              className="h-9 w-9"
+            />
+          </div>
+
+          {/* User Feedback */}
           <UserFeedback
             songId={track.id}
             initialRating={userRating}
@@ -528,27 +554,35 @@ export function SongHeader({ track, backHref, backText, level, difficultyScore, 
                   if (!hasStartedPlayback) {
                     // First play - start the track
                     console.log('🎵 SongHeader: Starting Spotify Web SDK playback')
+                    setLocalIsPlaying(true)  // Switch button immediately
                     const success = await playTrack(track.spotifyId)
                     if (success) {
                       setHasStartedPlayback(true)
-                      setLocalIsPlaying(true)
+                    } else {
+                      setLocalIsPlaying(false)  // Revert on failure
                     }
                   } else {
                     // Toggle play/pause
                     console.log('🎵 SongHeader: Toggling Spotify Web SDK playback')
+                    const newState = !localIsPlaying
+                    setLocalIsPlaying(newState)  // Switch button immediately
                     const success = await sdkTogglePlay()
-                    if (success) {
-                      setLocalIsPlaying(!localIsPlaying)
+                    if (!success) {
+                      setLocalIsPlaying(!newState)  // Revert on failure
                     }
                   }
                 } else if (onPlayPause && typeof onPlayPause === 'function') {
                   // Fallback to preview or other player
                   console.log('🎵 SongHeader: Using fallback player')
+                  // Switch button immediately
+                  setLocalIsPlaying(!localIsPlaying)
                   try {
                     onPlayPause()
                     console.log('✅ SongHeader: onPlayPause executed')
                   } catch (error) {
                     console.error('❌ SongHeader: Error calling onPlayPause:', error)
+                    // Revert if there's an error
+                    setLocalIsPlaying(localIsPlaying)
                   }
                 } else {
                   console.warn('⚠️ SongHeader: No playback method available', {

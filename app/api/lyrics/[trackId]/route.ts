@@ -25,6 +25,7 @@ export async function GET(
         lyricsProvider: true,
         lyricsLicensed: true,
         level: true,
+        levelName: true,
         popularity: true,
         genres: true,
         culturalContext: true,
@@ -33,7 +34,14 @@ export async function GET(
         userRating: true,
         hasLyrics: true,
         hasTranslations: true,
-        synced: true
+        synced: true,
+        metrics: {
+          select: {
+            wordCount: true,
+            verbDensity: true,
+            difficultyScore: true
+          }
+        }
       }
     })
 
@@ -196,6 +204,7 @@ export async function GET(
       albumArt: song.albumArt,
       albumArtSmall: song.albumArtSmall,
       level: song.level,
+      levelName: song.levelName,
       popularity: song.popularity,
       genres: song.genres,
       devRating: song.devRating,
@@ -203,6 +212,11 @@ export async function GET(
       hasLyrics: song.hasLyrics,
       hasTranslations: song.hasTranslations,
       synced: song.synced,
+
+      // Metrics data
+      wordCount: song.metrics?.wordCount,
+      verbDensity: song.metrics?.verbDensity,
+      difficultyScore: song.metrics?.difficultyScore,
 
       // Lyrics data
       lines: finalLines,
@@ -219,7 +233,8 @@ export async function GET(
         id: song.id,
         title: song.title,
         artist: song.artist,
-        level: song.level
+        level: song.level,
+        levelName: song.levelName
       }
     })
   } catch (error) {

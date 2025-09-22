@@ -34,7 +34,7 @@ interface SynchronizedLyricsProps {
   onTimeSeek?: (timeInMs: number) => void
   playbackRate?: number
   onPlaybackRateChange?: (rate: number) => void
-  displayLanguage?: 'spanish' | 'english'
+  displayLanguage?: 'spanish' | 'english' | 'both'
   // New prop for real synchronized lyrics data
   synchronizedData?: {
     lines: LyricsLine[]
@@ -471,7 +471,9 @@ export function SynchronizedLyrics({
         className={`mb-2 px-6 rounded-lg cursor-pointer transition-all duration-200 ${
           shouldShowLineHighlight
             ? 'py-4 bg-white/[0.06] border border-white/[0.08] scale-105'
-            : 'py-3 bg-white/0 border border-white/0 hover:bg-white/10'
+            : displayLanguage === 'both'
+              ? 'py-3 bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.05]'
+              : 'py-3 bg-white/0 border border-white/0 hover:bg-white/10'
         }`}
         style={shouldShowLineHighlight ? {
           boxShadow: '0 10px 24px rgba(0, 0, 0, 0.08)'
@@ -512,9 +514,9 @@ export function SynchronizedLyrics({
           })}
         </p>
 
-        {/* Show translation for active line */}
-        {shouldShowLineHighlight && (
-          <div className="text-sm opacity-80 mt-0.5" style={{ color: '#FFF' }}>
+        {/* Show translation - always visible in 'both' mode, only on highlight otherwise */}
+        {(displayLanguage === 'both' || shouldShowLineHighlight) && (
+          <div className={`text-sm mt-1 ${displayLanguage === 'both' ? 'text-white/60' : 'text-white/80'}`}>
             {(() => {
               // IMPORTANT: During playback, we need to be careful about index mapping
               let translationIndex = lineIndex

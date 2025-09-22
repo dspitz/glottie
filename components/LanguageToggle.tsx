@@ -4,8 +4,8 @@ import React from 'react'
 import { cn } from '@/lib/utils'
 
 interface LanguageToggleProps {
-  value: 'spanish' | 'english'
-  onChange: (value: 'spanish' | 'english') => void
+  value: 'spanish' | 'english' | 'both'
+  onChange: (value: 'spanish' | 'english' | 'both') => void
   className?: string
 }
 
@@ -33,6 +33,17 @@ export function LanguageToggle({ value, onChange, className }: LanguageTogglePro
         )}
       >
         English
+      </button>
+      <button
+        onClick={() => onChange('both')}
+        className={cn(
+          "px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+          value === 'both'
+            ? "bg-white text-gray-900 shadow-sm"
+            : "text-white/70 hover:text-white"
+        )}
+      >
+        Both
       </button>
     </div>
   )

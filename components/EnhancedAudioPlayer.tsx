@@ -77,6 +77,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   const [error, setError] = useState<string | null>(null)
   const [playbackRate, setPlaybackRate] = useState(1.0)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(false)
   
   // Preview mode refs
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -165,7 +166,13 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
     }
 
     const handleLoadStart = () => setIsLoading(true)
-    const handleCanPlay = () => setIsLoading(false)
+    const handleCanPlay = () => {
+      setIsLoading(false)
+      setIsInitializing(false)
+    }
+    const handlePlaying = () => {
+      setIsInitializing(false)
+    }
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
     audio.addEventListener('timeupdate', handleTimeUpdate)
@@ -173,6 +180,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
     audio.addEventListener('error', handleError)
     audio.addEventListener('loadstart', handleLoadStart)
     audio.addEventListener('canplay', handleCanPlay)
+    audio.addEventListener('playing', handlePlaying)
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
@@ -181,6 +189,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
       audio.removeEventListener('error', handleError)
       audio.removeEventListener('loadstart', handleLoadStart)
       audio.removeEventListener('canplay', handleCanPlay)
+      audio.removeEventListener('playing', handlePlaying)
     }
   }, [playbackMode, track.previewUrl])
 
@@ -235,15 +244,23 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   // Playback controls - using useCallback for stability
   const togglePlayPause = useCallback(async () => {
     console.log('togglePlayPause called', { playbackMode, isPlaying, track })
+
+    // Show mini-player immediately when play is first pressed
+    if (!hasEverPlayed) {
+      setHasEverPlayed(true)
+    }
+
     if (playbackMode === 'preview' && audioRef.current) {
       try {
         if (isPlaying) {
           audioRef.current.pause()
           setIsPlaying(false)
         } else {
-          await audioRef.current.play()
+          // Switch button to pause immediately and show loading
           setIsPlaying(true)
-          setHasEverPlayed(true)
+          setIsInitializing(true)
+          await audioRef.current.play()
+          setIsInitializing(false)
         }
       } catch (error) {
         console.error('Preview playback error:', error)
@@ -253,9 +270,16 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
 
     if (playbackMode === 'spotify' && spotifyPlayerRef.current && track.spotifyId) {
       try {
+        // Show mini-player immediately when play is first pressed
+        if (!hasEverPlayed) {
+          setHasEverPlayed(true)
+        }
+
         if (!spotifyPlayerState) {
-          // Start playback
+          // Start playback - switch button immediately
+          setIsPlaying(true)
           setIsLoading(true)
+          setIsInitializing(true)
           const trackUri = `spotify:track:${track.spotifyId}`
           const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
 
@@ -271,8 +295,11 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
             setError(null)
           }
           setIsLoading(false)
+          setIsInitializing(false)
         } else {
-          // Toggle existing playback
+          // Toggle existing playback - switch button immediately
+          const newState = !isPlaying
+          setIsPlaying(newState)
           await spotifyPlayerRef.current.togglePlayPause?.()
         }
       } catch (error) {
@@ -429,7 +456,16 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate text-white">{track.title}</p>
-          <p className="text-sm truncate text-white/80">{track.artist}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm truncate text-white/80">{track.artist}</p>
+            {isInitializing && (
+              <div className="flex gap-1">
+                <span className="w-1 h-1 bg-white/60 rounded-full animate-pulse" />
+                <span className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <span className="w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Play/Pause button in upper right */}
@@ -441,7 +477,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
           className="w-10 h-10 hover:bg-white/20"
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
         >
-          {isLoading ? (
+          {isLoading || isInitializing ? (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : isPlaying ? (
             <Pause className="w-4 h-4 text-white" />
