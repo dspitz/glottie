@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { SentenceModal } from '@/components/SentenceModal'
 import { WordPopover } from '@/components/WordPopover'
@@ -466,7 +467,7 @@ export function SynchronizedLyrics({
 
     return (
       <div
-        key={lineIndex}
+        key={`${displayLanguage}-line-${lineIndex}`}
         className={`mb-2 px-6 rounded-lg cursor-pointer transition-all duration-200 ${
           shouldShowLineHighlight
             ? 'py-4 bg-white/[0.06] border border-white/[0.08] scale-105'
@@ -486,13 +487,27 @@ export function SynchronizedLyrics({
           onMouseUp={handleWordSelection}
         >
           {line.words.map((word, wordIndex) => {
+            // Calculate a global word index for staggered animation
+            let globalWordIndex = 0
+            for (let i = 0; i < lineIndex; i++) {
+              globalWordIndex += synchronizedLines[i].words.length
+            }
+            globalWordIndex += wordIndex
+
             return (
-              <span
-                key={wordIndex}
+              <motion.span
+                key={`${displayLanguage}-${lineIndex}-${wordIndex}`}
                 className={word.isWhitespace ? '' : 'hover:bg-white/10 rounded px-0.5'}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.3,
+                  delay: globalWordIndex * 0.005,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
               >
                 {word.text}
-              </span>
+              </motion.span>
             )
           })}
         </p>
@@ -540,7 +555,7 @@ export function SynchronizedLyrics({
         )}
       </div>
     )
-  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, lines])
+  }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, lines, synchronizedLines, displayLanguage])
 
   return (
     <div>

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { EnhancedAudioPlayer, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
 import { SynchronizedLyrics } from '@/components/SynchronizedLyricsClean'
@@ -156,14 +157,14 @@ export function LyricsView({
         />
       )}
 
-      {/* Synchronized Lyrics */}
+      {/* Synchronized Lyrics with Animation */}
       <SynchronizedLyrics
         lines={displayLanguage === 'english' && processedTranslations.length > 0 ? processedTranslations : lines}
         currentTime={audioState.currentTime}
         duration={audioState.duration}
         isPlaying={audioState.isPlaying}
         playbackMode={audioState.playbackMode}
-        translations={displayLanguage === 'spanish' ? processedTranslations : []}
+        translations={displayLanguage === 'spanish' ? processedTranslations : displayLanguage === 'english' ? lines : []}
         isDemo={isDemo}
         backgroundColor={backgroundColor}
         synchronizedData={displayLanguage === 'english' && processedTranslations.length > 0 && synchronized ? {
