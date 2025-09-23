@@ -159,7 +159,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
             >
             <motion.div
               key="modal-content"
-              className="container py-8 min-h-full"
+              className="px-6 py-8 min-h-full max-w-7xl mx-auto"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{

@@ -200,7 +200,7 @@ export default function SongPage() {
 
   if (isLoading) {
     return (
-      <div className="container py-8">
+      <div className="px-6 py-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="mr-2 h-6 w-6 animate-spin" />
           <span>Loading song...</span>
@@ -211,7 +211,7 @@ export default function SongPage() {
 
   if (error) {
     return (
-      <div className="container py-8">
+      <div className="px-6 py-8 max-w-7xl mx-auto">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <AlertCircle className="mb-4 h-12 w-12 text-destructive" />
           <h2 className="text-xl font-semibold mb-2">Song Not Found</h2>
@@ -310,7 +310,7 @@ export default function SongPage() {
   }, [levelNumber, lyricsData?.level, lyricsData?.song?.level, effectiveLevel, prevSong, nextSong, playPauseFunction, levelSongs])
 
   return (
-    <div className="container py-8">
+    <div className="px-6 py-8 max-w-7xl mx-auto">
       {/* Enhanced Song Header */}
       <SongHeader
         track={{
