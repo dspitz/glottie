@@ -28,7 +28,7 @@ export async function GET(
         levelName: true,
         popularity: true,
         genres: true,
-        culturalContext: true,
+        songSummary: true,
         translations: true,
         devRating: true,
         userRating: true,
@@ -224,7 +224,7 @@ export async function GET(
       lyricsProvider: lyricsData?.provider,
       lyricsLicensed: lyricsData?.licensed,
       attribution: lyricsData?.attribution,
-      culturalContext: song.culturalContext || lyricsData?.culturalContext,
+      songSummary: song.songSummary,
       translations: finalTranslations,
       synchronized: adjustedSynchronized,
       

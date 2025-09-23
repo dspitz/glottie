@@ -21,7 +21,7 @@ interface Track {
   previewUrl?: string
   albumArt?: string
   albumArtSmall?: string
-  culturalContext?: string
+  songSummary?: string
 }
 
 interface SongHeaderProps {
@@ -515,9 +515,9 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
             <p className="text-white/80" style={{ fontSize: '12px', lineHeight: '16px' }}>
               {track.artist}
             </p>
-            {track.culturalContext && (
+            {track.songSummary && (
               <p className="text-white/70 mt-2 max-w-md text-center leading-relaxed" style={{ fontSize: '14px', lineHeight: '20px' }}>
-                {track.culturalContext}
+                {track.songSummary}
               </p>
             )}
           </motion.div>

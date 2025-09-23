@@ -323,7 +323,7 @@ export default function SongPage() {
           previewUrl: lyricsData.previewUrl,
           albumArt: lyricsData.albumArt,
           albumArtSmall: lyricsData.albumArtSmall,
-          culturalContext: lyricsData.culturalContext
+          songSummary: lyricsData.songSummary
         }}
         backHref={backHref}
         backText={backText}

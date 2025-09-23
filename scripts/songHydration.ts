@@ -20,7 +20,7 @@
 
 import { prisma } from '../lib/prisma'
 import { getLyricsByTrack } from '../packages/adapters/lyricsProvider'
-import { translate, batchTranslate } from '../packages/adapters/translate'
+import { translate, batchTranslate, generateSongSummary } from '../packages/adapters/translate'
 import sharp from 'sharp'
 
 // Types
@@ -463,6 +463,20 @@ async function hydrateSong(songId: string, options: HydrationOptions = {}): Prom
 
           stats.translationCreated = true
           console.log(`  ✅ Created English translation (${successCount}/${lines.length} lines)`)
+
+          // Generate song summary using the translated lyrics
+          console.log('\n📝 Generating song summary...')
+          const songSummary = await generateSongSummary(translations, song.title, song.artist)
+
+          if (songSummary !== "Problem fetching translations") {
+            await prisma.song.update({
+              where: { id: songId },
+              data: { songSummary }
+            })
+            console.log('  ✅ Song summary generated and saved')
+          } else {
+            console.log('  ⚠️ Could not generate song summary')
+          }
         }
       }
     }

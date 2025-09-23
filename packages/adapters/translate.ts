@@ -568,6 +568,61 @@ if (process.env.ANTHROPIC_API_KEY) {
   translators.set('claude', new ClaudeTranslator(process.env.ANTHROPIC_API_KEY))
 }
 
+export async function generateSongSummary(translatedLyrics: string[], songTitle: string, artist: string): Promise<string> {
+  try {
+    // Check if we have translations
+    if (!translatedLyrics || translatedLyrics.length === 0) {
+      return "Problem fetching translations"
+    }
+
+    // Check if OpenAI is available
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('OpenAI API key not available for song summary generation')
+      return "Problem fetching translations"
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+    // Join lyrics into a single text
+    const lyricsText = translatedLyrics
+      .filter(line => line && line.trim())
+      .join('\n')
+
+    const prompt = `Analyze these song lyrics and provide a concise summary (150 words or less) of the song's theme, message, and emotional content. Focus on what the song is about, its story or meaning, and any cultural significance. This is for Spanish language learners to understand the song better.
+
+Song: "${songTitle}" by ${artist}
+
+Lyrics:
+${lyricsText}
+
+Provide a clear, educational summary in 150 words or less:`
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{
+        role: 'system',
+        content: 'You are a music educator helping Spanish language learners understand songs. Provide clear, concise summaries that explain the song\'s meaning and cultural context.'
+      }, {
+        role: 'user',
+        content: prompt
+      }],
+      temperature: 0.5,
+      max_tokens: 200
+    })
+
+    const summary = response.choices[0]?.message?.content?.trim()
+
+    if (!summary) {
+      return "Problem fetching translations"
+    }
+
+    return summary
+  } catch (error) {
+    console.error('Error generating song summary:', error)
+    return "Problem fetching translations"
+  }
+}
+
 export async function translate(text: string, targetLang: string = 'en'): Promise<Translation> {
   const translatorName = process.env.TRANSLATOR || 'demo'
   const translator = translators.get(translatorName)

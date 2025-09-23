@@ -232,7 +232,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                   previewUrl: lyricsData.previewUrl,
                   albumArt: lyricsData.albumArt,
                   albumArtSmall: lyricsData.albumArtSmall,
-                  culturalContext: lyricsData.culturalContext
+                  songSummary: lyricsData.songSummary
                 }}
                 backHref="#"
                 backText={backText}
