@@ -58,11 +58,7 @@ export function TabNavigation() {
   }
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] backdrop-blur ${
-      isHomepage
-        ? 'bg-brand/60 supports-[backdrop-filter]:bg-brand/60'
-        : 'bg-white/60 supports-[backdrop-filter]:bg-white/60'
-    }`}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] backdrop-blur bg-white/60 supports-[backdrop-filter]:bg-white/60">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-around h-16">
           {tabs.map((tab) => {

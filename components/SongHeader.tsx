@@ -452,12 +452,12 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
         />
 
         {/* Content */}
-        <div className="relative px-2 pt-16">
+        <div className="relative px-2 pt-13">
 
         {/* Centered header content */}
         <div className="flex flex-col items-center text-center space-y-4">
           {/* Large album art */}
-          <div className="relative">
+          <div className="relative mt-12">
             <motion.div
               className="w-80 h-80 bg-muted/20 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5"
               layoutId={`album-container-${track.id}`}

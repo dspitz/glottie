@@ -11,7 +11,7 @@ interface LanguageToggleProps {
 
 export function LanguageToggle({ value, onChange, className }: LanguageToggleProps) {
   return (
-    <div className={cn("inline-flex h-12 rounded-full bg-white/10 backdrop-blur-sm p-1.5", className)}>
+    <div className={cn("inline-flex h-12 rounded-full bg-black/5 backdrop-blur-sm p-1.5", className)}>
       <button
         onClick={() => onChange('spanish')}
         className={cn(
