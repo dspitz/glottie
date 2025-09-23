@@ -513,7 +513,7 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
               {track.title}
             </h1>
             <p className="text-white/80" style={{ fontSize: '12px', lineHeight: '16px' }}>
-              by {track.artist}
+              {track.artist}
             </p>
             {track.culturalContext && (
               <p className="text-white/70 mt-2 max-w-md text-center leading-relaxed" style={{ fontSize: '14px', lineHeight: '20px' }}>
@@ -543,10 +543,10 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
                 }
               }}
               disabled={!onPrevious}
-              className={`w-12 h-12 p-0 border-white/20 text-white relative z-10 transition-all ${
+              className={`w-12 h-12 p-0 text-white relative z-10 transition-all ${
                 onPrevious
-                  ? 'bg-white/10 hover:bg-white/20 cursor-pointer'
-                  : 'bg-white/5 opacity-50 cursor-not-allowed'
+                  ? 'bg-transparent hover:bg-white/10 cursor-pointer'
+                  : 'bg-transparent opacity-50 cursor-not-allowed'
               }`}
               title={onPrevious ? "Previous song" : "At beginning of list"}
             >
@@ -638,10 +638,10 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
                 }
               }}
               disabled={!onNext}
-              className={`w-12 h-12 p-0 border-white/20 text-white relative z-10 transition-all ${
+              className={`w-12 h-12 p-0 text-white relative z-10 transition-all ${
                 onNext
-                  ? 'bg-white/10 hover:bg-white/20 cursor-pointer'
-                  : 'bg-white/5 opacity-50 cursor-not-allowed'
+                  ? 'bg-transparent hover:bg-white/10 cursor-pointer'
+                  : 'bg-transparent opacity-50 cursor-not-allowed'
               }`}
               title={onNext ? "Next song" : "At end of list"}
             >
