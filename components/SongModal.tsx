@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
-import { Dialog, DialogOverlay, DialogPortal } from '@/components/ui/dialog'
+import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import * as DialogPrimitive from "@radix-ui/react-dialog"
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"
 import { cn } from "@/lib/utils"
 import { SongHeader } from '@/components/SongHeader'
 import { LyricsView } from '@/components/LyricsView'
@@ -157,6 +158,11 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
               className="max-w-none w-full h-full m-0 p-0 rounded-none border-0 bg-transparent overflow-y-auto fixed inset-0 z-50"
               style={{ backgroundColor: pageBackgroundColor }}
             >
+            <VisuallyHidden.Root>
+              <DialogTitle>
+                {lyricsData ? `${lyricsData.title} by ${lyricsData.artist}` : 'Song Details'}
+              </DialogTitle>
+            </VisuallyHidden.Root>
             <motion.div
               key="modal-content"
               className="px-6 py-8 min-h-full max-w-7xl mx-auto"
