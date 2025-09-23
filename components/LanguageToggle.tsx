@@ -20,7 +20,7 @@ export function LanguageToggle({ value, onChange, className }: LanguageTogglePro
             ? "bg-white text-gray-900"
             : "text-white/70 hover:text-white"
         )}
-        style={value === 'spanish' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.16)' } : {}}
+        style={value === 'spanish' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.08)' } : {}}
       >
         Español
       </button>
@@ -32,7 +32,7 @@ export function LanguageToggle({ value, onChange, className }: LanguageTogglePro
             ? "bg-white text-gray-900"
             : "text-white/70 hover:text-white"
         )}
-        style={value === 'both' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.16)' } : {}}
+        style={value === 'both' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.08)' } : {}}
       >
         Both
       </button>
@@ -44,7 +44,7 @@ export function LanguageToggle({ value, onChange, className }: LanguageTogglePro
             ? "bg-white text-gray-900"
             : "text-white/70 hover:text-white"
         )}
-        style={value === 'english' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.16)' } : {}}
+        style={value === 'english' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.08)' } : {}}
       >
         English
       </button>
