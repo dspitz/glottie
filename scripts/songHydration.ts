@@ -12,8 +12,10 @@
  * Environment variables required:
  *   - DATABASE_URL
  *   - SPOTIFY_CLIENT_ID & SPOTIFY_CLIENT_SECRET
- *   - MUSIXMATCH_API_KEY
- *   - DEEPL_API_KEY (or other translator)
+ *   - MUSIXMATCH_API_KEY (paid license for full lyrics)
+ *   - MUSIXMATCH_FULL_LYRICS=true (for complete songs)
+ *   - TRANSLATOR=openai (or deepl/google/claude)
+ *   - OPENAI_API_KEY (if using OpenAI translator)
  */
 
 import { prisma } from '../lib/prisma'

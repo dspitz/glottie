@@ -424,18 +424,23 @@ class MusixmatchProvider implements LyricsProvider {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
+    // Log API key info for debugging (masked for security)
+    console.log(`🔑 Musixmatch initialized with API key: ${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`)
   }
 
   async getLyrics(artist: string, title: string): Promise<LyricsResult> {
     try {
+      console.log(`🎵 Musixmatch: Searching for "${title}" by ${artist}`)
+
       // First search for the track
-      const searchResponse = await fetch(
-        `https://api.musixmatch.com/ws/1.1/track.search?` +
-        `format=json&callback=callback&q_track=${encodeURIComponent(title)}&` +
+      const searchUrl = `https://api.musixmatch.com/ws/1.1/track.search?` +
+        `format=json&q_track=${encodeURIComponent(title)}&` +
         `q_artist=${encodeURIComponent(artist)}&apikey=${this.apiKey}`
-      )
+
+      const searchResponse = await fetch(searchUrl)
 
       if (!searchResponse.ok) {
+        console.error(`❌ Musixmatch search failed with status: ${searchResponse.status}`)
         throw new Error(`Musixmatch search failed: ${searchResponse.status}`)
       }
 
@@ -443,6 +448,7 @@ class MusixmatchProvider implements LyricsProvider {
       const track = searchData.message?.body?.track_list?.[0]?.track
 
       if (!track) {
+        console.log(`❌ Musixmatch: Track not found for "${title}" by ${artist}`)
         return {
           lines: [],
           licensed: false,
@@ -451,6 +457,9 @@ class MusixmatchProvider implements LyricsProvider {
           error: 'Track not found'
         }
       }
+
+      console.log(`✅ Musixmatch: Found track ID ${track.track_id} - "${track.track_name}" by ${track.artist_name}`)
+      console.log(`   Has lyrics: ${track.has_lyrics === 1 ? 'Yes' : 'No'}, Has subtitles: ${track.has_subtitles === 1 ? 'Yes' : 'No'}`)
 
       // Try to get synchronized lyrics - try multiple formats
       let synchronizedData: { lines: LyricsLine[], hasWordTiming: boolean, format: 'lrc' | 'estimated' | 'dfxp', duration?: number } | undefined
@@ -462,7 +471,7 @@ class MusixmatchProvider implements LyricsProvider {
         try {
           const subtitleResponse = await fetch(
             `https://api.musixmatch.com/ws/1.1/track.subtitle.get?` +
-            `format=json&callback=callback&track_id=${track.track_id}&` +
+            `format=json&track_id=${track.track_id}&` +
             `subtitle_format=${format}&apikey=${this.apiKey}`
           )
 
@@ -498,7 +507,7 @@ class MusixmatchProvider implements LyricsProvider {
       // Fallback to regular lyrics if no synchronized lyrics available
       const lyricsResponse = await fetch(
         `https://api.musixmatch.com/ws/1.1/track.lyrics.get?` +
-        `format=json&callback=callback&track_id=${track.track_id}&apikey=${this.apiKey}`
+        `format=json&track_id=${track.track_id}&apikey=${this.apiKey}`
       )
 
       if (!lyricsResponse.ok) {

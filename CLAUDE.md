@@ -31,8 +31,28 @@ DATABASE_URL="file:./dev.db" npm run db:populate
 
 ### Song Hydration & Translation
 ```bash
-# Hydrate a specific song with lyrics and translations
-DATABASE_URL="file:./dev.db" SPOTIFY_CLIENT_ID="074c9198ca534a588df3b95c7eaf2e98" SPOTIFY_CLIENT_SECRET="b6911b7446704d61acdb47af4d2c2489" npx tsx scripts/songHydration.ts [songId]
+# IMPORTANT: Load the actual OpenAI API key from .env.local
+source .env.local
+
+# Hydrate a specific song with lyrics and translations (COMPLETE COMMAND)
+DATABASE_URL="file:./dev.db" \
+  SPOTIFY_CLIENT_ID="074c9198ca534a588df3b95c7eaf2e98" \
+  SPOTIFY_CLIENT_SECRET="b6911b7446704d61acdb47af4d2c2489" \
+  MUSIXMATCH_API_KEY="b6bdee9e895ac0d91209a79a31498440" \
+  MUSIXMATCH_FULL_LYRICS="true" \
+  TRANSLATOR=openai \
+  OPENAI_API_KEY="$OPENAI_API_KEY" \
+  npx tsx scripts/songHydration.ts [songId]
+
+# Force re-hydration (overwrites existing data)
+DATABASE_URL="file:./dev.db" \
+  SPOTIFY_CLIENT_ID="074c9198ca534a588df3b95c7eaf2e98" \
+  SPOTIFY_CLIENT_SECRET="b6911b7446704d61acdb47af4d2c2489" \
+  MUSIXMATCH_API_KEY="b6bdee9e895ac0d91209a79a31498440" \
+  MUSIXMATCH_FULL_LYRICS="true" \
+  TRANSLATOR=openai \
+  OPENAI_API_KEY="$OPENAI_API_KEY" \
+  npx tsx scripts/songHydration.ts [songId] --force
 
 # Test OpenAI translation
 DATABASE_URL="file:./dev.db" OPENAI_API_KEY="$OPENAI_API_KEY" TRANSLATOR=openai npx tsx scripts/testOpenAITranslation.ts
@@ -198,16 +218,27 @@ Translations must maintain 1:1 line correspondence:
    - Cause: Batch translation can shuffle lines
    - Fix: Use line-by-line translation with proper error handling
 
-3. **API Rate Limits**
+3. **Translations Showing Original Spanish Text**
+   - Cause: OpenAI translator not registered due to missing API key
+   - Symptoms: Console shows "Translator 'openai' not found, falling back to demo"
+   - Fix: Always run `source .env.local` before hydration to load API keys
+   - Verify: Check that translations are in English, not Spanish
+
+4. **API Rate Limits**
    - Musixmatch (PAID): Higher limits based on subscription tier
    - DeepL Free: 500k characters/month
    - OpenAI: Based on tier (RPM varies by plan)
    - Solution: Implement caching and batch where appropriate
 
-4. **403 Errors from DeepL**
+5. **403 Errors from DeepL**
    - Wrong endpoint (Pro vs Free)
    - Quota exceeded
    - Fix: Always use free endpoint, monitor usage
+
+6. **Musixmatch "Track Not Found" Errors**
+   - Cause: Invalid `callback=callback` parameter in API URLs
+   - Fix: Remove callback parameter from all Musixmatch API calls
+   - Verify: Check lyricsProvider.ts lines 434, 465, 501
 
 ### Testing Songs
 Well-hydrated songs for testing:
