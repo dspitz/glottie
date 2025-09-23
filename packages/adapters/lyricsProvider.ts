@@ -569,7 +569,7 @@ class MusixmatchProvider implements LyricsProvider {
         provider: this.name,
         isExcerpt: process.env.FAIR_USE_MODE === 'true',
         attribution: `Lyrics © ${track.artist_name}. Provided by Musixmatch for educational purposes.${synchronizedData ? ' Includes synchronized timing data.' : ''}`,
-        culturalContext: track.album_name ? `From album: ${track.album_name}` : undefined,
+        culturalContext: undefined,
         synchronized: synchronizedData
       }
     } catch (error) {
