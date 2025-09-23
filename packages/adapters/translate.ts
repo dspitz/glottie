@@ -588,26 +588,26 @@ export async function generateSongSummary(translatedLyrics: string[], songTitle:
       .filter(line => line && line.trim())
       .join('\n')
 
-    const prompt = `Analyze these song lyrics and provide a concise summary (150 words or less) of the song's theme, message, and emotional content. Focus on what the song is about, its story or meaning, and any cultural significance. This is for Spanish language learners to understand the song better.
+    const prompt = `Analyze these song lyrics and provide an extremely concise summary (MAXIMUM 36 words) of the song's theme and cultural significance for Spanish language learners.
 
 Song: "${songTitle}" by ${artist}
 
 Lyrics:
 ${lyricsText}
 
-Provide a clear, educational summary in 150 words or less:`
+Provide a summary in EXACTLY 36 words or less - be concise and focus on the essential meaning:`
 
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [{
         role: 'system',
-        content: 'You are a music educator helping Spanish language learners understand songs. Provide clear, concise summaries that explain the song\'s meaning and cultural context.'
+        content: 'You are a music educator helping Spanish language learners. Provide extremely concise summaries (36 words MAX) focusing on theme, meaning, and cultural context. Be brief and direct.'
       }, {
         role: 'user',
         content: prompt
       }],
       temperature: 0.5,
-      max_tokens: 200
+      max_tokens: 80
     })
 
     const summary = response.choices[0]?.message?.content?.trim()
