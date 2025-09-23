@@ -227,6 +227,12 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
           ) : lyricsData ? (
             <>
               {/* Enhanced Song Header */}
+              {console.log('🎵 SongModal lyricsData:', {
+                title: lyricsData.title,
+                artist: lyricsData.artist,
+                songSummary: lyricsData.songSummary,
+                hasSummary: !!lyricsData.songSummary
+              })}
               <SongHeader
                 track={{
                   id: lyricsData.trackId || currentSongId,

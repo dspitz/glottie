@@ -280,6 +280,12 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
 }
 
 export function SongHeader({ track, backHref, backText, level, levelName, difficultyScore, genres, wordCount, verbDensity, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced }: SongHeaderProps) {
+  console.log('🎵 SongHeader received track:', {
+    title: track?.title,
+    artist: track?.artist,
+    songSummary: track?.songSummary,
+    hasSummary: !!track?.songSummary
+  });
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
   const { data: session } = useSession()
   const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
