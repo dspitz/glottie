@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { LyricsView } from '@/components/LyricsView'
 import { SongHeader } from '@/components/SongHeader'
 import { Button } from '@/components/ui/button'
@@ -15,16 +15,21 @@ import { Loader2, AlertCircle, ArrowLeft, Music, BarChart3 } from 'lucide-react'
 export default function SongPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const songId = params?.id as string
-  
-  
+
+
   // Get the level from search params to enable smart back navigation
   const fromLevel = searchParams.get('level')
-  
+  const levelNumber = fromLevel ? parseInt(fromLevel) : null
+
   // State for background color based on album art
   const [pageBackgroundColor, setPageBackgroundColor] = useState('rgb(59, 130, 246)')
   const [isPlaying, setIsPlaying] = useState(false)
   const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
+
+  // Debug info state
+  const [debugInfo, setDebugInfo] = useState<any>({})
 
   // Debug: Log when playPauseFunction changes
   useEffect(() => {
@@ -64,6 +69,100 @@ export default function SongPage() {
     gcTime: 0, // Don't cache
   })
 
+  // Use level from URL params or from song data
+  const effectiveLevel = levelNumber || lyricsData?.level || lyricsData?.song?.level
+
+  // Log level detection
+  useEffect(() => {
+    console.log('🎯 LEVEL DETECTION:', {
+      fromURL: levelNumber,
+      fromLyricsData: lyricsData?.level,
+      fromSongData: lyricsData?.song?.level,
+      effectiveLevel: effectiveLevel,
+      songId: songId
+    })
+  }, [levelNumber, lyricsData, effectiveLevel, songId])
+
+  // Fetch songs from the same level for navigation
+  const { data: levelSongs } = useQuery({
+    queryKey: ['levelSongs', effectiveLevel],
+    queryFn: async () => {
+      if (!effectiveLevel) {
+        setDebugInfo((prev: any) => ({
+          ...prev,
+          levelSongs: { fetched: false, count: 0, error: 'No effective level' }
+        }))
+        return []
+      }
+      const response = await fetch(`/api/songs/level/${effectiveLevel}`)
+      if (!response.ok) {
+        setDebugInfo((prev: any) => ({
+          ...prev,
+          levelSongs: { fetched: false, count: 0, error: `Failed to fetch: ${response.status}` }
+        }))
+        return []
+      }
+      const songs = await response.json()
+      setDebugInfo((prev: any) => ({
+        ...prev,
+        levelSongs: { fetched: true, count: songs.length, songs }
+      }))
+      return songs
+    },
+    enabled: !!effectiveLevel,
+  })
+
+  // Calculate previous and next songs
+  const { prevSong, nextSong } = useMemo(() => {
+    if (!levelSongs || !songId) {
+      setDebugInfo((prev: any) => ({
+        ...prev,
+        navigation: {
+          currentSongId: songId,
+          currentIndex: -1,
+          prevSong: null,
+          nextSong: null,
+          error: 'No levelSongs or songId'
+        }
+      }))
+      return { prevSong: null, nextSong: null }
+    }
+
+    const currentIndex = levelSongs.findIndex((song: any) => song.id === songId)
+
+    if (currentIndex === -1) {
+      setDebugInfo((prev: any) => ({
+        ...prev,
+        navigation: {
+          currentSongId: songId,
+          currentIndex: -1,
+          prevSong: null,
+          nextSong: null,
+          error: 'Current song not found in level songs'
+        }
+      }))
+      return { prevSong: null, nextSong: null }
+    }
+
+    const result = {
+      prevSong: currentIndex > 0 ? levelSongs[currentIndex - 1] : null,
+      nextSong: currentIndex < levelSongs.length - 1 ? levelSongs[currentIndex + 1] : null,
+    }
+
+    setDebugInfo((prev: any) => ({
+      ...prev,
+      navigation: {
+        currentSongId: songId,
+        currentIndex,
+        prevSong: result.prevSong,
+        nextSong: result.nextSong,
+        error: null
+      }
+    }))
+
+    return result
+  }, [levelSongs, songId])
+
   // Debug what we're getting from the API
   useEffect(() => {
     if (lyricsData) {
@@ -77,67 +176,20 @@ export default function SongPage() {
     }
   }, [lyricsData])
   
-  // Apply background color using CSS custom properties and aggressive styling
+  // Apply background color using CSS custom properties
   useEffect(() => {
     if (typeof window === 'undefined') return
-    
-    const backgroundColor = pageBackgroundColor // Full opacity
+
+    const backgroundColor = pageBackgroundColor
     console.log('Setting CSS custom property --page-bg to:', backgroundColor)
-    
-    // Set CSS custom property
+
+    // Just set the CSS variable, don't inject aggressive styles
     document.documentElement.style.setProperty('--page-bg', backgroundColor)
-    
-    // Create or update style element for more aggressive styling
-    let styleEl = document.getElementById('dynamic-bg-style') as HTMLStyleElement
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = 'dynamic-bg-style'
-      document.head.appendChild(styleEl)
-    }
-    
-    styleEl.textContent = `
-      html, body {
-        background-color: ${backgroundColor} !important;
-        background: ${backgroundColor} !important;
-        min-height: 100vh !important;
-        color: white !important;
-      }
-      
-      body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: ${backgroundColor};
-        z-index: -1;
-        pointer-events: none;
-      }
-      
-      /* Ensure all text elements are white */
-      body * {
-        color: white !important;
-      }
-      
-      /* Handle specific Tailwind classes that might override */
-      .text-muted-foreground {
-        color: rgba(255, 255, 255, 0.7) !important;
-      }
-      
-      .text-destructive {
-        color: #ef4444 !important;
-      }
-    `
-    
-    console.log('Applied aggressive background styling:', {
-      cssVar: document.documentElement.style.getPropertyValue('--page-bg'),
-      styleContent: styleEl.textContent
-    })
-    
+    document.documentElement.style.backgroundColor = backgroundColor
+
     return () => {
       document.documentElement.style.removeProperty('--page-bg')
-      styleEl?.remove()
+      document.documentElement.style.backgroundColor = ''
     }
   }, [pageBackgroundColor])
   
@@ -196,6 +248,67 @@ export default function SongPage() {
     setPageBackgroundColor(color)
   }
 
+  // Navigation handlers
+  const handlePrevious = () => {
+    console.log('🔄 HANDLE PREVIOUS CALLED')
+    console.log('Previous song:', prevSong)
+    console.log('Effective level:', effectiveLevel)
+    console.log('Debug info:', debugInfo)
+
+    if (prevSong && effectiveLevel) {
+      const url = `/song/${prevSong.id}?level=${effectiveLevel}`
+      console.log('✅ Navigating to:', url)
+      router.push(url)
+    } else {
+      console.log('❌ Cannot navigate - missing data')
+    }
+  }
+
+  const handleNext = () => {
+    console.log('🔄 HANDLE NEXT CALLED')
+    console.log('Next song:', nextSong)
+    console.log('Effective level:', effectiveLevel)
+    console.log('Debug info:', debugInfo)
+
+    if (nextSong && effectiveLevel) {
+      const url = `/song/${nextSong.id}?level=${effectiveLevel}`
+      console.log('✅ Navigating to:', url)
+      router.push(url)
+    } else {
+      console.log('❌ Cannot navigate - missing data')
+    }
+  }
+
+  // Update debug info for level information
+  useEffect(() => {
+    const debugData = {
+      level: {
+        fromUrl: levelNumber,
+        fromData: lyricsData?.level || lyricsData?.song?.level,
+        effective: effectiveLevel
+      },
+      handlers: {
+        onPrevious: !!prevSong,
+        onNext: !!nextSong,
+        onPlayPause: !!playPauseFunction
+      }
+    }
+
+    console.log('📊 NAVIGATION STATE UPDATE:', {
+      effectiveLevel,
+      levelSongsCount: levelSongs?.length || 0,
+      hasPrevSong: !!prevSong,
+      hasNextSong: !!nextSong,
+      prevSongTitle: prevSong?.title,
+      nextSongTitle: nextSong?.title
+    })
+
+    setDebugInfo((prev: any) => ({
+      ...prev,
+      ...debugData
+    }))
+  }, [levelNumber, lyricsData?.level, lyricsData?.song?.level, effectiveLevel, prevSong, nextSong, playPauseFunction, levelSongs])
+
   return (
     <div className="container py-8">
       {/* Enhanced Song Header */}
@@ -219,6 +332,8 @@ export default function SongPage() {
         onColorChange={handleColorChange}
         isPlaying={isPlaying}
         onPlayPause={playPauseFunction}
+        onPrevious={prevSong ? handlePrevious : undefined}
+        onNext={nextSong ? handleNext : undefined}
         devRating={lyricsData.devRating}
         userRating={lyricsData.userRating}
         hasLyrics={lyricsData.hasLyrics}
@@ -228,19 +343,6 @@ export default function SongPage() {
 
       {/* Main Content - Full Width */}
       <div className="max-w-4xl mx-auto">
-        {/* Debug logging for synchronized data */}
-        {(() => {
-          console.log('🎵 Page: Passing to LyricsView:', {
-            hasLines: !!lyricsData.lines,
-            lineCount: lyricsData.lines?.length,
-            hasSynchronized: !!lyricsData.synchronized,
-            synchronizedFormat: lyricsData.synchronized?.format,
-            synchronizedLineCount: lyricsData.synchronized?.lines?.length,
-            firstSyncLine: lyricsData.synchronized?.lines?.[0],
-            fullLyricsData: lyricsData
-          })
-          return null
-        })()}
         <LyricsView
           lines={lyricsData.lines || []}
           translations={lyricsData.translations}

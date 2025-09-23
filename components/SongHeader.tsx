@@ -285,6 +285,15 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
   const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false)
 
+  // Debug navigation props
+  console.log('🎯 SongHeader navigation props:', {
+    hasOnNext: !!onNext,
+    hasOnPrevious: !!onPrevious,
+    onNextType: typeof onNext,
+    onPreviousType: typeof onPrevious,
+    trackTitle: track?.title
+  })
+
   // Sync local state with prop
   useEffect(() => {
     setLocalIsPlaying(isPlaying)
@@ -528,10 +537,18 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
             <Button
               size="lg"
               variant="outline"
-              onClick={onPrevious}
+              onClick={() => {
+                if (onPrevious && typeof onPrevious === 'function') {
+                  onPrevious()
+                }
+              }}
               disabled={!onPrevious}
-              className="w-12 h-12 p-0 bg-white/10 hover:bg-white/20 border-white/20 text-white disabled:opacity-50"
-              title="Previous song"
+              className={`w-12 h-12 p-0 border-white/20 text-white relative z-10 transition-all ${
+                onPrevious
+                  ? 'bg-white/10 hover:bg-white/20 cursor-pointer'
+                  : 'bg-white/5 opacity-50 cursor-not-allowed'
+              }`}
+              title={onPrevious ? "Previous song" : "At beginning of list"}
             >
               <SkipBack className="w-5 h-5" />
             </Button>
@@ -615,10 +632,18 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
             <Button
               size="lg"
               variant="outline"
-              onClick={onNext}
+              onClick={() => {
+                if (onNext && typeof onNext === 'function') {
+                  onNext()
+                }
+              }}
               disabled={!onNext}
-              className="w-12 h-12 p-0 bg-white/10 hover:bg-white/20 border-white/20 text-white disabled:opacity-50"
-              title="Next song"
+              className={`w-12 h-12 p-0 border-white/20 text-white relative z-10 transition-all ${
+                onNext
+                  ? 'bg-white/10 hover:bg-white/20 cursor-pointer'
+                  : 'bg-white/5 opacity-50 cursor-not-allowed'
+              }`}
+              title={onNext ? "Next song" : "At end of list"}
             >
               <SkipForward className="w-5 h-5" />
             </Button>

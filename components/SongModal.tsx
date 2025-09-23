@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog, DialogOverlay, DialogPortal } from '@/components/ui/dialog'
@@ -18,26 +18,110 @@ interface SongModalProps {
   level?: number
   isOpen: boolean
   onClose: () => void
+  onSongChange?: (songId: string) => void
 }
 
-export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
+export function SongModal({ songId, level, isOpen, onClose, onSongChange }: SongModalProps) {
   const [pageBackgroundColor, setPageBackgroundColor] = useState('rgb(59, 130, 246)')
   const [displayLanguage, setDisplayLanguage] = useState<'spanish' | 'english' | 'both'>('spanish')
+  const [currentSongId, setCurrentSongId] = useState(songId)
+
+  // Update current song when prop changes
+  useEffect(() => {
+    setCurrentSongId(songId)
+  }, [songId])
 
   // React Query for lyrics data
   const { data: lyricsData, isLoading, error } = useQuery({
-    queryKey: ['lyrics', songId],
-    queryFn: () => fetchLyrics(songId!),
-    enabled: !!songId && isOpen,
+    queryKey: ['lyrics', currentSongId],
+    queryFn: () => fetchLyrics(currentSongId!),
+    enabled: !!currentSongId && isOpen,
   })
+
+  // Determine the effective level
+  const effectiveLevel = level || lyricsData?.level || lyricsData?.song?.level
+
+  // Fetch songs from the same level for navigation
+  const { data: levelSongs } = useQuery({
+    queryKey: ['levelSongs', effectiveLevel],
+    queryFn: async () => {
+      if (!effectiveLevel) return []
+      console.log('🎵 Modal: Fetching songs for level:', effectiveLevel)
+      const response = await fetch(`/api/songs/level/${effectiveLevel}`)
+      if (!response.ok) return []
+      const songs = await response.json()
+      console.log('🎵 Modal: Fetched', songs.length, 'songs for level', effectiveLevel)
+      return songs
+    },
+    enabled: !!effectiveLevel && isOpen,
+  })
+
+  // Calculate previous and next songs
+  const { prevSong, nextSong } = useMemo(() => {
+    if (!levelSongs || !currentSongId) {
+      console.log('🎵 Modal: No level songs or current song ID')
+      return { prevSong: null, nextSong: null }
+    }
+
+    const currentIndex = levelSongs.findIndex((song: any) => song.id === currentSongId)
+    console.log('🎵 Modal: Current song index:', currentIndex, 'of', levelSongs.length)
+
+    if (currentIndex === -1) {
+      console.log('🎵 Modal: Current song not found in level songs')
+      return { prevSong: null, nextSong: null }
+    }
+
+    const result = {
+      prevSong: currentIndex > 0 ? levelSongs[currentIndex - 1] : null,
+      nextSong: currentIndex < levelSongs.length - 1 ? levelSongs[currentIndex + 1] : null,
+    }
+
+    console.log('🎵 Modal: Navigation ready:', {
+      hasPrev: !!result.prevSong,
+      hasNext: !!result.nextSong,
+      prevTitle: result.prevSong?.title,
+      nextTitle: result.nextSong?.title
+    })
+
+    return result
+  }, [levelSongs, currentSongId])
 
   // Handle color change from SongHeader
   const handleColorChange = (color: string) => {
     setPageBackgroundColor(color)
   }
 
+  // Navigation handlers
+  const handlePrevious = () => {
+    console.log('🎵 Modal: Previous clicked', { prevSong })
+    if (prevSong) {
+      setCurrentSongId(prevSong.id)
+      if (onSongChange) {
+        onSongChange(prevSong.id)
+      }
+    }
+  }
+
+  const handleNext = () => {
+    console.log('🎵 Modal: Next clicked', { nextSong })
+    if (nextSong) {
+      setCurrentSongId(nextSong.id)
+      if (onSongChange) {
+        onSongChange(nextSong.id)
+      }
+    }
+  }
+
   // Debug logging
-  console.log('SongModal render:', { songId, isOpen, hasOnClose: !!onClose })
+  console.log('SongModal render:', {
+    songId,
+    currentSongId,
+    isOpen,
+    hasOnClose: !!onClose,
+    effectiveLevel,
+    hasPrev: !!prevSong,
+    hasNext: !!nextSong
+  })
 
   // Handle keyboard escape
   useEffect(() => {
@@ -139,7 +223,7 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
               {/* Enhanced Song Header */}
               <SongHeader
                 track={{
-                  id: lyricsData.trackId || songId,
+                  id: lyricsData.trackId || currentSongId,
                   title: lyricsData.title,
                   artist: lyricsData.artist,
                   album: lyricsData.album,
@@ -165,6 +249,8 @@ export function SongModal({ songId, level, isOpen, onClose }: SongModalProps) {
                 synced={lyricsData.synced}
                 onColorChange={handleColorChange}
                 onBackClick={onClose}
+                onPrevious={prevSong ? handlePrevious : undefined}
+                onNext={nextSong ? handleNext : undefined}
               />
 
               {/* Language Toggle */}

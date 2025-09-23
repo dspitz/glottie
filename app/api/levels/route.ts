@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: [
         { level: 'asc' },
+        { order: 'asc' },
         { title: 'asc' }
       ]
     })
