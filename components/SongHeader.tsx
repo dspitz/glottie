@@ -536,14 +536,14 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
           >
             <Button
               size="lg"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 if (onPrevious && typeof onPrevious === 'function') {
                   onPrevious()
                 }
               }}
               disabled={!onPrevious}
-              className={`w-12 h-12 p-0 text-white relative z-10 transition-all ${
+              className={`w-12 h-12 p-0 border-0 text-white relative z-10 transition-all ${
                 onPrevious
                   ? 'bg-transparent hover:bg-white/10 cursor-pointer'
                   : 'bg-transparent opacity-50 cursor-not-allowed'
@@ -631,14 +631,14 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
 
             <Button
               size="lg"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 if (onNext && typeof onNext === 'function') {
                   onNext()
                 }
               }}
               disabled={!onNext}
-              className={`w-12 h-12 p-0 text-white relative z-10 transition-all ${
+              className={`w-12 h-12 p-0 border-0 text-white relative z-10 transition-all ${
                 onNext
                   ? 'bg-transparent hover:bg-white/10 cursor-pointer'
                   : 'bg-transparent opacity-50 cursor-not-allowed'
