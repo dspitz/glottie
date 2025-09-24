@@ -32,7 +32,7 @@ export function ClickableWord({ word, cleanWord, children, onWordClick }: Clicka
       onOpenChange={setIsPopoverOpen}
     >
       <span
-        className="cursor-pointer hover:bg-white/20 hover:rounded px-0.5 transition-colors duration-200 inline-block"
+        className="cursor-pointer transition-colors duration-200 inline-block"
         onClick={handleClick}
         title={`Click to define "${cleanWord}"`}
       >

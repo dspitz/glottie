@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { EnhancedAudioPlayer, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
 import { SynchronizedLyrics } from '@/components/SynchronizedLyricsClean'
-import { SentenceModal } from '@/components/SentenceModal'
+import { TranslationBottomSheet } from '@/components/TranslationBottomSheet'
 import { WordPopover } from '@/components/WordPopover'
 import { segmentIntoSentences } from '@/lib/utils'
 import { ExternalLink, Music2 } from 'lucide-react'
@@ -97,6 +97,7 @@ export function LyricsView({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedWord, setSelectedWord] = useState<string>('')
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+  const [selectedLineIndex, setSelectedLineIndex] = useState<number>(0)
   const [audioState, setAudioState] = useState<AudioPlayerState>({
     isPlaying: false,
     currentTime: 0,
@@ -107,9 +108,11 @@ export function LyricsView({
   const [seekFunction, setSeekFunction] = useState<((time: number) => void) | null>(null)
   const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
+  const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
 
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
     setSelectedSentence(sentence)
+    setSelectedLineIndex(index)
     // Always use pre-downloaded translations if available
     if (processedTranslations[index]) {
       setSelectedSentenceTranslations([processedTranslations[index]])
@@ -143,6 +146,15 @@ export function LyricsView({
       seekFunction(timeInMs)
     }
   }, [seekFunction])
+
+  // Capture play/pause function from EnhancedAudioPlayer
+  useEffect(() => {
+    if (onPlayPauseReady && typeof onPlayPauseReady === 'function') {
+      onPlayPauseReady((fn: () => void) => {
+        setPlayPauseFunction(() => fn)
+      })
+    }
+  }, [onPlayPauseReady])
 
   return (
     <div className={`transition-all duration-300 ${hasEverPlayed ? 'pb-32' : 'pb-6'}`}>
@@ -189,13 +201,31 @@ export function LyricsView({
         displayLanguage={displayLanguage}
       />
 
-      {/* Modals */}
-      <SentenceModal
+      {/* Bottom Sheet */}
+      <TranslationBottomSheet
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         sentence={selectedSentence}
         translations={selectedSentenceTranslations}
         backgroundColor={backgroundColor}
+        synchronizedData={synchronized}
+        currentLineIndex={selectedLineIndex}
+        onTimeSeek={(timeInMs: number) => {
+          if (seekFunction) {
+            seekFunction(timeInMs)
+          }
+        }}
+        isPlaying={audioState.isPlaying}
+        onPlay={() => {
+          if (playPauseFunction && !audioState.isPlaying) {
+            playPauseFunction()
+          }
+        }}
+        onPause={() => {
+          if (playPauseFunction && audioState.isPlaying) {
+            playPauseFunction()
+          }
+        }}
       />
 
       {selectedWord && (

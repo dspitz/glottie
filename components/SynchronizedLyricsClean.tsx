@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { SentenceModal } from '@/components/SentenceModal'
+import { TranslationBottomSheet } from '@/components/TranslationBottomSheet'
 import { WordPopover } from '@/components/WordPopover'
 import { Play, Pause, SkipBack, SkipForward, RotateCcw } from 'lucide-react'
 import { LyricsLine, LyricsWord } from '@/packages/adapters/lyricsProvider'
@@ -600,8 +600,8 @@ export function SynchronizedLyrics({
         )}
       </div>
 
-      {/* Modals */}
-      <SentenceModal
+      {/* Bottom Sheet */}
+      <TranslationBottomSheet
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         sentence={selectedSentence}
