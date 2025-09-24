@@ -112,7 +112,9 @@ export function TranslationBottomSheet({
 
     // Get current line timing data
     const currentLine = synchronizedData?.lines?.[currentLineIndex]
-    if (!currentLine || !onTimeSeek) return
+    if (!currentLine || !onTimeSeek) {
+      return
+    }
 
     // Calculate timing
     // The `time` field is in seconds (from original LRC format)

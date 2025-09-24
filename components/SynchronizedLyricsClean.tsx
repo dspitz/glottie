@@ -42,6 +42,11 @@ interface SynchronizedLyricsProps {
     format: 'lrc' | 'estimated' | 'dfxp'
     duration?: number
   }
+  // Callback to handle sentence clicks instead of internal modal
+  onSentenceClick?: (sentence: string, index: number) => void
+  // Audio control functions for Play Line feature
+  onPlay?: () => void
+  onPause?: () => void
 }
 
 export function SynchronizedLyrics({
@@ -57,7 +62,10 @@ export function SynchronizedLyrics({
   playbackRate = 1.0,
   onPlaybackRateChange,
   displayLanguage = 'spanish',
-  synchronizedData
+  synchronizedData,
+  onSentenceClick: externalOnSentenceClick,
+  onPlay,
+  onPause
 }: SynchronizedLyricsProps) {
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
@@ -608,6 +616,11 @@ export function SynchronizedLyrics({
         translations={selectedSentenceTranslations}
         currentLineIndex={currentLineIndex}
         totalLines={synchronizedLines.length > 0 ? synchronizedLines.length : lines.length}
+        synchronizedData={synchronizedData}
+        onTimeSeek={onTimeSeek}
+        isPlaying={isPlaying}
+        onPlay={onPlay}
+        onPause={onPause}
         onNavigatePrevious={() => {
           const newIndex = currentLineIndex - 1
           // Handle both synchronized and non-synchronized scenarios

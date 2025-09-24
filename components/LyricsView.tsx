@@ -199,6 +199,16 @@ export function LyricsView({
           }
         }}
         displayLanguage={displayLanguage}
+        onPlay={() => {
+          if (playPauseFunction && !audioState.isPlaying) {
+            playPauseFunction()
+          }
+        }}
+        onPause={() => {
+          if (playPauseFunction && audioState.isPlaying) {
+            playPauseFunction()
+          }
+        }}
       />
 
       {/* Bottom Sheet */}
