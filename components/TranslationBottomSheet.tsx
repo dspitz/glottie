@@ -103,7 +103,7 @@ export function TranslationBottomSheet({
   }
 
   // Handle playing the current line
-  const handlePlayLine = () => {
+  const handlePlayLine = async () => {
     // Clear any existing timeout
     if (playTimeoutRef.current) {
       clearTimeout(playTimeoutRef.current)
@@ -140,14 +140,22 @@ export function TranslationBottomSheet({
       return // No timing data available
     }
 
-    // Seek to start and play
+    // Start playback first if not playing (this will load the track if needed)
+    if (!isPlaying && onPlay) {
+      onPlay()
+      // Give the player a moment to initialize and load the track
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+
+    // Then seek to the start position
     onTimeSeek(startTimeMs)
 
-    // Start playback if we have play function
-    if (onPlay) {
+    // If we weren't playing, ensure we start now
+    if (!isPlaying && onPlay) {
       onPlay()
-      setIsPlayingLine(true)
     }
+
+    setIsPlayingLine(true)
 
     // Set timeout to pause at end of line if we have an end time
     if (endTimeMs && onPause) {

@@ -200,8 +200,12 @@ export function LyricsView({
         }}
         displayLanguage={displayLanguage}
         onPlay={() => {
-          if (playPauseFunction && !audioState.isPlaying) {
-            playPauseFunction()
+          // Always call the play function - it will handle loading the track if needed
+          if (playPauseFunction) {
+            // If not playing, this will start playback (and load track if needed)
+            if (!audioState.isPlaying) {
+              playPauseFunction()
+            }
           }
         }}
         onPause={() => {
