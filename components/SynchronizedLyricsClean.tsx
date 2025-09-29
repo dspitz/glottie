@@ -43,7 +43,7 @@ interface SynchronizedLyricsProps {
     duration?: number
   }
   // Callback to handle sentence clicks instead of internal modal
-  onSentenceClick?: (sentence: string, index: number) => void
+  onSentenceClick?: (sentence: string, index: number, clickPosition?: { x: number, y: number, elementRect: DOMRect }) => void
   // Audio control functions for Play Line feature
   onPlay?: () => void
   onPause?: () => void
@@ -391,11 +391,17 @@ export function SynchronizedLyrics({
 
 
   // Handle sentence click
-  const handleSentenceClick = useCallback((text: string, index: number) => {
+  const handleSentenceClick = useCallback((text: string, index: number, clickEvent?: React.MouseEvent) => {
     // If external handler is provided, use it instead of internal modal
     if (externalOnSentenceClick) {
       console.log('🎯 Using external sentence click handler')
-      externalOnSentenceClick(text, index)
+      // Extract click position if event is provided
+      const clickPosition = clickEvent ? {
+        x: clickEvent.clientX,
+        y: clickEvent.clientY,
+        elementRect: (clickEvent.currentTarget as HTMLElement).getBoundingClientRect()
+      } : undefined
+      externalOnSentenceClick(text, index, clickPosition)
       return
     }
 
@@ -524,8 +530,8 @@ export function SynchronizedLyrics({
           boxShadow: '0 10px 24px rgba(0, 0, 0, 0.08)'
         } : {}}
         data-sentence-index={lineIndex}
-        onClick={() => {
-          handleSentenceClick(line.text, lineIndex)
+        onClick={(e) => {
+          handleSentenceClick(line.text, lineIndex, e)
           handleLineClick(lineIndex)
         }}
       >

@@ -31,6 +31,8 @@ interface TranslationBottomSheetProps {
   }
   // NEW: Unified controls
   audioControls?: AudioPlayerControls | null
+  // Click position for contextual animation
+  clickPosition?: { x: number, y: number, elementRect: DOMRect }
   // Legacy props - keep for backward compatibility
   onTimeSeek?: (time: number) => void
   isPlaying?: boolean
@@ -55,6 +57,7 @@ export function TranslationBottomSheet({
   hasAudioControl = false,
   synchronizedData,
   audioControls,
+  clickPosition,
   onTimeSeek,
   isPlaying = false,
   onPlay,
@@ -290,15 +293,30 @@ export function TranslationBottomSheet({
     const shouldClose = info.velocity.y > 20 || (info.velocity.y >= 0 && info.offset.y > 100)
 
     if (shouldClose) {
-
-      controls.start({
-        y: '100%',
-        transition: { type: 'spring', damping: 40, stiffness: 600 }
-      })
+      if (clickPosition) {
+        // Animate back to exact row dimensions
+        controls.start({
+          y: clickPosition.elementRect.top - (window.innerHeight * 0.9 - clickPosition.elementRect.height) / 2,
+          scaleY: clickPosition.elementRect.height / (window.innerHeight * 0.9),
+          scaleX: clickPosition.elementRect.width / window.innerWidth,
+          opacity: 0,
+          borderRadius: '12px',
+          transition: { type: 'spring', damping: 40, stiffness: 600 }
+        })
+      } else {
+        controls.start({
+          y: '100%',
+          transition: { type: 'spring', damping: 40, stiffness: 600 }
+        })
+      }
       setTimeout(onClose, 200)
     } else {
       controls.start({
         y: 0,
+        scaleY: 1,
+        scaleX: 1,
+        opacity: 1,
+        borderRadius: '24px',
         transition: { type: 'spring', damping: 40, stiffness: 600 }
       })
     }
@@ -327,10 +345,42 @@ export function TranslationBottomSheet({
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
             animate={controls}
-            initial={{ y: '100%' }}
-            whileInView={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 40, stiffness: 600 }}
+            initial={clickPosition ? {
+              // Start with exact row dimensions
+              y: clickPosition.elementRect.top - (window.innerHeight * 0.9 - clickPosition.elementRect.height) / 2,
+              scaleY: clickPosition.elementRect.height / (window.innerHeight * 0.9), // Scale to match row height
+              scaleX: clickPosition.elementRect.width / window.innerWidth, // Scale to match row width
+              opacity: 0.8,
+              borderRadius: '12px'
+            } : {
+              // Default: slide up from bottom
+              y: '100%'
+            }}
+            whileInView={clickPosition ? {
+              // Grow to full modal size
+              y: 0,
+              scaleY: 1,
+              scaleX: 1,
+              opacity: 1,
+              borderRadius: '24px'
+            } : {
+              y: 0
+            }}
+            exit={clickPosition ? {
+              // Shrink back to exact row dimensions
+              y: clickPosition.elementRect.top - (window.innerHeight * 0.9 - clickPosition.elementRect.height) / 2,
+              scaleY: clickPosition.elementRect.height / (window.innerHeight * 0.9),
+              scaleX: clickPosition.elementRect.width / window.innerWidth,
+              opacity: 0,
+              borderRadius: '12px'
+            } : {
+              y: '100%'
+            }}
+            transition={{
+              type: 'spring',
+              damping: 40,
+              stiffness: 600
+            }}
             className={cn(
               "fixed bottom-0 left-0 right-0 z-[61]",
               "bg-white/50",
@@ -339,7 +389,12 @@ export function TranslationBottomSheet({
               "overflow-hidden flex flex-col",
               isDragging && "select-none"
             )}
-            style={{ backdropFilter: 'blur(96px)' }}
+            style={{
+              backdropFilter: 'blur(96px)',
+              transformOrigin: clickPosition ?
+                'center center' :
+                'center bottom'
+            }}
           >
             {/* Drag Handle */}
             <div className="flex justify-center pt-3 pb-2">
@@ -347,7 +402,11 @@ export function TranslationBottomSheet({
             </div>
 
             {/* Header */}
-            <div className="px-3 pb-3 mb-10 flex items-center justify-between relative">
+            <motion.div
+              className="px-3 pb-3 mb-10 flex items-center justify-between relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+              exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
               <div className="bg-background/80 backdrop-blur-sm rounded-full">
                 <Button
                   variant="ghost"
@@ -369,11 +428,14 @@ export function TranslationBottomSheet({
                 )}
               </div>
               <div className="flex-1" />
-            </div>
+            </motion.div>
 
             {/* Content */}
-            <div
+            <motion.div
               className="px-3 pb-4 space-y-4 overflow-y-auto flex-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+              exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
               onMouseDown={(e) => {
                 // Pause on mouse down on lyrics area (excluding buttons and controls)
                 if (!(e.target as HTMLElement).closest('button') &&
@@ -398,17 +460,24 @@ export function TranslationBottomSheet({
               }}
             >
               {/* Spanish Text - No box, just the text with tappable words */}
-              <div className="pb-6">
+              <div>
                 <div
-                  className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
+                  className="bubble flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
                   style={{
-                    fontSize: '34px',
-                    lineHeight: '40px',
+                    fontSize: '30px',
+                    lineHeight: '36px',
                     fontWeight: 400,
                     color: '#000',
                     backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                    minHeight: '160px', // 4 lines × 40px line height
-                    maxHeight: '160px',
+                    boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                    // Height calculation for 3 lines minimum:
+                    // 3 lines × 36px line height = 108px
+                    // + word wrapper padding (4px per line) = 12px
+                    // + container padding (16px top + 16px bottom) = 32px
+                    // + gap between lines (2 gaps × 8px) = 16px
+                    // Total: 168px
+                    minHeight: '168px',
+                    maxHeight: 'none', // Allow expansion for 4-5 lines
                     overflow: 'auto'
                   }}>
                   {parseTextIntoWords(sentence).map((token, index) => {
@@ -566,17 +635,18 @@ export function TranslationBottomSheet({
                 </div>
               ) : (
                 // Full Translation View - Same container style as lyrics
-                <div className="pb-6">
+                <div>
                   <div
                     className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
                     style={{
-                      fontSize: '34px',
-                      lineHeight: '40px',
+                      fontSize: '30px',
+                      lineHeight: '36px',
                       fontWeight: 400,
-                      color: 'rgba(0, 0, 0, 0.5)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                      minHeight: '160px', // 4 lines × 40px line height
-                      maxHeight: '160px',
+                      color: 'rgba(0, 0, 0, 0.67)',
+                      backgroundColor: 'rgba(255, 255, 255, 0)',
+                      // Match the lyrics container height (3 lines minimum)
+                      minHeight: '168px',
+                      maxHeight: 'none', // Allow expansion for 4-5 lines
                       overflow: 'auto'
                     }}
                   >
@@ -589,10 +659,15 @@ export function TranslationBottomSheet({
                 </div>
               )}
 
-            </div>
+            </motion.div>
 
             {/* Controls - Fixed to bottom */}
-            <div className="px-3 py-4 space-y-3 no-pause-zone" style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)' }}>
+            <motion.div
+              className="px-3 py-4 space-y-3 no-pause-zone"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+              exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
               {/* Navigation */}
               <div className="flex items-center justify-center gap-4">
                 <Button
@@ -760,7 +835,7 @@ export function TranslationBottomSheet({
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
           </motion.div>
         </>
       )}

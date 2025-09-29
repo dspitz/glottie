@@ -119,8 +119,9 @@ export function LyricsView({
   const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
   const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
+  const [clickPosition, setClickPosition] = useState<{ x: number, y: number, elementRect: DOMRect } | undefined>(undefined)
 
-  const handleSentenceClick = useCallback((sentence: string, index: number) => {
+  const handleSentenceClick = useCallback((sentence: string, index: number, clickPos?: { x: number, y: number, elementRect: DOMRect }) => {
     // console.log('🖱️ LyricsView handleSentenceClick:', {
     //   sentence: sentence.substring(0, 50),
     //   index,
@@ -132,6 +133,8 @@ export function LyricsView({
     // })
     setSelectedSentence(sentence)
     setSelectedLineIndex(index)
+    // Store click position for animation
+    setClickPosition(clickPos)
     // Always use pre-downloaded translations if available
     if (processedTranslations[index]) {
       setSelectedSentenceTranslations([processedTranslations[index]])
@@ -306,6 +309,7 @@ export function LyricsView({
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false)
+          setClickPosition(undefined) // Clear click position on close
           onTranslationModalChange?.(false)
         }}
         sentence={selectedSentence}
@@ -315,6 +319,7 @@ export function LyricsView({
         currentLineIndex={selectedLineIndex}
         totalLines={lines.length}
         audioControls={audioControls}
+        clickPosition={clickPosition}
         onTimeSeek={(timeInMs: number) => {
           if (seekFunction) {
             seekFunction(timeInMs)
