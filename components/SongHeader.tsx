@@ -45,6 +45,7 @@ interface SongHeaderProps {
   hasLyrics?: boolean
   hasTranslations?: boolean
   synced?: boolean
+  hideNavigation?: boolean
 }
 
 // Helper function to convert RGB to HSV
@@ -279,12 +280,13 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
   })
 }
 
-export function SongHeader({ track, backHref, backText, level, levelName, difficultyScore, genres, wordCount, verbDensity, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced }: SongHeaderProps) {
+export function SongHeader({ track, backHref, backText, level, levelName, difficultyScore, genres, wordCount, verbDensity, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced, hideNavigation = false }: SongHeaderProps) {
   console.log('🎵 SongHeader received track:', {
     title: track?.title,
     artist: track?.artist,
     songSummary: track?.songSummary,
-    hasSummary: !!track?.songSummary
+    hasSummary: !!track?.songSummary,
+    hideNavigation: hideNavigation
   });
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
   const { data: session } = useSession()
@@ -382,7 +384,9 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
   return (
     <>
       {/* Fixed header with back button and dev rating */}
-      <header className="fixed top-0 left-0 right-0 h-20 bg-transparent z-50 flex items-center justify-between px-6 pointer-events-none">
+      <header
+        className="fixed top-0 left-0 right-0 h-20 bg-transparent z-50 flex items-center justify-between px-6 pointer-events-none transition-opacity duration-300"
+        style={{ opacity: hideNavigation ? 0 : 1 }}>
         {/* Back button on the left */}
         {onBackClick ? (
           <Button

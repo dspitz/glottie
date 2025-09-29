@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { EnhancedAudioPlayer, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
+import { EnhancedAudioPlayer, AudioPlayerState, AudioPlayerControls } from '@/components/EnhancedAudioPlayer'
 import { SynchronizedLyrics } from '@/components/SynchronizedLyricsClean'
 import { TranslationBottomSheet } from '@/components/TranslationBottomSheet'
 import { WordPopover } from '@/components/WordPopover'
@@ -36,6 +36,7 @@ interface LyricsViewProps {
   }
   onPlayStateChange?: (isPlaying: boolean) => void
   onPlayPauseReady?: (fn: () => void) => void
+  onTranslationModalChange?: (isOpen: boolean) => void
 }
 
 export function LyricsView({
@@ -50,45 +51,49 @@ export function LyricsView({
   track,
   synchronized,
   onPlayStateChange,
-  onPlayPauseReady
+  onPlayPauseReady,
+  onTranslationModalChange
 }: LyricsViewProps) {
   // Debug: Log what LyricsView receives
-  console.log('🎭 LyricsView received synchronized:', {
-    hasSynchronized: !!synchronized,
-    format: synchronized?.format,
-    lineCount: synchronized?.lines?.length,
-    firstLine: synchronized?.lines?.[0]
-  })
+  // console.log('🎭 LyricsView received props:', {
+  //   hasSynchronized: !!synchronized,
+  //   format: synchronized?.format,
+  //   lineCount: synchronized?.lines?.length,
+  //   firstLine: synchronized?.lines?.[0],
+  //   hasTrack: !!track,
+  //   hasOnPlayPauseReady: !!onPlayPauseReady,
+  //   onPlayPauseReadyType: typeof onPlayPauseReady
+  // })
   // Process translations - extract English translations if it's an object
   const processedTranslations = React.useMemo(() => {
-    console.log('🔍 LyricsView: Processing translations', {
-      type: typeof translations,
-      isArray: Array.isArray(translations),
-      keys: translations && typeof translations === 'object' ? Object.keys(translations) : null,
-      firstTranslation: Array.isArray(translations) && translations[0] ? translations[0].substring(0, 40) : null,
-      rawTranslations: translations
-    })
+    // console.log('🔍 LyricsView: Processing translations', {
+    //   type: typeof translations,
+    //   isArray: Array.isArray(translations),
+    //   keys: translations && typeof translations === 'object' ? Object.keys(translations) : null,
+    //   firstTranslation: Array.isArray(translations) && translations[0] ? translations[0].substring(0, 40) : null,
+    //   rawTranslations: translations
+    // })
 
     if (Array.isArray(translations)) {
-      console.log(`✅ LyricsView: Using translations array with ${translations.length} items`)
+      // console.log(`✅ LyricsView: Using translations array with ${translations.length} items`)
       translations.forEach((trans, idx) => {
         if (idx < 3) { // Log first 3 translations for debugging
-          console.log(`  Translation[${idx}]: "${trans?.substring(0, 50)}${trans?.length > 50 ? '...' : ''}"`)
+          // console.log(`  Translation[${idx}]: "${trans?.substring(0, 50)}${trans?.length > 50 ? '...' : ''}"`)
         }
       })
       return translations
     } else if (typeof translations === 'object' && translations !== null) {
       // Extract English translations from the object format { en: [...], pt: [...] }
       const enTranslations = translations['en'] || []
-      console.log(`✅ LyricsView: Extracted ${enTranslations.length} English translations from object`)
+      // console.log(`✅ LyricsView: Extracted ${enTranslations.length} English translations from object`)
       enTranslations.forEach((trans, idx) => {
         if (idx < 3) { // Log first 3 translations for debugging
-          console.log(`  EnTranslation[${idx}]: "${trans?.substring(0, 50)}${trans?.length > 50 ? '...' : ''}"`)
+          // console.log(`  EnTranslation[${idx}]: "${trans?.substring(0, 50)}${trans?.length > 50 ? '...' : ''}"`)
         }
       })
       return enTranslations
     }
-    console.log('⚠️ LyricsView: No translations available')
+    // console.log('⚠️ LyricsView: No translations available')
     return []
   }, [translations])
 
@@ -105,12 +110,26 @@ export function LyricsView({
     playbackMode: 'unavailable',
     playbackRate: 1.0
   })
+  // NEW: Unified controls from EnhancedAudioPlayer
+  const [audioControls, setAudioControls] = useState<AudioPlayerControls | null>(null)
+
+  // Legacy: Keep these for backward compatibility during transition
   const [seekFunction, setSeekFunction] = useState<((time: number) => void) | null>(null)
+  const [playFromTimeFunction, setPlayFromTimeFunction] = useState<((time: number) => Promise<boolean>) | null>(null)
   const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
   const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
 
   const handleSentenceClick = useCallback((sentence: string, index: number) => {
+    // console.log('🖱️ LyricsView handleSentenceClick:', {
+    //   sentence: sentence.substring(0, 50),
+    //   index,
+    //   hasSynchronized: !!synchronized,
+    //   synchronizedLines: synchronized?.lines?.length,
+    //   hasPlayFromTimeFunction: !!playFromTimeFunction,
+    //   hasSeekFunction: !!seekFunction,
+    //   hasPlayPauseFunction: !!playPauseFunction
+    // })
     setSelectedSentence(sentence)
     setSelectedLineIndex(index)
     // Always use pre-downloaded translations if available
@@ -120,7 +139,9 @@ export function LyricsView({
       setSelectedSentenceTranslations([])
     }
     setIsModalOpen(true)
-  }, [processedTranslations])
+    console.log('📱 LyricsView: Opening translation modal, calling callback:', !!onTranslationModalChange)
+    onTranslationModalChange?.(true)
+  }, [processedTranslations, synchronized, playFromTimeFunction, seekFunction, playPauseFunction, onTranslationModalChange])
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
     setAudioState(state)
@@ -133,12 +154,64 @@ export function LyricsView({
     }
   }, [onPlayStateChange])
 
-  const handleSeekFunctionSet = useCallback((seekFn: (time: number) => void) => {
+  // Auto-advance modal content when playing
+  useEffect(() => {
+    if (isModalOpen && audioState.isPlaying && synchronized?.lines) {
+      const currentTimeMs = audioState.playbackMode === 'spotify'
+        ? audioState.currentTime
+        : audioState.currentTime * 1000
+
+      // Find the current line based on playback time
+      for (let i = 0; i < synchronized.lines.length; i++) {
+        const line = synchronized.lines[i]
+        const startTime = line.time || line.startTime || 0
+        const startTimeMs = startTime > 1000 ? startTime : startTime * 1000
+
+        const nextLine = synchronized.lines[i + 1]
+        const endTimeMs = nextLine
+          ? ((nextLine.time || nextLine.startTime || 0) > 1000
+            ? (nextLine.time || nextLine.startTime || 0)
+            : (nextLine.time || nextLine.startTime || 0) * 1000)
+          : startTimeMs + 5000 // Default 5 seconds for last line
+
+        if (currentTimeMs >= startTimeMs && currentTimeMs < endTimeMs) {
+          // Only update if we've moved to a different line
+          if (i !== selectedLineIndex) {
+            setSelectedLineIndex(i)
+            setSelectedSentence(lines[i])
+            if (processedTranslations[i]) {
+              setSelectedSentenceTranslations([processedTranslations[i]])
+            } else {
+              setSelectedSentenceTranslations([])
+            }
+          }
+          break
+        }
+      }
+    }
+  }, [isModalOpen, audioState.isPlaying, audioState.currentTime, audioState.playbackMode, synchronized, lines, processedTranslations, selectedLineIndex])
+
+  const handleSeekFunctionSet = useCallback((seekFn: (time: number) => void, playFromTimeFn?: (time: number) => Promise<boolean>) => {
+    // console.log('📡 LyricsView: handleSeekFunctionSet called', {
+    //   hasSeekFn: !!seekFn,
+    //   hasPlayFromTimeFn: !!playFromTimeFn
+    // })
     setSeekFunction(() => seekFn)
+    if (playFromTimeFn) {
+      // console.log('✅ Setting playFromTimeFunction')
+      setPlayFromTimeFunction(() => playFromTimeFn)
+    } else {
+      // console.log('⚠️ No playFromTimeFn provided')
+    }
   }, [])
 
   const handlePlaybackRateFunctionSet = useCallback((rateFn: (rate: number) => void) => {
     setPlaybackRateFunction(() => rateFn)
+  }, [])
+
+  const handleControlsReady = useCallback((controls: AudioPlayerControls) => {
+    // console.log('🎮 LyricsView: Received unified controls from EnhancedAudioPlayer')
+    setAudioControls(controls)
   }, [])
 
   const handleLyricsTimeSeek = useCallback((timeInMs: number) => {
@@ -147,12 +220,14 @@ export function LyricsView({
     }
   }, [seekFunction])
 
-  // Capture play/pause function from EnhancedAudioPlayer
-  useEffect(() => {
+  // Create our own callback to capture the play/pause function from EnhancedAudioPlayer
+  const handlePlayPauseReady = useCallback((playPauseFn: () => void) => {
+    // console.log('✅ LyricsView: Received play/pause function from EnhancedAudioPlayer')
+    setPlayPauseFunction(() => playPauseFn)
+
+    // Also call the parent's onPlayPauseReady if it exists
     if (onPlayPauseReady && typeof onPlayPauseReady === 'function') {
-      onPlayPauseReady((fn: () => void) => {
-        setPlayPauseFunction(() => fn)
-      })
+      onPlayPauseReady(playPauseFn)
     }
   }, [onPlayPauseReady])
 
@@ -163,9 +238,10 @@ export function LyricsView({
         <EnhancedAudioPlayer
           track={track}
           onStateChange={handleAudioStateChange}
+          onControlsReady={handleControlsReady}
           onTimeSeek={handleSeekFunctionSet}
           onPlaybackRateChange={handlePlaybackRateFunctionSet}
-          onPlayPauseReady={onPlayPauseReady}
+          onPlayPauseReady={handlePlayPauseReady}
         />
       )}
 
@@ -199,6 +275,7 @@ export function LyricsView({
           }
         }}
         displayLanguage={displayLanguage}
+        onPlayFromTime={playFromTimeFunction}
         onPlay={() => {
           // Always call the play function - it will handle loading the track if needed
           if (playPauseFunction) {
@@ -209,35 +286,103 @@ export function LyricsView({
           }
         }}
         onPause={() => {
-          if (playPauseFunction && audioState.isPlaying) {
+          // console.log('🛑 LyricsView onPause called from SynchronizedLyrics', {
+          //   hasPlayPauseFunction: !!playPauseFunction,
+          //   audioStateIsPlaying: audioState.isPlaying
+          // })
+          // ALWAYS pause, don't check if isPlaying because state might be stale
+          if (playPauseFunction) {
+            // console.log('✅ Calling playPauseFunction to pause')
             playPauseFunction()
+          } else {
+            console.warn('⚠️ No playPauseFunction available')
           }
         }}
+        onSentenceClick={handleSentenceClick}
       />
 
       {/* Bottom Sheet */}
       <TranslationBottomSheet
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false)
+          onTranslationModalChange?.(false)
+        }}
         sentence={selectedSentence}
         translations={selectedSentenceTranslations}
         backgroundColor={backgroundColor}
         synchronizedData={synchronized}
         currentLineIndex={selectedLineIndex}
+        totalLines={lines.length}
+        audioControls={audioControls}
         onTimeSeek={(timeInMs: number) => {
           if (seekFunction) {
             seekFunction(timeInMs)
           }
         }}
+        onPlayFromTime={playFromTimeFunction}
         isPlaying={audioState.isPlaying}
+        onNavigatePrevious={() => {
+          if (selectedLineIndex > 0) {
+            const newIndex = selectedLineIndex - 1
+            handleSentenceClick(lines[newIndex], newIndex)
+            // Seek to the line's start time if synchronized data exists
+            if (synchronized?.lines?.[newIndex]) {
+              const line = synchronized.lines[newIndex]
+              const startTime = line.time || line.startTime || 0
+              // Convert to milliseconds if needed
+              const timeInMs = startTime > 1000 ? startTime : startTime * 1000
+
+              // Use audioControls if available, otherwise use seekFunction
+              if (audioControls) {
+                audioControls.seek(timeInMs)
+              } else if (seekFunction) {
+                seekFunction(timeInMs)
+              }
+            }
+          }
+        }}
+        onNavigateNext={() => {
+          if (selectedLineIndex < lines.length - 1) {
+            const newIndex = selectedLineIndex + 1
+            handleSentenceClick(lines[newIndex], newIndex)
+            // Seek to the line's start time if synchronized data exists
+            if (synchronized?.lines?.[newIndex]) {
+              const line = synchronized.lines[newIndex]
+              const startTime = line.time || line.startTime || 0
+              // Convert to milliseconds if needed
+              const timeInMs = startTime > 1000 ? startTime : startTime * 1000
+
+              // Use audioControls if available, otherwise use seekFunction
+              if (audioControls) {
+                audioControls.seek(timeInMs)
+              } else if (seekFunction) {
+                seekFunction(timeInMs)
+              }
+            }
+          }
+        }}
         onPlay={() => {
           if (playPauseFunction && !audioState.isPlaying) {
             playPauseFunction()
           }
         }}
         onPause={() => {
-          if (playPauseFunction && audioState.isPlaying) {
+          // console.log('🛑 LyricsView onPause called from TranslationBottomSheet', {
+          //   hasAudioControls: !!audioControls,
+          //   hasPlayPauseFunction: !!playPauseFunction,
+          //   audioStateIsPlaying: audioState.isPlaying
+          // })
+          // Use dedicated pause method from audioControls if available
+          if (audioControls?.pause) {
+            // console.log('✅ Using audioControls.pause() for guaranteed pause')
+            audioControls.pause()
+          } else if (playPauseFunction && audioState.isPlaying) {
+            // Fallback: only toggle if currently playing
+            // console.log('⚠️ Falling back to playPauseFunction (toggle)')
             playPauseFunction()
+          } else {
+            console.warn('⚠️ Cannot pause - no suitable method available')
           }
         }}
       />

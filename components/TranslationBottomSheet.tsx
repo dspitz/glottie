@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Play, X, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Pause, Repeat, Repeat1, Loader2 } from 'lucide-react'
 import { parseTextIntoWords } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { defineWord } from '@/lib/client'
+import { AudioPlayerControls } from '@/components/EnhancedAudioPlayer'
 
 interface TranslationBottomSheetProps {
   isOpen: boolean
@@ -28,10 +29,14 @@ interface TranslationBottomSheetProps {
       endTime?: number
     }>
   }
+  // NEW: Unified controls
+  audioControls?: AudioPlayerControls | null
+  // Legacy props - keep for backward compatibility
   onTimeSeek?: (time: number) => void
   isPlaying?: boolean
   onPlay?: () => void
   onPause?: () => void
+  onPlayFromTime?: ((time: number) => Promise<boolean>) | null
 }
 
 export function TranslationBottomSheet({
@@ -49,10 +54,12 @@ export function TranslationBottomSheet({
   onPlaybackRateChange,
   hasAudioControl = false,
   synchronizedData,
+  audioControls,
   onTimeSeek,
   isPlaying = false,
   onPlay,
-  onPause
+  onPause,
+  onPlayFromTime
 }: TranslationBottomSheetProps) {
   const [translation, setTranslation] = useState<string>('')
   const controls = useAnimation()
@@ -61,8 +68,10 @@ export function TranslationBottomSheet({
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
   const [wordDefinition, setWordDefinition] = useState<any>(null)
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false)
-  const [isPlayingLine, setIsPlayingLine] = useState(false)
-  const playTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [loopMode, setLoopMode] = useState<'off' | 'once' | 'infinite'>('off')
+  const loopCountRef = useRef<number>(0)
+  const lineMonitorRef = useRef<NodeJS.Timeout | null>(null)
+
 
   useEffect(() => {
     if (isOpen && sentence) {
@@ -76,6 +85,144 @@ export function TranslationBottomSheet({
       setWordDefinition(null)
     }
   }, [isOpen, sentence, translations])
+
+  // Handle line looping
+  useEffect(() => {
+    // Clear any existing monitor
+    if (lineMonitorRef.current) {
+      clearInterval(lineMonitorRef.current)
+      lineMonitorRef.current = null
+    }
+
+    // Only set up monitoring if we're playing and loop mode is active
+    if (isPlaying && loopMode !== 'off' && synchronizedData) {
+      const currentLine = synchronizedData.lines?.[currentLineIndex]
+      if (!currentLine) return
+
+      // Get line timing
+      let startTimeMs: number
+      let endTimeMs: number | undefined
+
+      if (typeof currentLine.startTime === 'number') {
+        startTimeMs = currentLine.startTime
+        endTimeMs = currentLine.endTime
+      } else if (typeof currentLine.time === 'number') {
+        // Check if time is in ms or seconds
+        if (currentLine.time > 1000) {
+          startTimeMs = currentLine.time
+          const nextLine = synchronizedData.lines?.[currentLineIndex + 1]
+          endTimeMs = nextLine?.time || startTimeMs + 2000
+        } else {
+          startTimeMs = currentLine.time * 1000
+          const nextLine = synchronizedData.lines?.[currentLineIndex + 1]
+          endTimeMs = nextLine?.time ? nextLine.time * 1000 : startTimeMs + 2000
+        }
+      } else {
+        return // No timing data
+      }
+
+      console.log('🔄 Loop monitoring started:', {
+        loopMode,
+        currentLineIndex,
+        startTimeMs,
+        endTimeMs,
+        duration: endTimeMs ? endTimeMs - startTimeMs : 'unknown'
+      })
+
+      // Monitor for line end
+      let checkCount = 0
+      lineMonitorRef.current = setInterval(() => {
+        checkCount++
+        let currentTimeMs: number = 0
+
+        // Get current time from audioControls if available
+        if (audioControls) {
+          const state = audioControls.getState()
+          if (state.playbackMode === 'spotify') {
+            currentTimeMs = state.currentTime || 0
+          } else {
+            currentTimeMs = (state.currentTime || 0) * 1000
+          }
+        }
+
+        // Debug log every 10 checks (500ms)
+        if (checkCount % 10 === 0) {
+          console.log('🔍 Loop monitor check:', {
+            checkCount,
+            currentTimeMs,
+            endTimeMs,
+            timeUntilEnd: endTimeMs ? endTimeMs - currentTimeMs : 'N/A',
+            loopMode,
+            loopCount: loopCountRef.current
+          })
+        }
+
+        // Check if we've reached the end of the line
+        if (endTimeMs && currentTimeMs >= endTimeMs) {
+          console.log('🎯 Line end reached!', {
+            currentTimeMs,
+            endTimeMs,
+            loopMode,
+            loopCount: loopCountRef.current
+          })
+
+          if (loopMode === 'once') {
+            if (loopCountRef.current === 0) {
+              // First loop, replay once more
+              console.log('🔁 Looping once - seeking back to start')
+              loopCountRef.current = 1
+              if (audioControls) {
+                audioControls.seek(startTimeMs)
+                // Ensure playback continues
+                if (!audioControls.getState().isPlaying) {
+                  audioControls.play()
+                }
+              } else if (onTimeSeek) {
+                onTimeSeek(startTimeMs)
+                // Ensure playback continues with legacy
+                if (!isPlaying && onPlay) {
+                  setTimeout(() => onPlay(), 50)
+                }
+              }
+            } else {
+              // Already looped once, stop looping
+              console.log('✅ Loop once complete - stopping loop')
+              loopCountRef.current = 0
+              setLoopMode('off')
+              clearInterval(lineMonitorRef.current!)
+              lineMonitorRef.current = null
+            }
+          } else if (loopMode === 'infinite') {
+            // Keep looping
+            console.log('♾️ Infinite loop - seeking back to start')
+            if (audioControls) {
+              audioControls.seek(startTimeMs)
+              // Ensure playback continues
+              if (!audioControls.getState().isPlaying) {
+                audioControls.play()
+              }
+            } else if (onTimeSeek) {
+              onTimeSeek(startTimeMs)
+              // Ensure playback continues with legacy
+              if (!isPlaying && onPlay) {
+                setTimeout(() => onPlay(), 50)
+              }
+            }
+          }
+        }
+      }, 50) // Check every 50ms
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (lineMonitorRef.current) {
+        clearInterval(lineMonitorRef.current)
+        lineMonitorRef.current = null
+      }
+    }
+  }, [isPlaying, loopMode, currentLineIndex, synchronizedData, audioControls, onTimeSeek, onPlay])
+
+  // Debug state - removed for cleaner console
 
   // Handle word click
   const handleWordClick = async (word: string, cleanWord: string) => {
@@ -102,99 +249,8 @@ export function TranslationBottomSheet({
     }
   }
 
-  // Handle playing the current line
-  const handlePlayLine = async () => {
-    // Clear any existing timeout
-    if (playTimeoutRef.current) {
-      clearTimeout(playTimeoutRef.current)
-      playTimeoutRef.current = null
-    }
 
-    // Get current line timing data
-    const currentLine = synchronizedData?.lines?.[currentLineIndex]
-    if (!currentLine || !onTimeSeek) {
-      return
-    }
 
-    // Calculate timing
-    // The `time` field is in seconds (from original LRC format)
-    // The `startTime` field is in milliseconds (from processed data)
-    let startTimeMs: number
-    let endTimeMs: number | undefined
-
-    if (typeof currentLine.startTime === 'number') {
-      // Already in milliseconds
-      startTimeMs = currentLine.startTime
-      endTimeMs = currentLine.endTime
-    } else if (typeof currentLine.time === 'number') {
-      // Convert from seconds to milliseconds
-      startTimeMs = currentLine.time * 1000
-      // For LRC format, estimate end time based on next line or add 3 seconds
-      const nextLine = synchronizedData?.lines?.[currentLineIndex + 1]
-      if (nextLine?.time) {
-        endTimeMs = nextLine.time * 1000
-      } else {
-        endTimeMs = startTimeMs + 3000 // Default 3 seconds per line
-      }
-    } else {
-      return // No timing data available
-    }
-
-    // Start playback first if not playing (this will load the track if needed)
-    if (!isPlaying && onPlay) {
-      onPlay()
-      // Give the player a moment to initialize and load the track
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
-
-    // Then seek to the start position
-    onTimeSeek(startTimeMs)
-
-    // If we weren't playing, ensure we start now
-    if (!isPlaying && onPlay) {
-      onPlay()
-    }
-
-    setIsPlayingLine(true)
-
-    // Set timeout to pause at end of line if we have an end time
-    if (endTimeMs && onPause) {
-      const duration = endTimeMs - startTimeMs
-      playTimeoutRef.current = setTimeout(() => {
-        onPause()
-        setIsPlayingLine(false)
-      }, duration)
-    }
-  }
-
-  // Clean up timeout on unmount or when closing
-  useEffect(() => {
-    return () => {
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  // Reset playing state when line changes
-  useEffect(() => {
-    setIsPlayingLine(false)
-    if (playTimeoutRef.current) {
-      clearTimeout(playTimeoutRef.current)
-      playTimeoutRef.current = null
-    }
-  }, [currentLineIndex])
-
-  // Update playing state based on external isPlaying prop
-  useEffect(() => {
-    if (!isPlaying) {
-      setIsPlayingLine(false)
-      if (playTimeoutRef.current) {
-        clearTimeout(playTimeoutRef.current)
-        playTimeoutRef.current = null
-      }
-    }
-  }, [isPlaying])
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -234,15 +290,16 @@ export function TranslationBottomSheet({
     const shouldClose = info.velocity.y > 20 || (info.velocity.y >= 0 && info.offset.y > 100)
 
     if (shouldClose) {
+
       controls.start({
         y: '100%',
-        transition: { type: 'spring', damping: 30, stiffness: 300 }
+        transition: { type: 'spring', damping: 40, stiffness: 600 }
       })
       setTimeout(onClose, 200)
     } else {
       controls.start({
         y: 0,
-        transition: { type: 'spring', damping: 30, stiffness: 500 }
+        transition: { type: 'spring', damping: 40, stiffness: 600 }
       })
     }
     setIsDragging(false)
@@ -259,7 +316,6 @@ export function TranslationBottomSheet({
             exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 bg-black/20 z-[60]"
-            style={{ backdropFilter: 'blur(32px)' }}
           />
 
           {/* Bottom Sheet */}
@@ -274,15 +330,16 @@ export function TranslationBottomSheet({
             initial={{ y: '100%' }}
             whileInView={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 400 }}
+            transition={{ type: 'spring', damping: 40, stiffness: 600 }}
             className={cn(
               "fixed bottom-0 left-0 right-0 z-[61]",
-              "bg-white/80 backdrop-blur-xl",
+              "bg-white/50",
               "rounded-t-3xl border-t border-gray-200/50",
-              "h-[66vh]",
-              "overflow-hidden",
+              "h-[90vh]",
+              "overflow-hidden flex flex-col",
               isDragging && "select-none"
             )}
+            style={{ backdropFilter: 'blur(96px)' }}
           >
             {/* Drag Handle */}
             <div className="flex justify-center pt-3 pb-2">
@@ -290,30 +347,70 @@ export function TranslationBottomSheet({
             </div>
 
             {/* Header */}
-            <div className="px-5 pb-3 flex items-center justify-between relative">
-              <div className="flex-1" />
+            <div className="px-3 pb-3 mb-10 flex items-center justify-between relative">
+              <div className="bg-background/80 backdrop-blur-sm rounded-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    onClose()
+                  }}
+                  className="h-9 w-9 rounded-full"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
               <div className="absolute left-1/2 transform -translate-x-1/2">
                 {totalLines > 0 && (
-                  <span className="text-sm font-medium text-gray-600">
+                  <span className="text-sm font-medium text-gray-900">
                     Line {currentLineIndex + 1} of {totalLines}
                   </span>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex-1" />
             </div>
 
             {/* Content */}
-            <div className="px-5 pb-4 space-y-4 overflow-y-auto max-h-[calc(66vh-200px)]">
+            <div
+              className="px-3 pb-4 space-y-4 overflow-y-auto flex-1"
+              onMouseDown={(e) => {
+                // Pause on mouse down on lyrics area (excluding buttons and controls)
+                if (!(e.target as HTMLElement).closest('button') &&
+                    !(e.target as HTMLElement).closest('.no-pause-zone')) {
+                  if (audioControls?.pause) {
+                    audioControls.pause()
+                  } else if (onPause && isPlaying) {
+                    onPause()
+                  }
+                }
+              }}
+              onTouchStart={(e) => {
+                // Pause on touch start on lyrics area (excluding buttons and controls)
+                if (!(e.target as HTMLElement).closest('button') &&
+                    !(e.target as HTMLElement).closest('.no-pause-zone')) {
+                  if (audioControls?.pause) {
+                    audioControls.pause()
+                  } else if (onPause && isPlaying) {
+                    onPause()
+                  }
+                }
+              }}
+            >
               {/* Spanish Text - No box, just the text with tappable words */}
-              <div className="py-2">
-                <div className="text-gray-900 leading-loose flex flex-wrap gap-x-0.5 gap-y-2" style={{ fontSize: '28px' }}>
+              <div className="pb-6">
+                <div
+                  className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
+                  style={{
+                    fontSize: '34px',
+                    lineHeight: '40px',
+                    fontWeight: 400,
+                    color: '#000',
+                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    minHeight: '160px', // 4 lines × 40px line height
+                    maxHeight: '160px',
+                    overflow: 'auto'
+                  }}>
                   {parseTextIntoWords(sentence).map((token, index) => {
                     // Only wrap actual words in containers, not spaces
                     if (token.word.trim() === '') {
@@ -358,186 +455,286 @@ export function TranslationBottomSheet({
               </div>
 
               {/* English Translation or Word Definition */}
-              <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur p-4 border border-gray-200">
-                {selectedWord ? (
-                  // Word Definition View
-                  <>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {selectedWord}
-                        {wordDefinition && wordDefinition.pos && (
-                          <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                            {wordDefinition.pos}
-                          </span>
-                        )}
-                      </h3>
-                      <button
-                        onClick={() => {
-                          setSelectedWord(null)
-                          setWordDefinition(null)
-                        }}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        ✕ Clear
-                      </button>
+              {selectedWord ? (
+                // Word Definition View - Keep the box for definitions
+                <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {selectedWord}
+                      {wordDefinition && wordDefinition.pos && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                          {wordDefinition.pos}
+                        </span>
+                      )}
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setSelectedWord(null)
+                        setWordDefinition(null)
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      ✕ Clear
+                    </button>
+                  </div>
+
+                  {isLoadingDefinition ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-500">Loading definition...</span>
                     </div>
+                  ) : wordDefinition?.error ? (
+                    <p className="text-sm text-gray-500 italic">Definition not available</p>
+                  ) : wordDefinition ? (
+                    <div className="space-y-3">
+                      {/* Definitions */}
+                      {wordDefinition.definitions && (
+                        <div className="space-y-1">
+                          {wordDefinition.definitions.map((def: string, index: number) => (
+                            <p key={index} className="text-base text-gray-800">
+                              • {def}
+                            </p>
+                          ))}
+                        </div>
+                      )}
 
-                    {isLoadingDefinition ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-500">Loading definition...</span>
-                      </div>
-                    ) : wordDefinition?.error ? (
-                      <p className="text-sm text-gray-500 italic">Definition not available</p>
-                    ) : wordDefinition ? (
-                      <div className="space-y-3">
-                        {/* Definitions */}
-                        {wordDefinition.definitions && (
-                          <div className="space-y-1">
-                            {wordDefinition.definitions.map((def: string, index: number) => (
-                              <p key={index} className="text-base text-gray-800">
-                                • {def}
-                              </p>
-                            ))}
-                          </div>
-                        )}
+                      {/* Examples */}
+                      {wordDefinition.examples && wordDefinition.examples.length > 0 && (
+                        <div className="border-t border-gray-200 pt-2">
+                          <h4 className="text-xs font-medium text-gray-500 mb-1">Examples:</h4>
+                          {wordDefinition.examples.slice(0, 2).map((example: string, index: number) => (
+                            <p key={index} className="text-sm text-gray-600 italic">
+                              "{example}"
+                            </p>
+                          ))}
+                        </div>
+                      )}
 
-                        {/* Examples */}
-                        {wordDefinition.examples && wordDefinition.examples.length > 0 && (
-                          <div className="border-t border-gray-200 pt-2">
-                            <h4 className="text-xs font-medium text-gray-500 mb-1">Examples:</h4>
-                            {wordDefinition.examples.slice(0, 2).map((example: string, index: number) => (
-                              <p key={index} className="text-sm text-gray-600 italic">
-                                "{example}"
-                              </p>
-                            ))}
-                          </div>
-                        )}
+                      {/* Conjugations for verbs */}
+                      {wordDefinition.conjugations && (
+                        <div className="border-t border-gray-200 pt-2">
+                          <h4 className="text-xs font-medium text-gray-500 mb-2">Conjugations:</h4>
 
-                        {/* Conjugations for verbs */}
-                        {wordDefinition.conjugations && (
-                          <div className="border-t border-gray-200 pt-2">
-                            <h4 className="text-xs font-medium text-gray-500 mb-2">Conjugations:</h4>
+                          {/* Present tense as default open */}
+                          <details className="text-sm" open>
+                            <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+                              Present
+                            </summary>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
+                              {Object.entries(wordDefinition.conjugations.presente).map(([person, form]) => (
+                                <span key={person} className="text-gray-600">
+                                  {person}: <strong className="text-gray-800">{form}</strong>
+                                </span>
+                              ))}
+                            </div>
+                          </details>
 
-                            {/* Present tense as default open */}
-                            <details className="text-sm" open>
+                          {/* Other tenses collapsed */}
+                          {wordDefinition.conjugations.preterito && (
+                            <details className="text-sm mt-2">
                               <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                                Present
+                                Preterite
                               </summary>
                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
-                                {Object.entries(wordDefinition.conjugations.presente).map(([person, form]) => (
+                                {Object.entries(wordDefinition.conjugations.preterito).map(([person, form]) => (
                                   <span key={person} className="text-gray-600">
                                     {person}: <strong className="text-gray-800">{form}</strong>
                                   </span>
                                 ))}
                               </div>
                             </details>
+                          )}
 
-                            {/* Other tenses collapsed */}
-                            {wordDefinition.conjugations.preterito && (
-                              <details className="text-sm mt-2">
-                                <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                                  Preterite
-                                </summary>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
-                                  {Object.entries(wordDefinition.conjugations.preterito).map(([person, form]) => (
-                                    <span key={person} className="text-gray-600">
-                                      {person}: <strong className="text-gray-800">{form}</strong>
-                                    </span>
-                                  ))}
-                                </div>
-                              </details>
-                            )}
-
-                            {wordDefinition.conjugations.imperfecto && (
-                              <details className="text-sm mt-2">
-                                <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                                  Imperfect
-                                </summary>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
-                                  {Object.entries(wordDefinition.conjugations.imperfecto).map(([person, form]) => (
-                                    <span key={person} className="text-gray-600">
-                                      {person}: <strong className="text-gray-800">{form}</strong>
-                                    </span>
-                                  ))}
-                                </div>
-                              </details>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  // Full Translation View
-                  <>
-                    <h3 className="text-xs font-medium text-gray-500 mb-3 uppercase tracking-wide">
-                      English Translation
-                    </h3>
+                          {wordDefinition.conjugations.imperfecto && (
+                            <details className="text-sm mt-2">
+                              <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
+                                Imperfect
+                              </summary>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
+                                {Object.entries(wordDefinition.conjugations.imperfecto).map(([person, form]) => (
+                                  <span key={person} className="text-gray-600">
+                                    {person}: <strong className="text-gray-800">{form}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            </details>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                // Full Translation View - Same container style as lyrics
+                <div className="pb-6">
+                  <div
+                    className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
+                    style={{
+                      fontSize: '34px',
+                      lineHeight: '40px',
+                      fontWeight: 400,
+                      color: 'rgba(0, 0, 0, 0.5)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      minHeight: '160px', // 4 lines × 40px line height
+                      maxHeight: '160px',
+                      overflow: 'auto'
+                    }}
+                  >
                     {translation ? (
-                      <p className="text-lg text-gray-900 leading-relaxed">{translation}</p>
+                      <p>{translation}</p>
                     ) : (
-                      <p className="text-gray-500 italic">Translation not available</p>
+                      <p className="italic">Translation not available</p>
                     )}
-                  </>
-                )}
-              </div>
+                  </div>
+                </div>
+              )}
 
-              {/* Tip */}
-              <div className="flex items-center gap-2 px-2 py-1">
-                <span className="text-sm">💡</span>
-                <p className="text-xs text-gray-500">
-                  {selectedWord
-                    ? 'Tap the same word again or click "Clear" to see full translation'
-                    : 'Tap any word above for definitions and conjugations'}
-                </p>
-              </div>
             </div>
 
-            {/* Controls */}
-            <div className="border-t border-gray-200 px-5 py-4 space-y-3">
+            {/* Controls - Fixed to bottom */}
+            <div className="px-3 py-4 space-y-3 no-pause-zone" style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)' }}>
               {/* Navigation */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-center gap-4">
                 <Button
                   variant="ghost"
                   size="lg"
-                  onClick={onNavigatePrevious}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // Reset loop mode when changing lines
+                    setLoopMode('off')
+                    loopCountRef.current = 0
+                    // Navigate to previous line
+                    if (onNavigatePrevious) {
+                      onNavigatePrevious()
+                    }
+                    // Pause the music after navigation (only if playing)
+                    setTimeout(() => {
+                      if (audioControls) {
+                        const state = audioControls.getState()
+                        if (state.isPlaying) {
+                          audioControls.pause()
+                        }
+                      } else if (isPlaying && onPause) {
+                        onPause()
+                      }
+                    }, 100)
+                  }}
                   disabled={currentLineIndex === 0}
                   className="text-gray-700 hover:bg-gray-100 disabled:opacity-30"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
 
+                {/* Play/Pause Button */}
                 <Button
                   variant="default"
                   size="lg"
-                  onClick={handlePlayLine}
-                  disabled={!synchronizedData || !onTimeSeek || isPlayingLine}
-                  className="bg-blue-500 hover:bg-blue-600 text-white border-0 px-8 disabled:opacity-50"
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (audioControls) {
+                      // Use the unified controls for synchronized state
+                      await audioControls.togglePlayPause()
+                    } else if (onPlay && onPause) {
+                      // Fallback to legacy callbacks
+                      if (isPlaying) {
+                        onPause()
+                      } else {
+                        onPlay()
+                      }
+                    }
+                  }}
+                  disabled={!audioControls && !onPlay && !onPause}
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
-                  {isPlayingLine ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Playing...
-                    </>
+                  {isPlaying ? (
+                    <Pause className="h-5 w-5" />
                   ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Play Line
-                    </>
+                    <Play className="h-5 w-5" />
+                  )}
+                </Button>
+
+                {/* Loop Button */}
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // Cycle through loop modes: off -> once -> infinite -> off
+                    if (loopMode === 'off') {
+                      setLoopMode('once')
+                      loopCountRef.current = 0
+                    } else if (loopMode === 'once') {
+                      setLoopMode('infinite')
+                      loopCountRef.current = 0
+                    } else {
+                      setLoopMode('off')
+                      loopCountRef.current = 0
+                    }
+                  }}
+                  disabled={!synchronizedData}
+                  className={cn(
+                    "relative",
+                    loopMode === 'off'
+                      ? "text-gray-400 hover:bg-gray-100"
+                      : loopMode === 'once'
+                      ? "text-orange-500 hover:bg-orange-50"
+                      : "text-green-500 hover:bg-green-50"
+                  )}
+                  title={
+                    loopMode === 'off'
+                      ? "Loop: Off"
+                      : loopMode === 'once'
+                      ? "Loop: Once"
+                      : "Loop: Infinite"
+                  }
+                >
+                  {loopMode === 'once' ? (
+                    <Repeat1 className="h-5 w-5" />
+                  ) : (
+                    <Repeat className="h-5 w-5" />
+                  )}
+                  {/* Indicator dot for active states */}
+                  {loopMode !== 'off' && (
+                    <span
+                      className={cn(
+                        "absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full",
+                        loopMode === 'once' ? "bg-orange-500" : "bg-green-500"
+                      )}
+                    />
                   )}
                 </Button>
 
                 <Button
                   variant="ghost"
                   size="lg"
-                  onClick={onNavigateNext}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    // Reset loop mode when changing lines
+                    setLoopMode('off')
+                    loopCountRef.current = 0
+                    // Navigate to next line
+                    if (onNavigateNext) {
+                      onNavigateNext()
+                    }
+                    // Pause the music after navigation (only if playing)
+                    setTimeout(() => {
+                      if (audioControls) {
+                        const state = audioControls.getState()
+                        if (state.isPlaying) {
+                          audioControls.pause()
+                        }
+                      } else if (isPlaying && onPause) {
+                        onPause()
+                      }
+                    }, 100)
+                  }}
                   disabled={currentLineIndex === totalLines - 1}
                   className="text-gray-700 hover:bg-gray-100 disabled:opacity-30"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
+
 
               {/* Playback Speed */}
               {hasAudioControl && onPlaybackRateChange && (

@@ -38,18 +38,31 @@ export interface AudioPlayerState {
   playbackRate?: number
 }
 
+export interface AudioPlayerControls {
+  play: () => Promise<void>
+  pause: () => Promise<void>
+  togglePlayPause: () => Promise<void>
+  seek: (timeInMs: number) => void
+  playFromTime: (timeInMs: number) => Promise<boolean>
+  playLine: (startTimeMs: number, endTimeMs: number) => Promise<boolean>
+  setPlaybackRate: (rate: number) => void
+  getState: () => AudioPlayerState
+}
+
 interface EnhancedAudioPlayerProps {
   track: Track
   className?: string
   onStateChange?: (state: AudioPlayerState) => void
-  onTimeSeek?: (seekFn: (time: number) => void) => void
+  onControlsReady?: (controls: AudioPlayerControls) => void
+  // Legacy callbacks - will be deprecated
+  onTimeSeek?: (seekFn: (time: number) => void, playFromTimeFn?: (time: number) => Promise<boolean>) => void
   onPlaybackRateChange?: (changeFn: (rate: number) => void) => void
   onPlayPauseReady?: (fn: () => void) => void
 }
 
 type PlaybackMode = 'preview' | 'spotify' | 'unavailable'
 
-export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTimeSeek, onPlaybackRateChange, onPlayPauseReady }: EnhancedAudioPlayerProps) {
+export function EnhancedAudioPlayer({ track, className = '', onStateChange, onControlsReady, onTimeSeek, onPlaybackRateChange, onPlayPauseReady }: EnhancedAudioPlayerProps) {
   const { data: session } = useSession()
   const { isAuthenticated, hasSpotifyError } = useSpotifyPlayer()
   
@@ -88,6 +101,19 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   const spotifyPlayerRef = useRef<any>(null)
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Cleanup function for line monitoring
+  const cleanupLineMonitoring = useCallback(() => {
+    if (lineMonitorIntervalRef.current) {
+      clearInterval(lineMonitorIntervalRef.current)
+      lineMonitorIntervalRef.current = null
+    }
+    if (lineEndTimeoutRef.current) {
+      clearTimeout(lineEndTimeoutRef.current)
+      lineEndTimeoutRef.current = null
+    }
+    lineEndTimeRef.current = null
+  }, [])
+
   // Notify parent of state changes
   useEffect(() => {
     if (onStateChange) {
@@ -101,25 +127,8 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
     }
   }, [isPlaying, currentTime, duration, playbackMode, onStateChange])
 
-  // Handle external time seek requests
-  useEffect(() => {
-    if (onTimeSeek) {
-      const handleSeek = (timeInMs: number) => {
-        if (playbackMode === 'preview' && audioRef.current && duration > 0) {
-          const timeInSeconds = timeInMs / 1000
-          audioRef.current.currentTime = timeInSeconds
-          setCurrentTime(timeInSeconds)
-        }
-        
-        if (playbackMode === 'spotify' && spotifyPlayerRef.current) {
-          spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
-        }
-      }
-      
-      // Provide the seek function to parent
-      onTimeSeek(handleSeek)
-    }
-  }, [onTimeSeek, playbackMode, duration])
+  // This useEffect needs to be moved after playFromTime is defined
+  // We'll move it later in the component
 
   // Apply playback rate to audio element
   useEffect(() => {
@@ -139,6 +148,37 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
       onPlaybackRateChange(handleRateChange)
     }
   }, [onPlaybackRateChange, playbackMode])
+
+  // Preload track on mount or when track changes
+  useEffect(() => {
+    const preloadTrack = () => {
+      // console.log('🎬 Preloading track:', {
+      //   title: track?.title,
+      //   playbackMode,
+      //   hasSpotifyId: !!track?.spotifyId,
+      //   hasPreviewUrl: !!track?.previewUrl,
+      //   hasAudioElement: !!audioRef.current
+      // })
+
+      if (playbackMode === 'preview' && audioRef.current && track?.previewUrl) {
+        // The audio element already has src set and preload="auto"
+        // Just ensure it starts loading
+        if (!audioRef.current.src || audioRef.current.src !== track.previewUrl) {
+          audioRef.current.src = track.previewUrl
+        }
+        // Force the browser to start loading the audio
+        audioRef.current.load()
+        // console.log('✅ Preview track preloading initiated')
+      } else if (playbackMode === 'spotify' && track?.spotifyId) {
+        // For Spotify, we'll load on first interaction
+        // console.log('🎵 Spotify track will load on first interaction')
+      }
+    }
+
+    if (track) {
+      preloadTrack()
+    }
+  }, [track?.id, track?.previewUrl, track?.spotifyId, playbackMode])
 
   // Preview mode audio handling
   useEffect(() => {
@@ -243,7 +283,14 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
 
   // Playback controls - using useCallback for stability
   const togglePlayPause = useCallback(async () => {
-    console.log('togglePlayPause called', { playbackMode, isPlaying, track })
+    // console.log('🔄 [togglePlayPause] START', {
+    //   playbackMode,
+    //   isPlaying,
+    //   trackTitle: track?.title,
+    //   hasAudioRef: !!audioRef.current,
+    //   audioCurrentTime: audioRef.current?.currentTime,
+    //   audioPaused: audioRef.current?.paused
+    // })
 
     // Show mini-player immediately when play is first pressed
     if (!hasEverPlayed) {
@@ -253,17 +300,21 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
     if (playbackMode === 'preview' && audioRef.current) {
       try {
         if (isPlaying) {
+          // console.log('⏸️ [togglePlayPause] Pausing preview audio')
           audioRef.current.pause()
           setIsPlaying(false)
+          // console.log('✅ [togglePlayPause] Preview paused successfully')
         } else {
+          // console.log('▶️ [togglePlayPause] Starting preview playback')
           // Switch button to pause immediately and show loading
           setIsPlaying(true)
           setIsInitializing(true)
           await audioRef.current.play()
           setIsInitializing(false)
+          // console.log('✅ [togglePlayPause] Preview playing successfully')
         }
       } catch (error) {
-        console.error('Preview playback error:', error)
+        console.error('❌ [togglePlayPause] Preview playback error:', error)
         setError('Failed to play audio preview')
       }
     }
@@ -314,27 +365,329 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
   const togglePlayPauseRef = useRef(togglePlayPause)
   togglePlayPauseRef.current = togglePlayPause
 
+  // Store line end monitoring state
+  const lineEndTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const lineEndTimeRef = useRef<number | null>(null)
+  const lineMonitorIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Create a function to play from a specific time
+  const playFromTime = useCallback(async (timeInMs: number) => {
+
+    // For preview mode
+    if (playbackMode === 'preview' && audioRef.current) {
+      audioRef.current.currentTime = timeInMs / 1000 // Convert to seconds
+      if (!isPlaying) {
+        await audioRef.current.play()
+        setIsPlaying(true)
+      }
+      return true
+    }
+
+    // For Spotify mode
+    if (playbackMode === 'spotify' && spotifyPlayerRef.current && track.spotifyId) {
+      // If track isn't loaded, load it first
+      if (!spotifyPlayerState) {
+        // console.log('🎵 Track not loaded, loading now...')
+        const trackUri = `spotify:track:${track.spotifyId}`
+        const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
+        if (result !== true) {
+          return false
+        }
+        // Small delay for track to initialize (only when loading)
+        await new Promise(resolve => setTimeout(resolve, 100))
+        // Track is now loaded and playing, seek to position
+        await spotifyPlayerRef.current.seek?.(timeInMs)
+        // Playback should already be active after playTrack
+        setIsPlaying(true)
+        return true
+      }
+
+      // Track is already loaded, just seek immediately
+      // console.log('✅ Track already loaded, seeking immediately')
+      await spotifyPlayerRef.current.seek?.(timeInMs)
+
+      // Ensure playback is active
+      if (!isPlaying) {
+        await spotifyPlayerRef.current.resume?.()
+        // No delay needed when track is already loaded
+        setIsPlaying(true)
+      }
+
+      return true
+    }
+
+    return false
+  }, [playbackMode, isPlaying, track, spotifyPlayerState])
+
+  // Helper function to get current time directly from source
+  const getCurrentTimeDirectly = useCallback(() => {
+    if (playbackModeRef.current === 'preview' && audioRef.current) {
+      // For preview mode, get directly from audio element (in seconds)
+      return audioRef.current.currentTime * 1000 // Convert to ms
+    } else if (playbackModeRef.current === 'spotify' && spotifyPlayerRef.current) {
+      // For Spotify, we need to get from the player state
+      // Check if we can get the current state
+      if (spotifyPlayerRef.current.getCurrentState) {
+        // This is async but we need sync, so use the last known state
+        return currentTimeRef.current // This is already in ms for Spotify
+      }
+    }
+    return 0
+  }, [])
+
+  // Play a single line with automatic pause at end
+  const playLine = useCallback(async (startTimeMs: number, endTimeMs: number) => {
+    // console.log('🎵 [playLine] Starting line playback', {
+    //   startTimeMs,
+    //   endTimeMs,
+    //   duration: endTimeMs - startTimeMs,
+    //   durationSec: ((endTimeMs - startTimeMs) / 1000).toFixed(2)
+    // })
+
+    // Clear any existing line monitoring
+    cleanupLineMonitoring()
+
+    // Start playback from line start
+    const success = await playFromTime(startTimeMs)
+    if (!success) {
+      console.error('❌ [playLine] Failed to start playback')
+      return false
+    }
+
+    // Store the end time
+    lineEndTimeRef.current = endTimeMs
+
+    let checkCount = 0
+    // Start monitoring playhead position
+    lineMonitorIntervalRef.current = setInterval(() => {
+      checkCount++
+
+      // Get current time directly from the audio source
+      let currentTimeMs = 0
+
+      // Always check the actual audio element/player, not React state
+      if (audioRef.current && playbackModeRef.current === 'preview') {
+        currentTimeMs = audioRef.current.currentTime * 1000
+      } else if (playbackModeRef.current === 'spotify') {
+        // For Spotify, use the most recent currentTime from state
+        // This gets updated by the Spotify state change handler
+        currentTimeMs = currentTimeRef.current
+      }
+
+      // Log every 10 checks (500ms) for debugging
+      if (checkCount % 10 === 0) {
+        // console.log('🔍 [playLine] Monitor check', {
+        //   checkCount,
+        //   currentTimeMs,
+        //   currentTimeSec: (currentTimeMs / 1000).toFixed(2),
+        //   targetEndMs: lineEndTimeRef.current,
+        //   targetEndSec: lineEndTimeRef.current ? (lineEndTimeRef.current / 1000).toFixed(2) : 'none',
+        //   remaining: lineEndTimeRef.current ? lineEndTimeRef.current - currentTimeMs : 0,
+        //   remainingSec: lineEndTimeRef.current ? ((lineEndTimeRef.current - currentTimeMs) / 1000).toFixed(2) : '0'
+        // })
+      }
+
+      // Check if we've reached or passed the end time
+      if (lineEndTimeRef.current && currentTimeMs >= lineEndTimeRef.current) {
+        // console.log('🛑 [playLine] Reached line end, pausing', {
+        //   currentTimeMs,
+        //   endTimeMs: lineEndTimeRef.current,
+        //   overshoot: currentTimeMs - lineEndTimeRef.current,
+        //   overshootMs: currentTimeMs - lineEndTimeRef.current
+        // })
+
+        // Clear monitoring FIRST to prevent multiple triggers
+        if (lineMonitorIntervalRef.current) {
+          clearInterval(lineMonitorIntervalRef.current)
+          lineMonitorIntervalRef.current = null
+        }
+        lineEndTimeRef.current = null
+
+        // Now pause playback
+        if (audioRef.current && playbackModeRef.current === 'preview') {
+          // console.log('⏸️ Pausing preview audio', {
+          //   audioElement: !!audioRef.current,
+          //   isPaused: audioRef.current.paused,
+          //   currentTime: audioRef.current.currentTime
+          // })
+          audioRef.current.pause()
+          setIsPlaying(false)
+          // console.log('✅ Preview audio paused', {
+          //   isPaused: audioRef.current.paused
+          // })
+        } else if (spotifyPlayerRef.current && playbackModeRef.current === 'spotify') {
+          // console.log('⏸️ Pausing Spotify')
+          spotifyPlayerRef.current.pause?.()
+          setIsPlaying(false)
+        } else {
+          // console.log('⚠️ No audio element to pause', {
+          //   hasAudioRef: !!audioRef.current,
+          //   hasSpotifyRef: !!spotifyPlayerRef.current,
+          //   playbackMode: playbackModeRef.current
+          // })
+        }
+      }
+    }, 50) // Check every 50ms for accurate timing
+
+    // console.log('✅ [playLine] Monitoring started')
+    return true
+  }, [playFromTime, getCurrentTimeDirectly, cleanupLineMonitoring])
+
+  // Provide seek function to parent (including playFromTime)
+  useEffect(() => {
+
+    if (onTimeSeek) {
+      const handleSeek = (timeInMs: number) => {
+        if (playbackMode === 'preview' && audioRef.current && duration > 0) {
+          const timeInSeconds = Math.min(Math.max(0, timeInMs / 1000), duration)
+          audioRef.current.currentTime = timeInSeconds
+          setCurrentTime(timeInSeconds)
+        }
+
+        if (playbackMode === 'spotify' && spotifyPlayerRef.current) {
+          spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+        }
+      }
+
+      // Pass both the seek function and playFromTime function
+      onTimeSeek(handleSeek, playFromTime)
+    }
+  }, [onTimeSeek, playbackMode, duration, playFromTime])
+
+  // Cleanup line monitoring on unmount or when track changes
+  useEffect(() => {
+    return () => {
+      cleanupLineMonitoring()
+    }
+  }, [track?.id, cleanupLineMonitoring])
+
+  // Also cleanup when playback stops
+  useEffect(() => {
+    if (!isPlaying) {
+      // Don't cleanup immediately - give it a moment in case it's just a pause/resume
+      const cleanupTimeout = setTimeout(() => {
+        if (!isPlayingRef.current) {
+          // console.log('🧹 Cleaning up line monitoring (playback stopped)')
+          cleanupLineMonitoring()
+        }
+      }, 1000)
+      return () => clearTimeout(cleanupTimeout)
+    }
+  }, [isPlaying, cleanupLineMonitoring])
+
   // Provide play/pause function to parent
   useEffect(() => {
-    console.log('🔷 EnhancedAudioPlayer: onPlayPauseReady effect triggered', {
-      hasCallback: !!onPlayPauseReady,
-      callbackType: typeof onPlayPauseReady,
-      playbackMode,
-      track: track?.title
-    })
     if (onPlayPauseReady && typeof onPlayPauseReady === 'function') {
       // Create a stable wrapper that always calls the latest function
       const stableToggle = () => {
-        console.log('🎯 EnhancedAudioPlayer: Stable toggle wrapper called')
         togglePlayPauseRef.current()
       }
-      console.log('🔷 EnhancedAudioPlayer: Calling onPlayPauseReady with stable toggle')
       onPlayPauseReady(stableToggle)
-      console.log('✅ EnhancedAudioPlayer: Stable toggle passed to parent')
-    } else {
-      console.log('⚠️ EnhancedAudioPlayer: No onPlayPauseReady callback provided')
     }
-  }, [onPlayPauseReady, playbackMode, track?.title]) // Include minimal deps for logging
+  }, [onPlayPauseReady, playbackMode, track?.title])
+
+  // NEW: Provide unified controls object to parent (ONCE, with stable functions using refs)
+  const isPlayingRef = useRef(isPlaying)
+  const currentTimeRef = useRef(currentTime)
+  const durationRef = useRef(duration)
+  const playbackRateRef = useRef(playbackRate)
+  const playbackModeRef = useRef(playbackMode)
+
+  // Keep refs up to date
+  useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
+  useEffect(() => { currentTimeRef.current = currentTime }, [currentTime])
+  useEffect(() => { durationRef.current = duration }, [duration])
+  useEffect(() => { playbackRateRef.current = playbackRate }, [playbackRate])
+  useEffect(() => { playbackModeRef.current = playbackMode }, [playbackMode])
+
+  useEffect(() => {
+    if (onControlsReady) {
+      // Create stable control functions that always use latest refs
+      const controls: AudioPlayerControls = {
+        play: async () => {
+          if (!isPlayingRef.current) {
+            await togglePlayPauseRef.current()
+          }
+        },
+        pause: async () => {
+          // Check the actual playing state, not just the ref
+          let actuallyPlaying = false
+          if (playbackModeRef.current === 'preview' && audioRef.current) {
+            actuallyPlaying = !audioRef.current.paused
+          } else if (playbackModeRef.current === 'spotify') {
+            actuallyPlaying = isPlayingRef.current
+          }
+
+          // console.log('🛑 [EnhancedAudioPlayer] pause() called', {
+          //   playbackMode: playbackModeRef.current,
+          //   actuallyPlaying,
+          //   isPlayingRef: isPlayingRef.current,
+          //   willPause: actuallyPlaying
+          // })
+
+          if (actuallyPlaying) {
+            // console.log('🔄 Audio is playing, calling togglePlayPauseRef.current() to pause')
+            await togglePlayPauseRef.current()
+            // console.log('✅ Pause completed')
+          } else {
+            // console.log('⚠️ Already paused, no action needed')
+          }
+        },
+        togglePlayPause: async () => {
+          await togglePlayPauseRef.current()
+        },
+        seek: (timeInMs: number) => {
+          // Clear any line monitoring when manually seeking
+          cleanupLineMonitoring()
+
+          if (playbackModeRef.current === 'preview' && audioRef.current) {
+            audioRef.current.currentTime = timeInMs / 1000
+            setCurrentTime(timeInMs / 1000)
+          }
+          if (playbackModeRef.current === 'spotify' && spotifyPlayerRef.current) {
+            spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+          }
+        },
+        playFromTime: async (timeInMs: number) => {
+          return await playFromTime(timeInMs)
+        },
+        playLine: async (startTimeMs: number, endTimeMs: number) => {
+          return await playLine(startTimeMs, endTimeMs)
+        },
+        setPlaybackRate: (rate: number) => {
+          setPlaybackRate(rate)
+          if (playbackModeRef.current === 'preview' && audioRef.current) {
+            audioRef.current.playbackRate = rate
+          }
+        },
+        getState: () => {
+          // Get the actual current time and playing state from the audio source, not from React state
+          let actualCurrentTime = 0
+          let actualIsPlaying = false
+
+          if (playbackModeRef.current === 'preview' && audioRef.current) {
+            // For preview, get directly from audio element
+            actualCurrentTime = audioRef.current.currentTime  // in seconds
+            actualIsPlaying = !audioRef.current.paused
+          } else if (playbackModeRef.current === 'spotify') {
+            // For Spotify, use refs which are more up-to-date than state
+            actualCurrentTime = currentTimeRef.current  // already in ms
+            actualIsPlaying = isPlayingRef.current
+          }
+
+          return {
+            isPlaying: actualIsPlaying,
+            currentTime: actualCurrentTime,
+            duration: durationRef.current,
+            playbackMode: playbackModeRef.current,
+            playbackRate: playbackRateRef.current
+          }
+        }
+      }
+
+      onControlsReady(controls)
+    }
+  }, [onControlsReady, playFromTime, playLine]) // Only depend on the callback and playFromTime
 
   const handleSeek = (value: number[]) => {
     const newTime = (value[0] / 100) * duration
@@ -434,7 +787,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onTi
         <audio
           ref={audioRef}
           src={track.previewUrl}
-          preload="metadata"
+          preload="auto"
         />
       )}
       

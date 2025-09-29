@@ -26,6 +26,12 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
   const [pageBackgroundColor, setPageBackgroundColor] = useState('rgb(59, 130, 246)')
   const [displayLanguage, setDisplayLanguage] = useState<'spanish' | 'english' | 'both'>('spanish')
   const [currentSongId, setCurrentSongId] = useState(songId)
+  const [isTranslationModalOpen, setIsTranslationModalOpen] = useState(false)
+
+  // Debug translation modal state
+  useEffect(() => {
+    console.log('🔍 SongModal: Translation modal state changed:', isTranslationModalOpen)
+  }, [isTranslationModalOpen])
 
   // Update current song when prop changes
   useEffect(() => {
@@ -263,6 +269,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                 onBackClick={onClose}
                 onPrevious={prevSong ? handlePrevious : undefined}
                 onNext={nextSong ? handleNext : undefined}
+                hideNavigation={isTranslationModalOpen}
               />
 
               {/* Language Toggle */}
@@ -306,6 +313,10 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                     albumArt: lyricsData.albumArt,
                     albumArtSmall: lyricsData.albumArtSmall
                   }}
+                  onPlayPauseReady={(fn) => {
+                    console.log('🎮 SongModal: Received play/pause function from LyricsView')
+                  }}
+                  onTranslationModalChange={setIsTranslationModalOpen}
                 />
               </motion.div>
             </>

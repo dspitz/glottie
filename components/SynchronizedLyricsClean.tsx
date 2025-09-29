@@ -47,6 +47,7 @@ interface SynchronizedLyricsProps {
   // Audio control functions for Play Line feature
   onPlay?: () => void
   onPause?: () => void
+  onPlayFromTime?: ((time: number) => Promise<boolean>) | null
 }
 
 export function SynchronizedLyrics({
@@ -65,11 +66,26 @@ export function SynchronizedLyrics({
   synchronizedData,
   onSentenceClick: externalOnSentenceClick,
   onPlay,
-  onPause
+  onPause,
+  onPlayFromTime
 }: SynchronizedLyricsProps) {
+  // Debug props received
+  console.log('🎤 SynchronizedLyrics received props:', {
+    hasSynchronizedData: !!synchronizedData,
+    synchronizedLines: synchronizedData?.lines?.length,
+    hasOnTimeSeek: !!onTimeSeek,
+    hasOnPlayFromTime: !!onPlayFromTime,
+    onPlayFromTimeType: typeof onPlayFromTime,
+    hasOnPlay: !!onPlay,
+    hasOnPause: !!onPause,
+    playbackMode,
+    isPlaying
+  })
+
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalLineIndex, setModalLineIndex] = useState<number>(0) // Track the line index for the modal separately
   const [selectedWord, setSelectedWord] = useState<string>('')
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [highlightingEnabled, setHighlightingEnabled] = useState(true) // Always enabled now
@@ -346,12 +362,13 @@ export function SynchronizedLyrics({
 
   // Navigation functions
   const navigateToLine = useCallback((index: number) => {
+    console.log('🧭 navigateToLine called with index:', index, 'from:', currentLineIndex)
     if (index >= 0 && index < synchronizedLines.length && onTimeSeek) {
       const line = synchronizedLines[index]
       onTimeSeek(line.startTime)
       setCurrentLineIndex(index)
     }
-  }, [synchronizedLines, onTimeSeek])
+  }, [synchronizedLines, onTimeSeek, currentLineIndex])
 
   const navigatePrevious = useCallback(() => {
     const newIndex = Math.max(0, currentLineIndex - 1)
@@ -375,6 +392,13 @@ export function SynchronizedLyrics({
 
   // Handle sentence click
   const handleSentenceClick = useCallback((text: string, index: number) => {
+    // If external handler is provided, use it instead of internal modal
+    if (externalOnSentenceClick) {
+      console.log('🎯 Using external sentence click handler')
+      externalOnSentenceClick(text, index)
+      return
+    }
+
     console.log('🎯 SynchronizedLyricsClean: Sentence click debug', {
       text: text.substring(0, 50),
       clickedIndex: index,
@@ -384,6 +408,7 @@ export function SynchronizedLyrics({
     })
 
     setSelectedSentence(text)
+    setModalLineIndex(index) // Store which line was clicked for the modal
 
     const translationIndex = synchronizedData && synchronizedLineToTranslationIndex[text] !== undefined
       ? synchronizedLineToTranslationIndex[text]
@@ -447,8 +472,20 @@ export function SynchronizedLyrics({
       console.warn(`   translationArray length:`, translationArray.length)
       setSelectedSentenceTranslations([])
     }
+
+    // Debug what will be passed to TranslationBottomSheet
+    console.log('📋 Opening TranslationBottomSheet with:', {
+      synchronizedData: !!synchronizedData,
+      synchronizedDataLines: synchronizedData?.lines?.length,
+      onTimeSeek: !!onTimeSeek,
+      onPlayFromTime: !!onPlayFromTime,
+      onPlay: !!onPlay,
+      onPause: !!onPause,
+      currentLineIndex
+    })
+
     setIsModalOpen(true)
-  }, [lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex])
+  }, [lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, externalOnSentenceClick])
 
   // Handle word selection
   const handleWordSelection = useCallback(() => {
@@ -614,17 +651,20 @@ export function SynchronizedLyrics({
         onClose={() => setIsModalOpen(false)}
         sentence={selectedSentence}
         translations={selectedSentenceTranslations}
-        currentLineIndex={currentLineIndex}
+        currentLineIndex={modalLineIndex}
         totalLines={synchronizedLines.length > 0 ? synchronizedLines.length : lines.length}
         synchronizedData={synchronizedData}
         onTimeSeek={onTimeSeek}
+        onPlayFromTime={onPlayFromTime}
         isPlaying={isPlaying}
         onPlay={onPlay}
         onPause={onPause}
         onNavigatePrevious={() => {
-          const newIndex = currentLineIndex - 1
+          const newIndex = modalLineIndex - 1
           // Handle both synchronized and non-synchronized scenarios
           if (newIndex >= 0) {
+            // Update modal line index
+            setModalLineIndex(newIndex)
             // Navigate to the line with time seeking
             navigateToLine(newIndex)
 
@@ -654,10 +694,12 @@ export function SynchronizedLyrics({
           }
         }}
         onNavigateNext={() => {
-          const newIndex = currentLineIndex + 1
+          const newIndex = modalLineIndex + 1
           const maxIndex = synchronizedLines.length > 0 ? synchronizedLines.length - 1 : lines.length - 1
           // Handle both synchronized and non-synchronized scenarios
           if (newIndex <= maxIndex) {
+            // Update modal line index
+            setModalLineIndex(newIndex)
             // Navigate to the line with time seeking
             navigateToLine(newIndex)
 
