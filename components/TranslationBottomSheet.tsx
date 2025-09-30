@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, X, Play, Pause, Repeat, Repeat1, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2 } from 'lucide-react'
 import { parseTextIntoWords } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { defineWord } from '@/lib/client'
@@ -73,8 +73,7 @@ export function TranslationBottomSheet({
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
   const [wordDefinition, setWordDefinition] = useState<any>(null)
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false)
-  const [loopMode, setLoopMode] = useState<'off' | 'once' | 'infinite'>('off')
-  const loopCountRef = useRef<number>(0)
+  // Removed looping functionality
   const lineMonitorRef = useRef<NodeJS.Timeout | null>(null)
 
 
@@ -91,24 +90,21 @@ export function TranslationBottomSheet({
     }
   }, [isOpen, sentence, translations])
 
-  // Handle line looping
+  // Removed loop monitoring since looping functionality has been disabled
   useEffect(() => {
-    console.log('🔄 Loop useEffect triggered:', {
-      isPlaying,
-      loopMode,
-      hasSynchronizedData: !!synchronizedData,
-      hasAudioControls: !!audioControls,
-      currentLineIndex
-    })
-
-    // Clear any existing monitor
-    if (lineMonitorRef.current) {
-      clearInterval(lineMonitorRef.current)
-      lineMonitorRef.current = null
+    // Clean up any existing monitoring on unmount
+    return () => {
+      if (lineMonitorRef.current) {
+        clearInterval(lineMonitorRef.current)
+        lineMonitorRef.current = null
+      }
     }
+  }, [])
 
-    // Only set up monitoring if we're playing and loop mode is active
-    if (isPlaying && loopMode !== 'off' && synchronizedData) {
+  // Legacy loop effect - disabled since looping has been removed
+  useEffect(() => {
+    // This entire effect was for loop monitoring which has been removed
+    if (false) {
       const currentLine = synchronizedData.lines?.[currentLineIndex]
       if (!currentLine) {
         console.log('⚠️ No current line found at index:', currentLineIndex)
@@ -173,12 +169,17 @@ export function TranslationBottomSheet({
         }
       }
 
+      // Add 200ms buffer to the end time for loop monitoring
+      const loopEndBufferMs = 200
+      const bufferedEndTimeMs = endTimeMs ? endTimeMs + loopEndBufferMs : endTimeMs
+
       console.log('🔄 Loop monitoring started:', {
         loopMode,
         currentLineIndex,
         startTimeMs,
-        endTimeMs,
-        duration: endTimeMs ? endTimeMs - startTimeMs : 'unknown',
+        endTimeMs: bufferedEndTimeMs,
+        duration: bufferedEndTimeMs ? bufferedEndTimeMs - startTimeMs : 'unknown',
+        buffer: loopEndBufferMs,
         lineText: currentLine.text || 'No text',
         nextLine: synchronizedData.lines?.[currentLineIndex + 1]?.text || 'No next line'
       })
@@ -203,8 +204,8 @@ export function TranslationBottomSheet({
           console.log('🔍 Loop monitor check:', {
             checkCount,
             currentTimeMs,
-            endTimeMs,
-            timeUntilEnd: endTimeMs ? endTimeMs - currentTimeMs : 'N/A',
+            endTimeMs: bufferedEndTimeMs,
+            timeUntilEnd: bufferedEndTimeMs ? bufferedEndTimeMs - currentTimeMs : 'N/A',
             loopMode,
             loopCount: loopCountRef.current
           })
@@ -212,17 +213,17 @@ export function TranslationBottomSheet({
 
         // Check if we've reached the end of the line
         // Calculate progress through the line
-        const lineProgress = endTimeMs ? (currentTimeMs - startTimeMs) / (endTimeMs - startTimeMs) : 0
+        const lineProgress = bufferedEndTimeMs ? (currentTimeMs - startTimeMs) / (bufferedEndTimeMs - startTimeMs) : 0
 
-        // Trigger when we've reached or passed the end time
-        // No arbitrary buffer needed - the end time should be accurate
-        if (endTimeMs && currentTimeMs >= endTimeMs) {
+        // Trigger when we've reached or passed the buffered end time
+        // Using buffered end time to allow line to play fully
+        if (bufferedEndTimeMs && currentTimeMs >= bufferedEndTimeMs) {
           console.log('🎯 Line end reached!', {
             currentTimeMs,
-            endTimeMs,
+            endTimeMs: bufferedEndTimeMs,
             lineProgress: `${(lineProgress * 100).toFixed(1)}%`,
             actualDuration: currentTimeMs - startTimeMs,
-            expectedDuration: endTimeMs - startTimeMs,
+            expectedDuration: bufferedEndTimeMs - startTimeMs,
             loopMode,
             loopCount: loopCountRef.current
           })
@@ -273,7 +274,7 @@ export function TranslationBottomSheet({
         lineMonitorRef.current = null
       }
     }
-  }, [isPlaying, loopMode, currentLineIndex, synchronizedData, audioControls, onTimeSeek, onPlay])
+  }, []) // Empty dependency array since this effect is disabled
 
   // Debug state - removed for cleaner console
 
@@ -717,9 +718,7 @@ export function TranslationBottomSheet({
                   size="lg"
                   onClick={(e) => {
                     e.stopPropagation()
-                    // Reset loop mode when changing lines
-                    setLoopMode('off')
-                    loopCountRef.current = 0
+                    // No loop mode to reset anymore
                     // Navigate to previous line
                     if (onNavigatePrevious) {
                       onNavigatePrevious()
@@ -828,8 +827,8 @@ export function TranslationBottomSheet({
                       // Log where we got the end time from
                       console.log('⏰ End time source:', endTimeSource, 'value:', endTimeMs)
 
-                      // No buffer needed since we're now using proper end times from synchronized data
-                      const endBufferMs = 0 // No buffer - use exact end time
+                      // Add 200ms buffer to the end to let the line finish completely
+                      const endBufferMs = 200
 
                       // No buffer - use exact start time to prevent display jumping
                       const bufferMs = 0  // No buffer to avoid display issues
@@ -870,27 +869,25 @@ export function TranslationBottomSheet({
                               audioControls.play()
                             }
 
-                            // Set up auto-pause at line end (unless looping is active)
-                            if (loopMode === 'off') {
-                              // Calculate pause duration from original start (not buffered)
-                              const pauseDuration = endTimeMs! - startTimeMs
-                              console.log('⏱️ Setting auto-pause timer for:', pauseDuration, 'ms')
+                            // Set up auto-pause at line end (always enabled now that looping is removed)
+                            // Calculate pause duration from original start (not buffered) plus end buffer
+                            const pauseDuration = (endTimeMs! - startTimeMs) + endBufferMs
+                            console.log('⏱️ Setting auto-pause timer for:', pauseDuration, 'ms (includes', endBufferMs, 'ms buffer)')
 
-                              // Use a single timeout for precise pause timing
-                              setTimeout(() => {
-                                const state = audioControls.getState()
-                                // Only pause if we're still playing
-                                if (state.isPlaying) {
-                                  console.log('⏸️ Auto-pausing at line end')
-                                  audioControls.pause()
-                                  // Disable line lock after playing the line
-                                  if (onSetLineLock) {
-                                    console.log('🔓 Disabling line lock mode')
-                                    onSetLineLock(false)
-                                  }
+                            // Use a single timeout for precise pause timing
+                            setTimeout(() => {
+                              const state = audioControls.getState()
+                              // Only pause if we're still playing
+                              if (state.isPlaying) {
+                                console.log('⏸️ Auto-pausing at line end')
+                                audioControls.pause()
+                                // Disable line lock after playing the line
+                                if (onSetLineLock) {
+                                  console.log('🔓 Disabling line lock mode')
+                                  onSetLineLock(false)
                                 }
-                              }, pauseDuration)
-                            }
+                              }
+                            }, pauseDuration)
                           }, 50)
                         }, 100)  // Increased delay to ensure state updates propagate
                       } else if (onTimeSeek) {
@@ -937,65 +934,12 @@ export function TranslationBottomSheet({
                   )}
                 </Button>
 
-                {/* Loop Button */}
                 <Button
                   variant="ghost"
                   size="lg"
                   onClick={(e) => {
                     e.stopPropagation()
-                    // Cycle through loop modes: off -> once -> infinite -> off
-                    if (loopMode === 'off') {
-                      setLoopMode('once')
-                      loopCountRef.current = 0
-                    } else if (loopMode === 'once') {
-                      setLoopMode('infinite')
-                      loopCountRef.current = 0
-                    } else {
-                      setLoopMode('off')
-                      loopCountRef.current = 0
-                    }
-                  }}
-                  disabled={!synchronizedData}
-                  className={cn(
-                    "relative",
-                    loopMode === 'off'
-                      ? "text-gray-400 hover:bg-gray-100"
-                      : loopMode === 'once'
-                      ? "text-orange-500 hover:bg-orange-50"
-                      : "text-green-500 hover:bg-green-50"
-                  )}
-                  title={
-                    loopMode === 'off'
-                      ? "Loop: Off"
-                      : loopMode === 'once'
-                      ? "Loop: Once"
-                      : "Loop: Infinite"
-                  }
-                >
-                  {loopMode === 'once' ? (
-                    <Repeat1 className="h-5 w-5" />
-                  ) : (
-                    <Repeat className="h-5 w-5" />
-                  )}
-                  {/* Indicator dot for active states */}
-                  {loopMode !== 'off' && (
-                    <span
-                      className={cn(
-                        "absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full",
-                        loopMode === 'once' ? "bg-orange-500" : "bg-green-500"
-                      )}
-                    />
-                  )}
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="lg"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // Reset loop mode when changing lines
-                    setLoopMode('off')
-                    loopCountRef.current = 0
+                    // No loop mode to reset anymore
                     // Navigate to next line
                     if (onNavigateNext) {
                       onNavigateNext()
