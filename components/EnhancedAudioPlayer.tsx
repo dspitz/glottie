@@ -269,6 +269,16 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
               // Use actual position from Spotify (already in milliseconds)
               console.log('📍 Spotify position update:', state.position)
               setCurrentTime(state.position)
+
+              // Check if song has ended (position reached duration)
+              if (state.position >= state.duration - 100) { // 100ms tolerance
+                console.log('🎵 Spotify track ended')
+                setIsPlaying(false)
+                setCurrentTime(0)
+              }
+            } else if (state && state.paused) {
+              // Track is paused, update playing state
+              setIsPlaying(false)
             }
           } else if (spotifyPlayerRef.current?.playerState) {
             // Fallback: Use last known player state
