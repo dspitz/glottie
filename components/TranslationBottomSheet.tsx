@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2, RefreshCw } from 'lucide-react'
 import { parseTextIntoWords } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { defineWord } from '@/lib/client'
@@ -73,6 +73,7 @@ export function TranslationBottomSheet({
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
   const [wordDefinition, setWordDefinition] = useState<any>(null)
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false)
+  const [isRepeatingLine, setIsRepeatingLine] = useState(false)
   // Removed looping functionality
   const lineMonitorRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -280,6 +281,9 @@ export function TranslationBottomSheet({
 
   // Handle word click
   const handleWordClick = async (word: string, cleanWord: string) => {
+    // Pause music when clicking on a word to look up definition
+    audioControls?.pause()
+
     // Toggle selection
     if (selectedWord === cleanWord) {
       setSelectedWord(null)
@@ -488,18 +492,10 @@ export function TranslationBottomSheet({
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
               onMouseDown={(e) => {
-                // Pause on mouse down on lyrics area (excluding buttons and controls)
-                if (!(e.target as HTMLElement).closest('button') &&
-                    !(e.target as HTMLElement).closest('.no-pause-zone')) {
-                  audioControls?.pause()
-                }
+                // No longer pause on general clicks - only pause when clicking on words
               }}
               onTouchStart={(e) => {
-                // Pause on touch start on lyrics area (excluding buttons and controls)
-                if (!(e.target as HTMLElement).closest('button') &&
-                    !(e.target as HTMLElement).closest('.no-pause-zone')) {
-                  audioControls?.pause()
-                }
+                // No longer pause on general touches - only pause when clicking on words
               }}
             >
               {/* Spanish Text - No box, just the text with tappable words */}
@@ -568,113 +564,140 @@ export function TranslationBottomSheet({
 
               {/* English Translation or Word Definition */}
               {selectedWord ? (
-                // Word Definition View - Keep the box for definitions
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur p-4 border border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {selectedWord}
-                      {wordDefinition && wordDefinition.pos && (
-                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                          {wordDefinition.pos}
-                        </span>
-                      )}
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setSelectedWord(null)
-                        setWordDefinition(null)
-                      }}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ✕ Clear
-                    </button>
+                // Word Definition View - Match translation container style
+                <div>
+                  <div
+                    className="flex flex-col p-4 rounded-lg"
+                    style={{
+                      fontSize: '24px',
+                      lineHeight: '32px',
+                      fontWeight: 400,
+                      color: 'rgba(0, 0, 0, 0.80)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                      minHeight: '168px',
+                      maxHeight: 'none',
+                      overflow: 'auto'
+                    }}
+                  >
+                    {/* Word Header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-2xl font-medium" style={{ color: 'rgba(0, 0, 0, 0.90)' }}>
+                        {selectedWord}
+                        {wordDefinition && wordDefinition.pos && (
+                          <span className="ml-2 text-sm opacity-60">
+                            ({wordDefinition.pos})
+                          </span>
+                        )}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setSelectedWord(null)
+                          setWordDefinition(null)
+                        }}
+                        className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
+                        style={{ color: 'rgba(0, 0, 0, 0.80)' }}
+                      >
+                        Got it
+                      </button>
+                    </div>
+
+                    {isLoadingDefinition ? (
+                      <div className="space-y-2">
+                        {/* Just 2 shimmer lines to maintain container size */}
+                        <div className="h-7 rounded animate-pulse" style={{
+                          width: '85%',
+                          background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%)',
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer 1.5s infinite'
+                        }} />
+                        <div className="h-7 rounded animate-pulse" style={{
+                          width: '70%',
+                          background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%)',
+                          backgroundSize: '200% 100%',
+                          animation: 'shimmer 1.5s infinite'
+                        }} />
+                      </div>
+                    ) : wordDefinition?.error ? (
+                      <p className="italic opacity-60">Definition not available</p>
+                    ) : wordDefinition ? (
+                      <div className="space-y-3">
+                        {/* Definitions */}
+                        {wordDefinition.definitions && (
+                          <div className="space-y-2">
+                            {wordDefinition.definitions.map((def: string, index: number) => (
+                              <p key={index} style={{ fontSize: '20px', lineHeight: '28px' }}>
+                                • {def}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Examples */}
+                        {wordDefinition.examples && wordDefinition.examples.length > 0 && (
+                          <div className="pt-3" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
+                            <h4 className="font-medium mb-2 opacity-60" style={{ fontSize: '18px' }}>Examples:</h4>
+                            {wordDefinition.examples.slice(0, 2).map((example: string, index: number) => (
+                              <p key={index} className="italic opacity-70 mb-1" style={{ fontSize: '18px', lineHeight: '26px' }}>
+                                "{example}"
+                              </p>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Conjugations for verbs */}
+                        {wordDefinition.conjugations && (
+                          <div className="pt-3" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
+                            <h4 className="font-medium mb-2 opacity-60" style={{ fontSize: '18px' }}>Conjugations:</h4>
+
+                            {/* Present tense as default open */}
+                            <details open>
+                              <summary className="cursor-pointer font-medium opacity-70 hover:opacity-100" style={{ fontSize: '16px' }}>
+                                Present
+                              </summary>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-2" style={{ fontSize: '16px' }}>
+                                {Object.entries(wordDefinition.conjugations.presente).map(([person, form]) => (
+                                  <span key={person} className="opacity-70">
+                                    {person}: <strong className="opacity-90">{form}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            </details>
+
+                            {/* Other tenses collapsed */}
+                            {wordDefinition.conjugations.preterito && (
+                              <details className="mt-2">
+                                <summary className="cursor-pointer font-medium opacity-70 hover:opacity-100" style={{ fontSize: '16px' }}>
+                                  Preterite
+                                </summary>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-2" style={{ fontSize: '16px' }}>
+                                  {Object.entries(wordDefinition.conjugations.preterito).map(([person, form]) => (
+                                    <span key={person} className="opacity-70">
+                                      {person}: <strong className="opacity-90">{form}</strong>
+                                    </span>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
+
+                            {wordDefinition.conjugations.imperfecto && (
+                              <details className="mt-2">
+                                <summary className="cursor-pointer font-medium opacity-70 hover:opacity-100" style={{ fontSize: '16px' }}>
+                                  Imperfect
+                                </summary>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-2" style={{ fontSize: '16px' }}>
+                                  {Object.entries(wordDefinition.conjugations.imperfecto).map(([person, form]) => (
+                                    <span key={person} className="opacity-70">
+                                      {person}: <strong className="opacity-90">{form}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            </details>
+                          )}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-
-                  {isLoadingDefinition ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-500">Loading definition...</span>
-                    </div>
-                  ) : wordDefinition?.error ? (
-                    <p className="text-sm text-gray-500 italic">Definition not available</p>
-                  ) : wordDefinition ? (
-                    <div className="space-y-3">
-                      {/* Definitions */}
-                      {wordDefinition.definitions && (
-                        <div className="space-y-1">
-                          {wordDefinition.definitions.map((def: string, index: number) => (
-                            <p key={index} className="text-base text-gray-800">
-                              • {def}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Examples */}
-                      {wordDefinition.examples && wordDefinition.examples.length > 0 && (
-                        <div className="border-t border-gray-200 pt-2">
-                          <h4 className="text-xs font-medium text-gray-500 mb-1">Examples:</h4>
-                          {wordDefinition.examples.slice(0, 2).map((example: string, index: number) => (
-                            <p key={index} className="text-sm text-gray-600 italic">
-                              "{example}"
-                            </p>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Conjugations for verbs */}
-                      {wordDefinition.conjugations && (
-                        <div className="border-t border-gray-200 pt-2">
-                          <h4 className="text-xs font-medium text-gray-500 mb-2">Conjugations:</h4>
-
-                          {/* Present tense as default open */}
-                          <details className="text-sm" open>
-                            <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                              Present
-                            </summary>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
-                              {Object.entries(wordDefinition.conjugations.presente).map(([person, form]) => (
-                                <span key={person} className="text-gray-600">
-                                  {person}: <strong className="text-gray-800">{form}</strong>
-                                </span>
-                              ))}
-                            </div>
-                          </details>
-
-                          {/* Other tenses collapsed */}
-                          {wordDefinition.conjugations.preterito && (
-                            <details className="text-sm mt-2">
-                              <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                                Preterite
-                              </summary>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
-                                {Object.entries(wordDefinition.conjugations.preterito).map(([person, form]) => (
-                                  <span key={person} className="text-gray-600">
-                                    {person}: <strong className="text-gray-800">{form}</strong>
-                                  </span>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-
-                          {wordDefinition.conjugations.imperfecto && (
-                            <details className="text-sm mt-2">
-                              <summary className="cursor-pointer font-medium text-gray-700 hover:text-gray-900">
-                                Imperfect
-                              </summary>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-1 text-xs">
-                                {Object.entries(wordDefinition.conjugations.imperfecto).map(([person, form]) => (
-                                  <span key={person} className="text-gray-600">
-                                    {person}: <strong className="text-gray-800">{form}</strong>
-                                  </span>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
                 </div>
               ) : (
                 // Full Translation View - Same container style as lyrics
@@ -706,16 +729,16 @@ export function TranslationBottomSheet({
 
             {/* Controls - Fixed to bottom */}
             <motion.div
-              className="px-3 py-4 space-y-3 no-pause-zone"
+              className="px-2 pt-4 pb-6 space-y-3 no-pause-zone"
               style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
               {/* Navigation */}
-              <div className="flex items-center justify-center gap-4">
+              <div className="flex items-center justify-center gap-2">
                 <Button
                   variant="ghost"
-                  size="lg"
+                  size="icon"
                   onClick={(e) => {
                     e.stopPropagation()
                     // No loop mode to reset anymore
@@ -732,7 +755,7 @@ export function TranslationBottomSheet({
                     }, 100)
                   }}
                   disabled={currentLineIndex === 0}
-                  className="text-gray-700 hover:bg-gray-100 disabled:opacity-30"
+                  className="text-gray-700 hover:bg-gray-100 disabled:opacity-30 h-8 w-8"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
@@ -740,7 +763,7 @@ export function TranslationBottomSheet({
                 {/* Play Line Button - Plays current line from start and auto-pauses at end */}
                 <Button
                   variant="outline"
-                  size="lg"
+                  size="default"
                   onClick={(e) => {
                     e.stopPropagation()
                     console.log('🎵 Play Line button clicked', {
@@ -752,6 +775,7 @@ export function TranslationBottomSheet({
 
                     // Get line timing if available
                     if (synchronizedData?.lines?.[currentLineIndex]) {
+                      setIsRepeatingLine(true) // Start rotating animation
                       const currentLine = synchronizedData.lines[currentLineIndex]
                       const nextLine = synchronizedData.lines[currentLineIndex + 1]
 
@@ -881,6 +905,7 @@ export function TranslationBottomSheet({
                               if (state.isPlaying) {
                                 console.log('⏸️ Auto-pausing at line end')
                                 audioControls.pause()
+                                setIsRepeatingLine(false) // Stop rotating animation
                                 // Disable line lock after playing the line
                                 if (onSetLineLock) {
                                   console.log('🔓 Disabling line lock mode')
@@ -899,17 +924,17 @@ export function TranslationBottomSheet({
                     }
                   }}
                   disabled={!synchronizedData || !audioControls}
-                  className="text-gray-700 hover:bg-gray-100"
-                  title="Play current line from start"
+                  className="text-gray-700 hover:bg-gray-100 flex flex-1 h-12 items-center justify-between pl-5 pr-3.5 rounded-full"
+                  title="Repeat current line from start"
                 >
-                  <Play className="h-4 w-4 mr-1" />
-                  Play line
+                  <span>Repeat line</span>
+                  <RefreshCw className={`h-4 w-4 ${isRepeatingLine ? 'animate-spin' : ''}`} />
                 </Button>
 
                 {/* Play/Pause Button */}
                 <Button
                   variant="default"
-                  size="lg"
+                  size="default"
                   onClick={(e) => {
                     e.stopPropagation()
                     // Toggle play/pause
@@ -927,24 +952,24 @@ export function TranslationBottomSheet({
                     }
                   }}
                   disabled={!audioControls}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                  className="bg-black hover:bg-gray-800 text-white flex flex-1 h-12 items-center justify-between pl-5 pr-3.5 rounded-full"
                 >
                   {isPlaying ? (
                     <>
-                      <Pause className="h-4 w-4 mr-1" />
-                      Pause song
+                      <span>Pause song</span>
+                      <Pause className="h-4 w-4" />
                     </>
                   ) : (
                     <>
-                      <Play className="h-4 w-4 mr-1" />
-                      Play song
+                      <span>Play song</span>
+                      <Play className="h-4 w-4" />
                     </>
                   )}
                 </Button>
 
                 <Button
                   variant="ghost"
-                  size="lg"
+                  size="icon"
                   onClick={(e) => {
                     e.stopPropagation()
                     // No loop mode to reset anymore
@@ -961,7 +986,7 @@ export function TranslationBottomSheet({
                     }, 100)
                   }}
                   disabled={currentLineIndex === totalLines - 1}
-                  className="text-gray-700 hover:bg-gray-100 disabled:opacity-30"
+                  className="text-gray-700 hover:bg-gray-100 disabled:opacity-30 h-8 w-8"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </Button>
