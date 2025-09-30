@@ -165,10 +165,10 @@ export default function UserFeedback({
         title="Feedback"
       >
         <Star
-          className={`w-5 h-5 ${rating > 0 ? 'fill-blue-400 text-blue-400' : 'text-gray-400'}`}
+          className="w-5 h-5 text-black"
         />
         {rating > 0 && (
-          <span className="absolute -top-1 -right-1 text-xs bg-blue-400 text-white rounded-full w-4 h-4 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 text-xs bg-black text-white rounded-full w-4 h-4 flex items-center justify-center">
             {rating}
           </span>
         )}

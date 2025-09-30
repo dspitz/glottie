@@ -641,7 +641,7 @@ export function SynchronizedLyrics({
     return (
       <div
         key={`${displayLanguage}-line-${lineIndex}`}
-        className={`mb-2 px-6 rounded-lg cursor-pointer transition-all duration-200 ${
+        className={`mb-2 px-4 rounded-lg cursor-pointer transition-all duration-200 ${
           shouldShowLineHighlight
             ? 'py-4 bg-white/[0.06] border border-white/[0.08] scale-105'
             : displayLanguage === 'both'

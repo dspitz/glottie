@@ -385,8 +385,11 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
     <>
       {/* Fixed header with back button and dev rating */}
       <header
-        className="fixed top-0 left-0 right-0 h-20 bg-transparent z-50 flex items-center justify-between px-6 pointer-events-none transition-opacity duration-300"
-        style={{ opacity: hideNavigation ? 0 : 1 }}>
+        className="fixed top-0 left-0 right-0 h-20 z-50 flex items-center justify-between px-6 pb-2 pointer-events-none transition-opacity duration-300"
+        style={{
+          opacity: hideNavigation ? 0 : 1,
+          background: `linear-gradient(to bottom, ${dominantColor} 20%, ${dominantColor.replace('rgb', 'rgba').replace(')', ', 0.75)')} 50%, ${dominantColor.replace('rgb', 'rgba').replace(')', ', 0)')} 100%)`
+        }}>
         {/* Back button on the left */}
         {onBackClick ? (
           <Button
@@ -437,13 +440,15 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
           </div>
 
           {/* User Feedback */}
-          <UserFeedback
-            songId={track.id}
-            initialRating={userRating}
-            initialHasLyrics={hasLyrics}
-            initialHasTranslations={hasTranslations}
-            initialSynced={synced}
-          />
+          <div className="bg-background/80 backdrop-blur-sm rounded-full">
+            <UserFeedback
+              songId={track.id}
+              initialRating={userRating}
+              initialHasLyrics={hasLyrics}
+              initialHasTranslations={hasTranslations}
+              initialSynced={synced}
+            />
+          </div>
         </div>
 
       </header>
