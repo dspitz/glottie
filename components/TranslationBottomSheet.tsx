@@ -903,7 +903,7 @@ export function TranslationBottomSheet({
                   title="Play current line from start"
                 >
                   <Play className="h-4 w-4 mr-1" />
-                  Line
+                  Play line
                 </Button>
 
                 {/* Play/Pause Button */}
@@ -912,15 +912,17 @@ export function TranslationBottomSheet({
                   size="lg"
                   onClick={(e) => {
                     e.stopPropagation()
-                    // Disable line lock for normal song playback
-                    if (!isPlaying && onSetLineLock) {
-                      console.log('🔓 Disabling line lock for full song playback')
-                      onSetLineLock(false)
-                    }
                     // Toggle play/pause
                     if (isPlaying) {
                       audioControls?.pause()
                     } else {
+                      // When starting song playback, always disable line lock to allow auto-advancing
+                      if (onSetLineLock) {
+                        console.log('🔓 Play song clicked - disabling line lock for auto-advance')
+                        onSetLineLock(false)
+                      } else {
+                        console.warn('⚠️ onSetLineLock is not defined!')
+                      }
                       audioControls?.play()
                     }
                   }}
@@ -928,9 +930,15 @@ export function TranslationBottomSheet({
                   className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   {isPlaying ? (
-                    <Pause className="h-5 w-5" />
+                    <>
+                      <Pause className="h-4 w-4 mr-1" />
+                      Pause song
+                    </>
                   ) : (
-                    <Play className="h-5 w-5" />
+                    <>
+                      <Play className="h-4 w-4 mr-1" />
+                      Play song
+                    </>
                   )}
                 </Button>
 

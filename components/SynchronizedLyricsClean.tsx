@@ -167,6 +167,16 @@ export function SynchronizedLyrics({
 
   // Determine playback time based on mode
   const currentTimeMs = useMemo(() => {
+    // Log time updates periodically for debugging
+    if (isPlaying && Math.floor(currentTime / 1000) % 5 === 0) {
+      console.log('🕒 SynchronizedLyrics time:', {
+        currentTime,
+        currentTimeMs: playbackMode === 'spotify' ? currentTime : currentTime * 1000,
+        isPlaying,
+        playbackMode
+      })
+    }
+
     if (playbackMode === 'spotify') {
       return currentTime // Already in ms
     } else if (playbackMode === 'preview') {
@@ -174,7 +184,7 @@ export function SynchronizedLyrics({
     } else {
       return simulationTime // Use simulated time when unavailable
     }
-  }, [currentTime, playbackMode, simulationTime])
+  }, [currentTime, playbackMode, simulationTime, isPlaying])
 
   // Convert duration to milliseconds
   const durationMs = useMemo(() => {
@@ -388,6 +398,15 @@ export function SynchronizedLyrics({
   }, [synchronizedLines, currentTimeMs, isPlaying, lineLockMode, lockedLineIndex])
 
   const { activeLineIndex, activeWordIndex, hasWordTiming } = getCurrentHighlight()
+
+  // Debug: Log active line changes
+  useEffect(() => {
+    console.log('🎯 Active line changed:', {
+      activeLineIndex,
+      currentTimeMs,
+      isPlaying
+    })
+  }, [activeLineIndex])
 
   // Debug log the active line calculation
   if (lineLockMode) {

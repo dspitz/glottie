@@ -125,7 +125,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         playbackRate
       })
     }
-  }, [isPlaying, currentTime, duration, playbackMode, onStateChange])
+  }, [isPlaying, currentTime, duration, playbackMode, playbackRate, onStateChange])
 
   // This useEffect needs to be moved after playFromTime is defined
   // We'll move it later in the component
@@ -249,7 +249,16 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
 
   // Spotify progress timer - Poll actual player state instead of fixed increments
   useEffect(() => {
+    console.log('⏰ Progress timer effect:', {
+      playbackMode,
+      isPlaying,
+      duration,
+      hasSpotifyPlayer: !!spotifyPlayerRef.current,
+      willStartPolling: playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current
+    })
+
     if (playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current) {
+      console.log('✅ Starting Spotify progress polling')
       progressTimerRef.current = setInterval(async () => {
         try {
           // Get actual player state from Spotify Web SDK
@@ -258,10 +267,12 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             const state = await player.getCurrentState()
             if (state && !state.paused) {
               // Use actual position from Spotify (already in milliseconds)
+              console.log('📍 Spotify position update:', state.position)
               setCurrentTime(state.position)
             }
           } else if (spotifyPlayerRef.current?.playerState) {
             // Fallback: Use last known player state
+            console.log('📍 Fallback position:', spotifyPlayerRef.current.playerState.position)
             setCurrentTime(spotifyPlayerRef.current.playerState.position)
           }
         } catch (error) {

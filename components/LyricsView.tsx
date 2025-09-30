@@ -149,6 +149,14 @@ export function LyricsView({
   }, [processedTranslations, synchronized, playFromTimeFunction, seekFunction, playPauseFunction, onTranslationModalChange])
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
+    // Log every 10th update to avoid spam
+    if (Math.floor(state.currentTime / 1000) % 10 === 0) {
+      console.log('🎵 Audio state update:', {
+        currentTime: state.currentTime,
+        isPlaying: state.isPlaying,
+        playbackMode: state.playbackMode
+      })
+    }
     setAudioState(state)
     // Track if the song has ever been played
     if (state.isPlaying) {
@@ -161,10 +169,18 @@ export function LyricsView({
 
   // Auto-advance modal content when playing
   useEffect(() => {
-    if (isModalOpen && audioState.isPlaying && synchronized?.lines) {
+    // Only auto-advance if not in line lock mode
+    if (isModalOpen && audioState.isPlaying && synchronized?.lines && !lineLockMode) {
       const currentTimeMs = audioState.playbackMode === 'spotify'
         ? audioState.currentTime
         : audioState.currentTime * 1000
+
+      console.log('🔍 Auto-advance check:', {
+        currentTimeMs,
+        selectedLineIndex,
+        lineLockMode,
+        isPlaying: audioState.isPlaying
+      })
 
       // Find the current line based on playback time
       for (let i = 0; i < synchronized.lines.length; i++) {
@@ -180,8 +196,15 @@ export function LyricsView({
           : startTimeMs + 5000 // Default 5 seconds for last line
 
         if (currentTimeMs >= startTimeMs && currentTimeMs < endTimeMs) {
+          console.log('📍 Found current line:', {
+            lineIndex: i,
+            selectedLineIndex,
+            shouldUpdate: i !== selectedLineIndex,
+            lineText: lines[i]?.substring(0, 30)
+          })
           // Only update if we've moved to a different line
           if (i !== selectedLineIndex) {
+            console.log('✅ Updating modal to line', i)
             setSelectedLineIndex(i)
             setSelectedSentence(lines[i])
             if (processedTranslations[i]) {
@@ -194,7 +217,7 @@ export function LyricsView({
         }
       }
     }
-  }, [isModalOpen, audioState.isPlaying, audioState.currentTime, audioState.playbackMode, synchronized, lines, processedTranslations, selectedLineIndex])
+  }, [isModalOpen, audioState.isPlaying, audioState.currentTime, audioState.playbackMode, synchronized, lines, processedTranslations, selectedLineIndex, lineLockMode])
 
   const handleSeekFunctionSet = useCallback((seekFn: (time: number) => void, playFromTimeFn?: (time: number) => Promise<boolean>) => {
     // console.log('📡 LyricsView: handleSeekFunctionSet called', {
@@ -319,7 +342,6 @@ export function LyricsView({
         audioControls={audioControls}
         clickPosition={clickPosition}
         onSetLineLock={(locked: boolean, lineIndex?: number) => {
-          console.log('🎯 LyricsView: onSetLineLock called', { locked, lineIndex })
           setLineLockMode(locked)
           if (locked && lineIndex !== undefined) {
             setLockedLineIndex(lineIndex)
