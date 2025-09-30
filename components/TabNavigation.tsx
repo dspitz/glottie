@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Music, Brain, Bookmark, User } from 'lucide-react'
+import { Music, BookOpen, Brain, Bookmark, User } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface TabItem {
@@ -24,6 +24,11 @@ export function TabNavigation() {
       href: '/',
       icon: <Music className="h-5 w-5" />,
       label: 'Music'
+    },
+    {
+      href: '/vocab',
+      icon: <BookOpen className="h-5 w-5" />,
+      label: 'Vocab'
     },
     {
       href: '/learnings',

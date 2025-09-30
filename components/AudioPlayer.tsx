@@ -133,15 +133,32 @@ export function AudioPlayer({ track, className = '' }: AudioPlayerProps) {
     }
   }, [spotifyPlayerState])
 
-  // Smooth progress updates for Spotify playback
+  // Spotify progress timer - Poll actual player state instead of fixed increments
   useEffect(() => {
-    if (playbackMode === 'spotify' && isPlaying && duration > 0) {
-      progressTimerRef.current = setInterval(() => {
-        setCurrentTime(prev => {
-          const newTime = prev + 1000 // Increment by 1 second
-          return newTime >= duration ? duration : newTime
-        })
-      }, 1000)
+    if (playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current) {
+      progressTimerRef.current = setInterval(async () => {
+        try {
+          // Get actual player state from Spotify Web SDK
+          const player = spotifyPlayerRef.current?.player
+          if (player) {
+            const state = await player.getCurrentState()
+            if (state && !state.paused) {
+              // Use actual position from Spotify (already in milliseconds)
+              setCurrentTime(state.position)
+            }
+          } else if (spotifyPlayerRef.current?.playerState) {
+            // Fallback: Use last known player state
+            setCurrentTime(spotifyPlayerRef.current.playerState.position)
+          }
+        } catch (error) {
+          console.error('Error getting Spotify player state:', error)
+          // Fallback to increment-based update if state fetch fails
+          setCurrentTime(prev => {
+            const newTime = prev + 1000 // Fixed 1 second increment as last resort
+            return newTime >= duration ? duration : newTime
+          })
+        }
+      }, 250) // Poll every 250ms for smoother updates
     } else {
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current)

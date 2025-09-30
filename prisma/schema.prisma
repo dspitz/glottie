@@ -153,3 +153,22 @@ model SavedSong {
   @@index([userId])
   @@index([songId])
 }
+
+model Vocabulary {
+  id              String   @id @default(cuid())
+  word            String   @unique // Spanish word
+  translation     String   // English translation
+  partOfSpeech    String   // noun, verb, adjective, etc.
+  frequency       Float    // Zipf frequency score
+  usefulnessScore Float    // 0-1 score for learning priority
+  definition      String?  // Optional detailed definition
+  examples        String?  // JSON string: Array of example uses from songs
+  conjugations    String?  // JSON string: For verbs: conjugation table
+  synonyms        String?  // JSON string: Array of synonyms
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([usefulnessScore])
+  @@index([frequency])
+  @@index([partOfSpeech])
+}

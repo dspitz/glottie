@@ -120,6 +120,8 @@ export function LyricsView({
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
   const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
   const [clickPosition, setClickPosition] = useState<{ x: number, y: number, elementRect: DOMRect } | undefined>(undefined)
+  const [lineLockMode, setLineLockMode] = useState(false) // When true, prevents auto-advancing lines
+  const [lockedLineIndex, setLockedLineIndex] = useState<number>(-1) // The specific line to lock to
 
   const handleSentenceClick = useCallback((sentence: string, index: number, clickPos?: { x: number, y: number, elementRect: DOMRect }) => {
     // console.log('🖱️ LyricsView handleSentenceClick:', {
@@ -280,28 +282,24 @@ export function LyricsView({
         displayLanguage={displayLanguage}
         onPlayFromTime={playFromTimeFunction}
         onPlay={() => {
-          // Always call the play function - it will handle loading the track if needed
-          if (playPauseFunction) {
-            // If not playing, this will start playback (and load track if needed)
-            if (!audioState.isPlaying) {
-              playPauseFunction()
-            }
+          // Use audioControls if available, fall back to playPauseFunction
+          if (audioControls && !audioState.isPlaying) {
+            audioControls.play()
+          } else if (playPauseFunction && !audioState.isPlaying) {
+            playPauseFunction()
           }
         }}
         onPause={() => {
-          // console.log('🛑 LyricsView onPause called from SynchronizedLyrics', {
-          //   hasPlayPauseFunction: !!playPauseFunction,
-          //   audioStateIsPlaying: audioState.isPlaying
-          // })
-          // ALWAYS pause, don't check if isPlaying because state might be stale
-          if (playPauseFunction) {
-            // console.log('✅ Calling playPauseFunction to pause')
+          // Use audioControls if available for guaranteed pause
+          if (audioControls) {
+            audioControls.pause()
+          } else if (playPauseFunction) {
             playPauseFunction()
-          } else {
-            console.warn('⚠️ No playPauseFunction available')
           }
         }}
         onSentenceClick={handleSentenceClick}
+        lineLockMode={lineLockMode}
+        lockedLineIndex={lockedLineIndex}
       />
 
       {/* Bottom Sheet */}
@@ -320,6 +318,15 @@ export function LyricsView({
         totalLines={lines.length}
         audioControls={audioControls}
         clickPosition={clickPosition}
+        onSetLineLock={(locked: boolean, lineIndex?: number) => {
+          console.log('🎯 LyricsView: onSetLineLock called', { locked, lineIndex })
+          setLineLockMode(locked)
+          if (locked && lineIndex !== undefined) {
+            setLockedLineIndex(lineIndex)
+          } else if (!locked) {
+            setLockedLineIndex(-1)
+          }
+        }}
         onTimeSeek={(timeInMs: number) => {
           if (seekFunction) {
             seekFunction(timeInMs)
@@ -368,27 +375,14 @@ export function LyricsView({
           }
         }}
         onPlay={() => {
-          if (playPauseFunction && !audioState.isPlaying) {
-            playPauseFunction()
+          // Always use audioControls for consistent behavior
+          if (!audioState.isPlaying) {
+            audioControls?.play()
           }
         }}
         onPause={() => {
-          // console.log('🛑 LyricsView onPause called from TranslationBottomSheet', {
-          //   hasAudioControls: !!audioControls,
-          //   hasPlayPauseFunction: !!playPauseFunction,
-          //   audioStateIsPlaying: audioState.isPlaying
-          // })
-          // Use dedicated pause method from audioControls if available
-          if (audioControls?.pause) {
-            // console.log('✅ Using audioControls.pause() for guaranteed pause')
-            audioControls.pause()
-          } else if (playPauseFunction && audioState.isPlaying) {
-            // Fallback: only toggle if currently playing
-            // console.log('⚠️ Falling back to playPauseFunction (toggle)')
-            playPauseFunction()
-          } else {
-            console.warn('⚠️ Cannot pause - no suitable method available')
-          }
+          // Always use audioControls for guaranteed pause
+          audioControls?.pause()
         }}
       />
 

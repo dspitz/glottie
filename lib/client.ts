@@ -42,11 +42,28 @@ export async function translateText(text: string, targetLang: string = 'en') {
     },
     body: JSON.stringify({ text, targetLang }),
   })
-  
+
   if (!response.ok) {
     throw new Error('Failed to translate text')
   }
-  
+
+  return response.json()
+}
+
+// Vocabulary-related functions
+export async function fetchVocabulary(params?: {
+  search?: string
+  limit?: number
+}) {
+  const searchParams = new URLSearchParams()
+
+  if (params?.search) searchParams.append('search', params.search)
+  if (params?.limit) searchParams.append('limit', params.limit.toString())
+
+  const response = await fetch(`/api/vocab?${searchParams.toString()}`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch vocabulary')
+  }
   return response.json()
 }
 

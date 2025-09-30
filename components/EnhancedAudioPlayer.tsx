@@ -247,15 +247,33 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
     }
   }, [spotifyPlayerState])
 
-  // Smooth progress updates for Spotify playback
+  // Spotify progress timer - Poll actual player state instead of fixed increments
   useEffect(() => {
-    if (playbackMode === 'spotify' && isPlaying && duration > 0) {
-      progressTimerRef.current = setInterval(() => {
-        setCurrentTime(prev => {
-          const newTime = prev + 1000 // Increment by 1 second
-          return newTime >= duration ? duration : newTime
-        })
-      }, 1000)
+    if (playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current) {
+      progressTimerRef.current = setInterval(async () => {
+        try {
+          // Get actual player state from Spotify Web SDK
+          const player = spotifyPlayerRef.current?.player
+          if (player) {
+            const state = await player.getCurrentState()
+            if (state && !state.paused) {
+              // Use actual position from Spotify (already in milliseconds)
+              setCurrentTime(state.position)
+            }
+          } else if (spotifyPlayerRef.current?.playerState) {
+            // Fallback: Use last known player state
+            setCurrentTime(spotifyPlayerRef.current.playerState.position)
+          }
+        } catch (error) {
+          console.error('Error getting Spotify player state:', error)
+          // Fallback to increment-based update if state fetch fails
+          setCurrentTime(prev => {
+            const increment = 1000 * playbackRate // Account for playback rate
+            const newTime = prev + increment
+            return newTime >= duration ? duration : newTime
+          })
+        }
+      }, 250) // Poll every 250ms for smoother updates
     } else {
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current)
@@ -269,7 +287,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         progressTimerRef.current = null
       }
     }
-  }, [playbackMode, isPlaying, duration])
+  }, [playbackMode, isPlaying, duration, playbackRate])
 
   // Volume handling for both modes
   useEffect(() => {
@@ -666,18 +684,18 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
           let actualIsPlaying = false
 
           if (playbackModeRef.current === 'preview' && audioRef.current) {
-            // For preview, get directly from audio element
-            actualCurrentTime = audioRef.current.currentTime  // in seconds
+            // For preview, get directly from audio element and convert to ms
+            actualCurrentTime = audioRef.current.currentTime * 1000  // Convert seconds to ms
             actualIsPlaying = !audioRef.current.paused
           } else if (playbackModeRef.current === 'spotify') {
-            // For Spotify, use refs which are more up-to-date than state
+            // For Spotify, use refs which are already in ms
             actualCurrentTime = currentTimeRef.current  // already in ms
             actualIsPlaying = isPlayingRef.current
           }
 
           return {
             isPlaying: actualIsPlaying,
-            currentTime: actualCurrentTime,
+            currentTime: actualCurrentTime,  // Always in milliseconds
             duration: durationRef.current,
             playbackMode: playbackModeRef.current,
             playbackRate: playbackRateRef.current

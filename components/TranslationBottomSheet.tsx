@@ -39,6 +39,7 @@ interface TranslationBottomSheetProps {
   onPlay?: () => void
   onPause?: () => void
   onPlayFromTime?: ((time: number) => Promise<boolean>) | null
+  onSetLineLock?: (locked: boolean, lineIndex?: number) => void
 }
 
 export function TranslationBottomSheet({
@@ -62,7 +63,8 @@ export function TranslationBottomSheet({
   isPlaying = false,
   onPlay,
   onPause,
-  onPlayFromTime
+  onPlayFromTime,
+  onSetLineLock
 }: TranslationBottomSheetProps) {
   const [translation, setTranslation] = useState<string>('')
   const controls = useAnimation()
@@ -91,6 +93,14 @@ export function TranslationBottomSheet({
 
   // Handle line looping
   useEffect(() => {
+    console.log('🔄 Loop useEffect triggered:', {
+      isPlaying,
+      loopMode,
+      hasSynchronizedData: !!synchronizedData,
+      hasAudioControls: !!audioControls,
+      currentLineIndex
+    })
+
     // Clear any existing monitor
     if (lineMonitorRef.current) {
       clearInterval(lineMonitorRef.current)
@@ -100,28 +110,67 @@ export function TranslationBottomSheet({
     // Only set up monitoring if we're playing and loop mode is active
     if (isPlaying && loopMode !== 'off' && synchronizedData) {
       const currentLine = synchronizedData.lines?.[currentLineIndex]
-      if (!currentLine) return
+      if (!currentLine) {
+        console.log('⚠️ No current line found at index:', currentLineIndex)
+        return
+      }
 
-      // Get line timing
+      // Get line timing - All times should be in milliseconds internally
       let startTimeMs: number
       let endTimeMs: number | undefined
 
+      // First normalize the start time
       if (typeof currentLine.startTime === 'number') {
+        // startTime/endTime are always in milliseconds
         startTimeMs = currentLine.startTime
         endTimeMs = currentLine.endTime
       } else if (typeof currentLine.time === 'number') {
-        // Check if time is in ms or seconds
-        if (currentLine.time > 1000) {
-          startTimeMs = currentLine.time
-          const nextLine = synchronizedData.lines?.[currentLineIndex + 1]
-          endTimeMs = nextLine?.time || startTimeMs + 2000
-        } else {
-          startTimeMs = currentLine.time * 1000
-          const nextLine = synchronizedData.lines?.[currentLineIndex + 1]
-          endTimeMs = nextLine?.time ? nextLine.time * 1000 : startTimeMs + 2000
-        }
+        // For LRC format, times are typically in seconds with decimals
+        // We should check the format type instead of using arbitrary threshold
+        // LRC times are in seconds, so convert to milliseconds
+        startTimeMs = currentLine.time * 1000
       } else {
         return // No timing data
+      }
+
+      // Now calculate end time if not provided
+      if (!endTimeMs) {
+        const nextLine = synchronizedData.lines?.[currentLineIndex + 1]
+
+        if (nextLine) {
+          // Try to get next line's start time
+          if (typeof nextLine.time === 'number') {
+            // LRC format times are in seconds, convert to milliseconds
+            endTimeMs = nextLine.time * 1000
+          } else if (typeof nextLine.startTime === 'number') {
+            // startTime is already in milliseconds
+            endTimeMs = nextLine.startTime
+          }
+        }
+
+        // If we still don't have an end time, it means this is probably the last line
+        // or the timing data is incomplete
+        if (!endTimeMs) {
+          // Check if there's any line after this with timing to estimate duration
+          for (let i = currentLineIndex + 1; i < synchronizedData.lines.length; i++) {
+            const futureLine = synchronizedData.lines[i]
+            if (futureLine?.time || futureLine?.startTime) {
+              const futureTime = futureLine.time
+                ? futureLine.time * 1000  // LRC format: always in seconds, convert to ms
+                : futureLine.startTime    // Already in milliseconds
+              if (futureTime) {
+                // Use the time to the next line with timing
+                endTimeMs = futureTime
+                break
+              }
+            }
+          }
+
+          // Final fallback: use 5 seconds default
+          if (!endTimeMs) {
+            endTimeMs = startTimeMs + 5000
+          }
+        }
       }
 
       console.log('🔄 Loop monitoring started:', {
@@ -129,7 +178,9 @@ export function TranslationBottomSheet({
         currentLineIndex,
         startTimeMs,
         endTimeMs,
-        duration: endTimeMs ? endTimeMs - startTimeMs : 'unknown'
+        duration: endTimeMs ? endTimeMs - startTimeMs : 'unknown',
+        lineText: currentLine.text || 'No text',
+        nextLine: synchronizedData.lines?.[currentLineIndex + 1]?.text || 'No next line'
       })
 
       // Monitor for line end
@@ -141,11 +192,10 @@ export function TranslationBottomSheet({
         // Get current time from audioControls if available
         if (audioControls) {
           const state = audioControls.getState()
-          if (state.playbackMode === 'spotify') {
-            currentTimeMs = state.currentTime || 0
-          } else {
-            currentTimeMs = (state.currentTime || 0) * 1000
-          }
+          // getState() now always returns currentTime in milliseconds
+          currentTimeMs = state.currentTime || 0
+        } else {
+          console.warn('⚠️ No audioControls available in loop monitor')
         }
 
         // Debug log every 10 checks (500ms)
@@ -161,10 +211,18 @@ export function TranslationBottomSheet({
         }
 
         // Check if we've reached the end of the line
+        // Calculate progress through the line
+        const lineProgress = endTimeMs ? (currentTimeMs - startTimeMs) / (endTimeMs - startTimeMs) : 0
+
+        // Trigger when we've reached or passed the end time
+        // No arbitrary buffer needed - the end time should be accurate
         if (endTimeMs && currentTimeMs >= endTimeMs) {
           console.log('🎯 Line end reached!', {
             currentTimeMs,
             endTimeMs,
+            lineProgress: `${(lineProgress * 100).toFixed(1)}%`,
+            actualDuration: currentTimeMs - startTimeMs,
+            expectedDuration: endTimeMs - startTimeMs,
             loopMode,
             loopCount: loopCountRef.current
           })
@@ -182,10 +240,6 @@ export function TranslationBottomSheet({
                 }
               } else if (onTimeSeek) {
                 onTimeSeek(startTimeMs)
-                // Ensure playback continues with legacy
-                if (!isPlaying && onPlay) {
-                  setTimeout(() => onPlay(), 50)
-                }
               }
             } else {
               // Already looped once, stop looping
@@ -206,10 +260,6 @@ export function TranslationBottomSheet({
               }
             } else if (onTimeSeek) {
               onTimeSeek(startTimeMs)
-              // Ensure playback continues with legacy
-              if (!isPlaying && onPlay) {
-                setTimeout(() => onPlay(), 50)
-              }
             }
           }
         }
@@ -440,22 +490,14 @@ export function TranslationBottomSheet({
                 // Pause on mouse down on lyrics area (excluding buttons and controls)
                 if (!(e.target as HTMLElement).closest('button') &&
                     !(e.target as HTMLElement).closest('.no-pause-zone')) {
-                  if (audioControls?.pause) {
-                    audioControls.pause()
-                  } else if (onPause && isPlaying) {
-                    onPause()
-                  }
+                  audioControls?.pause()
                 }
               }}
               onTouchStart={(e) => {
                 // Pause on touch start on lyrics area (excluding buttons and controls)
                 if (!(e.target as HTMLElement).closest('button') &&
                     !(e.target as HTMLElement).closest('.no-pause-zone')) {
-                  if (audioControls?.pause) {
-                    audioControls.pause()
-                  } else if (onPause && isPlaying) {
-                    onPause()
-                  }
+                  audioControls?.pause()
                 }
               }}
             >
@@ -464,7 +506,7 @@ export function TranslationBottomSheet({
                 <div
                   className="bubble flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
                   style={{
-                    fontSize: '30px',
+                    fontSize: '28px',
                     lineHeight: '36px',
                     fontWeight: 400,
                     color: '#000',
@@ -639,11 +681,11 @@ export function TranslationBottomSheet({
                   <div
                     className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
                     style={{
-                      fontSize: '30px',
+                      fontSize: '28px',
                       lineHeight: '36px',
                       fontWeight: 400,
-                      color: 'rgba(0, 0, 0, 0.67)',
-                      backgroundColor: 'rgba(255, 255, 255, 0)',
+                      color: 'rgba(0, 0, 0, 0.80)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
                       // Match the lyrics container height (3 lines minimum)
                       minHeight: '168px',
                       maxHeight: 'none', // Allow expansion for 4-5 lines
@@ -684,13 +726,9 @@ export function TranslationBottomSheet({
                     }
                     // Pause the music after navigation (only if playing)
                     setTimeout(() => {
-                      if (audioControls) {
-                        const state = audioControls.getState()
-                        if (state.isPlaying) {
-                          audioControls.pause()
-                        }
-                      } else if (isPlaying && onPause) {
-                        onPause()
+                      const state = audioControls?.getState()
+                      if (state?.isPlaying) {
+                        audioControls.pause()
                       }
                     }, 100)
                   }}
@@ -700,25 +738,196 @@ export function TranslationBottomSheet({
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
 
+                {/* Play Line Button - Plays current line from start and auto-pauses at end */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    console.log('🎵 Play Line button clicked', {
+                      currentLineIndex,
+                      hasOnSetLineLock: !!onSetLineLock,
+                      hasSynchronizedData: !!synchronizedData,
+                      linesCount: synchronizedData?.lines?.length
+                    })
+
+                    // Get line timing if available
+                    if (synchronizedData?.lines?.[currentLineIndex]) {
+                      const currentLine = synchronizedData.lines[currentLineIndex]
+                      const nextLine = synchronizedData.lines[currentLineIndex + 1]
+
+                      // Debug log to see what timing data we have
+                      console.log('📊 Line timing data:', {
+                        currentLineIndex,
+                        currentLine: {
+                          text: currentLine.text,
+                          time: currentLine.time,
+                          startTime: currentLine.startTime,
+                          endTime: currentLine.endTime,
+                          duration: currentLine.duration,
+                          words: currentLine.words?.length,
+                          rawData: currentLine
+                        },
+                        nextLine: nextLine ? {
+                          text: nextLine.text,
+                          time: nextLine.time,
+                          startTime: nextLine.startTime,
+                          endTime: nextLine.endTime,
+                          rawData: nextLine
+                        } : null,
+                        previousLine: currentLineIndex > 0 ? {
+                          text: synchronizedData.lines[currentLineIndex - 1].text,
+                          endTime: synchronizedData.lines[currentLineIndex - 1].endTime
+                        } : null
+                      })
+
+                      // Expand the raw data to see all properties
+                      console.log('🔍 Current line raw data:', JSON.stringify(currentLine, null, 2))
+                      if (nextLine) {
+                        console.log('🔍 Next line raw data:', JSON.stringify(nextLine, null, 2))
+                      }
+
+                      // Calculate start time
+                      let startTimeMs: number
+                      if (typeof currentLine.time === 'number') {
+                        // Check if it's likely in seconds (< 1000) or milliseconds
+                        startTimeMs = currentLine.time < 1000 ? currentLine.time * 1000 : currentLine.time
+                      } else if (typeof currentLine.startTime === 'number') {
+                        startTimeMs = currentLine.startTime
+                      } else {
+                        console.warn('No timing data for current line')
+                        return
+                      }
+
+                      // Calculate end time for auto-pause
+                      let endTimeMs: number | undefined
+                      let endTimeSource = 'unknown'
+
+                      // ALWAYS use next line's start time as the end time
+                      // Ignore stored endTime as it may be incorrect (set by fallback logic)
+                      if (nextLine) {
+                        // Use next line's start time as end time
+                        if (typeof nextLine.time === 'number') {
+                          // LRC format - convert seconds to milliseconds
+                          endTimeMs = nextLine.time * 1000
+                          endTimeSource = 'nextLine.time (converted from seconds)'
+                        } else if (typeof nextLine.startTime === 'number') {
+                          endTimeMs = nextLine.startTime
+                          endTimeSource = 'nextLine.startTime'
+                        }
+                      } else {
+                        // Last line - use remaining song duration
+                        // This is the only case where we might need to estimate
+                        console.warn('⚠️ Last line - using remaining song duration')
+                        // Could potentially use song duration here if available
+                        // For now, use a longer default for last line
+                        endTimeMs = startTimeMs + 5000 // 5 seconds for last line
+                        endTimeSource = 'last line default (5s)'
+                      }
+
+                      // Log where we got the end time from
+                      console.log('⏰ End time source:', endTimeSource, 'value:', endTimeMs)
+
+                      // No buffer needed since we're now using proper end times from synchronized data
+                      const endBufferMs = 0 // No buffer - use exact end time
+
+                      // No buffer - use exact start time to prevent display jumping
+                      const bufferMs = 0  // No buffer to avoid display issues
+                      const adjustedStartMs = startTimeMs  // Use exact start time
+
+                      console.log('🎯 Playing line:', {
+                        startTime: startTimeMs,
+                        endTime: endTimeMs,
+                        duration: endTimeMs - startTimeMs,
+                        endTimeSource,
+                        lineText: currentLine.text,
+                        currentLineIndex
+                      })
+
+                      // FIRST: Enable line lock mode BEFORE seeking to prevent display issues
+                      if (onSetLineLock) {
+                        console.log('🔒 Enabling line lock mode for line', currentLineIndex)
+                        onSetLineLock(true, currentLineIndex)
+                      }
+
+                      // Clear any existing pause timer
+                      if (lineMonitorRef.current) {
+                        clearInterval(lineMonitorRef.current)
+                        lineMonitorRef.current = null
+                      }
+
+                      // THEN: Seek to buffered start position and play
+                      if (audioControls) {
+                        // Longer delay to ensure React state updates have propagated
+                        setTimeout(() => {
+                          console.log('⏩ Seeking to adjusted start time:', adjustedStartMs)
+                          audioControls.seek(adjustedStartMs)
+
+                          // Another small delay to ensure seek completes, then play
+                          setTimeout(() => {
+                            if (!audioControls.getState().isPlaying) {
+                              console.log('▶️ Starting playback')
+                              audioControls.play()
+                            }
+
+                            // Set up auto-pause at line end (unless looping is active)
+                            if (loopMode === 'off') {
+                              // Calculate pause duration from original start (not buffered)
+                              const pauseDuration = endTimeMs! - startTimeMs
+                              console.log('⏱️ Setting auto-pause timer for:', pauseDuration, 'ms')
+
+                              // Use a single timeout for precise pause timing
+                              setTimeout(() => {
+                                const state = audioControls.getState()
+                                // Only pause if we're still playing
+                                if (state.isPlaying) {
+                                  console.log('⏸️ Auto-pausing at line end')
+                                  audioControls.pause()
+                                  // Disable line lock after playing the line
+                                  if (onSetLineLock) {
+                                    console.log('🔓 Disabling line lock mode')
+                                    onSetLineLock(false)
+                                  }
+                                }
+                              }, pauseDuration)
+                            }
+                          }, 50)
+                        }, 100)  // Increased delay to ensure state updates propagate
+                      } else if (onTimeSeek) {
+                        onTimeSeek(adjustedStartMs)
+                        if (onPlay && !isPlaying) {
+                          setTimeout(() => onPlay(), 50)
+                        }
+                      }
+                    }
+                  }}
+                  disabled={!synchronizedData || !audioControls}
+                  className="text-gray-700 hover:bg-gray-100"
+                  title="Play current line from start"
+                >
+                  <Play className="h-4 w-4 mr-1" />
+                  Line
+                </Button>
+
                 {/* Play/Pause Button */}
                 <Button
                   variant="default"
                   size="lg"
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation()
-                    if (audioControls) {
-                      // Use the unified controls for synchronized state
-                      await audioControls.togglePlayPause()
-                    } else if (onPlay && onPause) {
-                      // Fallback to legacy callbacks
-                      if (isPlaying) {
-                        onPause()
-                      } else {
-                        onPlay()
-                      }
+                    // Disable line lock for normal song playback
+                    if (!isPlaying && onSetLineLock) {
+                      console.log('🔓 Disabling line lock for full song playback')
+                      onSetLineLock(false)
+                    }
+                    // Toggle play/pause
+                    if (isPlaying) {
+                      audioControls?.pause()
+                    } else {
+                      audioControls?.play()
                     }
                   }}
-                  disabled={!audioControls && !onPlay && !onPause}
+                  disabled={!audioControls}
                   className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   {isPlaying ? (
@@ -793,13 +1002,9 @@ export function TranslationBottomSheet({
                     }
                     // Pause the music after navigation (only if playing)
                     setTimeout(() => {
-                      if (audioControls) {
-                        const state = audioControls.getState()
-                        if (state.isPlaying) {
-                          audioControls.pause()
-                        }
-                      } else if (isPlaying && onPause) {
-                        onPause()
+                      const state = audioControls?.getState()
+                      if (state?.isPlaying) {
+                        audioControls.pause()
                       }
                     }, 100)
                   }}

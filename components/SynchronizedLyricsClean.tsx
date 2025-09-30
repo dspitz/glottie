@@ -48,6 +48,10 @@ interface SynchronizedLyricsProps {
   onPlay?: () => void
   onPause?: () => void
   onPlayFromTime?: ((time: number) => Promise<boolean>) | null
+  // Line lock mode - prevents auto-advancing when playing a single line
+  lineLockMode?: boolean
+  // The specific line index to lock to when in line lock mode
+  lockedLineIndex?: number
 }
 
 export function SynchronizedLyrics({
@@ -67,7 +71,9 @@ export function SynchronizedLyrics({
   onSentenceClick: externalOnSentenceClick,
   onPlay,
   onPause,
-  onPlayFromTime
+  onPlayFromTime,
+  lineLockMode = false,
+  lockedLineIndex = -1
 }: SynchronizedLyricsProps) {
   // Debug props received
   console.log('🎤 SynchronizedLyrics received props:', {
@@ -185,7 +191,7 @@ export function SynchronizedLyrics({
   // Create synchronized lines with timing
   const synchronizedLines = useMemo<Line[]>(() => {
     if (synchronizedData && synchronizedData.lines && synchronizedData.lines.length > 0) {
-      return synchronizedData.lines.map((lyricsLine) => {
+      return synchronizedData.lines.map((lyricsLine, lineIndex) => {
         const lineWords: Word[] = []
 
         if (lyricsLine.words && lyricsLine.words.length > 0) {
@@ -220,11 +226,55 @@ export function SynchronizedLyrics({
           })
         }
 
+        // Calculate proper start and end times
+        // Handle both time (seconds) and startTime (milliseconds) formats
+        let startTime: number
+        if (typeof lyricsLine.time === 'number') {
+          // LRC format - time in seconds, convert to ms
+          startTime = lyricsLine.time * 1000
+        } else if (typeof lyricsLine.startTime === 'number') {
+          // Already in milliseconds
+          startTime = lyricsLine.startTime
+        } else {
+          startTime = 0
+        }
+
+        let endTime = lyricsLine.endTime || 0
+
+        // If no explicit end time, calculate it from next line or duration
+        if (!endTime || endTime === 0) {
+          // Check if there's a next line to use its start time
+          const nextLine = synchronizedData.lines[lineIndex + 1]
+          if (nextLine) {
+            // Use next line's start as this line's end
+            if (typeof nextLine.time === 'number') {
+              // LRC format - convert seconds to ms
+              endTime = nextLine.time * 1000
+            } else if (typeof nextLine.startTime === 'number') {
+              endTime = nextLine.startTime
+            } else {
+              // Fallback if next line has no timing
+              endTime = startTime + 3000
+            }
+          } else {
+            // Last line - use duration if available, otherwise estimate
+            if (lyricsLine.duration) {
+              endTime = startTime + lyricsLine.duration
+            } else if (durationMs > 0 && startTime > 0) {
+              // Use remaining song duration for last line
+              endTime = durationMs * 0.95  // Leave 5% buffer at end
+            } else {
+              // Default to 3 seconds for last line
+              endTime = startTime + 3000
+            }
+          }
+        }
+
         return {
           text: lyricsLine.text || '',
           words: lineWords,
-          startTime: lyricsLine.startTime || 0,
-          endTime: lyricsLine.endTime || 0
+          startTime: startTime,
+          endTime: endTime
         }
       })
     }
@@ -282,6 +332,26 @@ export function SynchronizedLyrics({
       return { activeLineIndex: -1, activeWordIndex: -1, hasWordTiming: false }
     }
 
+    // In line lock mode, always return the locked line (don't auto-advance)
+    if (lineLockMode && lockedLineIndex >= 0) {
+      const line = synchronizedLines[lockedLineIndex]
+      if (line) {
+        // Still check for word timing within the locked line
+        const hasWordTiming = line.words.length > 0 &&
+          line.words.some(w => w.startTime !== line.startTime || w.endTime !== line.endTime)
+
+        if (hasWordTiming) {
+          for (let wordIndex = 0; wordIndex < line.words.length; wordIndex++) {
+            const word = line.words[wordIndex]
+            if (currentTimeMs >= word.startTime && currentTimeMs <= word.endTime) {
+              return { activeLineIndex: lockedLineIndex, activeWordIndex: wordIndex, hasWordTiming: true }
+            }
+          }
+        }
+      }
+      return { activeLineIndex: lockedLineIndex, activeWordIndex: -1, hasWordTiming: false }
+    }
+
     // Find the last line that has started playing
     let lastActiveLineIndex = -1
 
@@ -315,12 +385,45 @@ export function SynchronizedLyrics({
 
     // Keep the last line that started playing highlighted
     return { activeLineIndex: lastActiveLineIndex, activeWordIndex: -1, hasWordTiming: false }
-  }, [synchronizedLines, currentTimeMs, isPlaying])
+  }, [synchronizedLines, currentTimeMs, isPlaying, lineLockMode, lockedLineIndex])
 
   const { activeLineIndex, activeWordIndex, hasWordTiming } = getCurrentHighlight()
 
+  // Debug log the active line calculation
+  if (lineLockMode) {
+    console.log('🎯 Active line calculation:', {
+      lineLockMode,
+      lockedLineIndex,
+      activeLineIndex,
+      currentTimeMs,
+      isPlaying
+    })
+  }
+
   // Update current line index when active line changes and auto-scroll
   useEffect(() => {
+    // When line lock is enabled with a specific line, immediately jump to that line
+    if (lineLockMode && lockedLineIndex >= 0) {
+      console.log('🔒 Line lock active - jumping to locked line:', lockedLineIndex)
+      setCurrentLineIndex(lockedLineIndex)
+
+      // Immediately scroll to the locked line
+      const activeLine = document.querySelector(`[data-sentence-index="${lockedLineIndex}"]`)
+      if (activeLine) {
+        const rect = activeLine.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+        const desiredPositionFromTop = viewportHeight * 0.33
+        const scrollOffset = rect.top - desiredPositionFromTop + window.scrollY
+
+        window.scrollTo({
+          top: scrollOffset,
+          behavior: 'smooth'
+        })
+      }
+      return // Don't process normal active line logic when locked
+    }
+
+    // Normal mode: update based on active line from timing
     if (activeLineIndex >= 0) {
       setCurrentLineIndex(activeLineIndex)
 
@@ -358,7 +461,7 @@ export function SynchronizedLyrics({
         }
       }
     }
-  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, isDemo, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex])
+  }, [activeLineIndex, isModalOpen, isPlaying, synchronizedLines, isDemo, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, lineLockMode, lockedLineIndex])
 
   // Navigation functions
   const navigateToLine = useCallback((index: number) => {
@@ -609,6 +712,18 @@ export function SynchronizedLyrics({
       </div>
     )
   }, [activeLineIndex, activeWordIndex, hasWordTiming, handleSentenceClick, handleWordSelection, handleLineClick, lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, lines, synchronizedLines, displayLanguage])
+
+  // Debug logging for line lock mode
+  useEffect(() => {
+    if (lineLockMode) {
+      console.log('📍 Line lock mode active - display state:', {
+        lockedLineIndex,
+        currentLineIndex,
+        activeLineIndex,
+        isPlaying
+      })
+    }
+  }, [lineLockMode, lockedLineIndex, currentLineIndex, activeLineIndex, isPlaying])
 
   return (
     <div>
