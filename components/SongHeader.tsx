@@ -447,6 +447,7 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
               initialHasLyrics={hasLyrics}
               initialHasTranslations={hasTranslations}
               initialSynced={synced}
+              initialLevel={level}
             />
           </div>
         </div>
@@ -473,34 +474,21 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
               transition={getSharedElementTransition(isExiting)}
             >
               {track.albumArt ? (
-                <a
-                  href={track.spotifyUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={track.spotifyUrl ? 'cursor-pointer' : 'cursor-default'}
-                  onClick={(e) => {
-                    if (!track.spotifyUrl) {
-                      e.preventDefault()
-                    }
+                <img
+                  ref={imgRef}
+                  src={track.albumArt}
+                  alt={`${track.album || track.title} cover`}
+                  className="w-full h-full object-cover transition-opacity duration-300"
+                  style={{
+                    opacity: isImageLoaded ? 1 : 0
                   }}
-                >
-                  <img
-                    ref={imgRef}
-                    src={track.albumArt}
-                    alt={`${track.album || track.title} cover`}
-                    className="w-full h-full object-cover transition-opacity duration-300 hover:scale-105"
-                    style={{
-                      opacity: isImageLoaded ? 1 : 0,
-                      transition: 'transform 0.2s ease-in-out'
-                    }}
-                    onLoad={() => setIsImageLoaded(true)}
-                    onError={(e) => {
-                      // Fallback to music icon if image fails to load
-                      e.currentTarget.style.display = 'none'
-                      setIsImageLoaded(true)
-                    }}
-                  />
-                </a>
+                  onLoad={() => setIsImageLoaded(true)}
+                  onError={(e) => {
+                    // Fallback to music icon if image fails to load
+                    e.currentTarget.style.display = 'none'
+                    setIsImageLoaded(true)
+                  }}
+                />
               ) : null}
 
               {!track.albumArt || !isImageLoaded ? (

@@ -10,6 +10,7 @@ interface UserFeedbackProps {
   initialHasLyrics?: boolean | null
   initialHasTranslations?: boolean | null
   initialSynced?: boolean | null
+  initialLevel?: number | null
 }
 
 export default function UserFeedback({
@@ -17,7 +18,8 @@ export default function UserFeedback({
   initialRating,
   initialHasLyrics,
   initialHasTranslations,
-  initialSynced
+  initialSynced,
+  initialLevel
 }: UserFeedbackProps) {
   const queryClient = useQueryClient()
   const [rating, setRating] = useState(initialRating || 0)
@@ -31,6 +33,9 @@ export default function UserFeedback({
   const [hasTranslations, setHasTranslations] = useState(initialHasTranslations ?? true)
   const [synced, setSynced] = useState(initialSynced ?? true)
 
+  // Level state
+  const [selectedLevel, setSelectedLevel] = useState(initialLevel || 1)
+
   // Update state when props change (e.g., when navigating to a different song)
   useEffect(() => {
     console.log('UserFeedback: Props changed', {
@@ -38,13 +43,15 @@ export default function UserFeedback({
       initialRating,
       initialHasLyrics,
       initialHasTranslations,
-      initialSynced
+      initialSynced,
+      initialLevel
     })
     setRating(initialRating || 0)
     setHasLyrics(initialHasLyrics ?? true)
     setHasTranslations(initialHasTranslations ?? true)
     setSynced(initialSynced ?? true)
-  }, [songId, initialRating, initialHasLyrics, initialHasTranslations, initialSynced])
+    setSelectedLevel(initialLevel || 1)
+  }, [songId, initialRating, initialHasLyrics, initialHasTranslations, initialSynced, initialLevel])
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -65,6 +72,7 @@ export default function UserFeedback({
     hasLyrics?: boolean
     hasTranslations?: boolean
     synced?: boolean
+    level?: number
   }) => {
     setIsSaving(true)
     console.log('UserFeedback: Sending update', { songId, updates })
@@ -99,11 +107,15 @@ export default function UserFeedback({
         if (updates.synced !== undefined) {
           setSynced(data.feedback.synced)
         }
+        if (updates.level !== undefined) {
+          setSelectedLevel(data.feedback.level)
+        }
         console.log('UserFeedback: State updated', {
           rating: data.feedback.userRating,
           hasLyrics: data.feedback.hasLyrics,
           hasTranslations: data.feedback.hasTranslations,
-          synced: data.feedback.synced
+          synced: data.feedback.synced,
+          level: data.feedback.level
         })
 
         // Invalidate the React Query cache for this song
@@ -125,6 +137,9 @@ export default function UserFeedback({
       }
       if (updates.synced !== undefined) {
         setSynced(initialSynced ?? true)
+      }
+      if (updates.level !== undefined) {
+        setSelectedLevel(initialLevel || 1)
       }
     } finally {
       setIsSaving(false)
@@ -154,6 +169,11 @@ export default function UserFeedback({
 
     // Send update to server
     await updateFeedback({ [type]: value })
+  }
+
+  const handleLevelChange = async (newLevel: number) => {
+    setSelectedLevel(newLevel)
+    await updateFeedback({ level: newLevel })
   }
 
   return (
@@ -281,6 +301,28 @@ export default function UserFeedback({
               </div>
               <span className="text-sm text-gray-700 dark:text-gray-300">Synced</span>
             </label>
+          </div>
+
+          {/* Level Selection */}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Level</div>
+            <div className="space-y-1">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <label key={level} className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="level"
+                    checked={selectedLevel === level}
+                    onChange={() => handleLevelChange(level)}
+                    disabled={isSaving}
+                    className="w-4 h-4 text-blue-500 border-gray-300 dark:border-gray-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Level {level}
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
 
           {isSaving && (
