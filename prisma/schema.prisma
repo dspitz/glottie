@@ -45,6 +45,8 @@ model Song {
   translations  Translation[]
   metrics       Metrics?
   savedBy       SavedSong[]
+  bookmarkedLines BookmarkedLine[]
+  progress      SongProgress[]
   level         Int?     // 1..5 (difficulty level)
   levelName     String?  // "Beginner", "Upper Beginner", etc.
   description   String?  // Description of difficulty characteristics
@@ -129,6 +131,7 @@ model User {
   accounts        Account[]
   sessions        Session[]
   savedSongs      SavedSong[]
+  songProgress    SongProgress[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -155,20 +158,72 @@ model SavedSong {
 }
 
 model Vocabulary {
-  id              String   @id @default(cuid())
-  word            String   @unique // Spanish word
-  translation     String   // English translation
-  partOfSpeech    String   // noun, verb, adjective, etc.
-  frequency       Float    // Zipf frequency score
-  usefulnessScore Float    // 0-1 score for learning priority
-  definition      String?  // Optional detailed definition
-  examples        String?  // JSON string: Array of example uses from songs
-  conjugations    String?  // JSON string: For verbs: conjugation table
-  synonyms        String?  // JSON string: Array of synonyms
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id              String      @id @default(cuid())
+  word            String      @unique // Spanish word
+  translation     String      // English translation
+  partOfSpeech    String      // noun, verb, adjective, etc.
+  frequency       Float       // Zipf frequency score
+  usefulnessScore Float       // 0-1 score for learning priority
+  definition      String?     // Optional detailed definition
+  examples        String?     // JSON string: Array of example uses from songs
+  conjugations    String?     // JSON string: For verbs: conjugation table
+  synonyms        String?     // JSON string: Array of synonyms
+  clicks          WordClick[] // Track user clicks on this word
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@index([usefulnessScore])
   @@index([frequency])
   @@index([partOfSpeech])
+}
+
+model WordClick {
+  id           String     @id @default(cuid())
+  word         String     // The actual word clicked (normalized)
+  vocabularyId String?    // Link to Vocabulary if it exists
+  vocabulary   Vocabulary? @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  userId       String?    // Optional: track by user if authenticated
+  translation  String?    // Store the translation at time of click
+  definition   String?    // Store definition JSON at time of click
+  clickedAt    DateTime   @default(now())
+
+  @@index([word])
+  @@index([vocabularyId])
+  @@index([userId])
+  @@index([clickedAt])
+}
+
+model BookmarkedLine {
+  id              String   @id @default(cuid())
+  userId          String?  // Optional: for authenticated users
+  songId          String
+  song            Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  lineText        String   // Original Spanish/source language line
+  lineTranslation String?  // English/target language translation
+  lineIndex       Int      // Position in song lyrics (0-based)
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([songId])
+  @@index([createdAt])
+}
+
+model SongProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  songId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song          Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  completed     Boolean  @default(false)
+  playProgress  Float?   // 0-100, percentage of song played
+  lastPlayedAt  DateTime?
+  quizScore     Int?     // 0-100, null if not completed
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, songId])
+  @@index([userId])
+  @@index([songId])
+  @@index([completed])
 }

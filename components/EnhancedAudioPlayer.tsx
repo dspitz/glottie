@@ -5,11 +5,11 @@ import { useSession, signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { SpotifyWebPlayer, useSpotifyPlayer } from '@/components/SpotifyWebPlayer'
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
   ExternalLink,
   Music,
   AlertCircle,
@@ -126,6 +126,44 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
       })
     }
   }, [isPlaying, currentTime, duration, playbackMode, playbackRate, onStateChange])
+
+  // Track song progress for authenticated users
+  const lastProgressUpdateRef = useRef<number>(0)
+  const maxProgressReachedRef = useRef<number>(0)
+
+  useEffect(() => {
+    if (!session?.user || duration === 0) return
+
+    // Calculate progress percentage
+    const progressPercent = (currentTime / duration) * 100
+
+    // Track the maximum progress reached (don't go backwards if user seeks back)
+    if (progressPercent > maxProgressReachedRef.current) {
+      maxProgressReachedRef.current = progressPercent
+    }
+
+    // Only update every 10% or when reaching 90% threshold
+    const shouldUpdate =
+      maxProgressReachedRef.current >= 90 && lastProgressUpdateRef.current < 90 || // Hit 90% threshold
+      Math.floor(maxProgressReachedRef.current / 10) > Math.floor(lastProgressUpdateRef.current / 10) // Every 10%
+
+    if (shouldUpdate && isPlaying) {
+      lastProgressUpdateRef.current = maxProgressReachedRef.current
+
+      // Send progress update to API
+      fetch(`/api/song/${track.id}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playProgress: maxProgressReachedRef.current })
+      }).catch(err => console.error('Failed to update song progress:', err))
+    }
+  }, [currentTime, duration, isPlaying, session, track.id])
+
+  // Reset progress tracking when track changes
+  useEffect(() => {
+    lastProgressUpdateRef.current = 0
+    maxProgressReachedRef.current = 0
+  }, [track.id])
 
   // This useEffect needs to be moved after playFromTime is defined
   // We'll move it later in the component
@@ -249,16 +287,16 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
 
   // Spotify progress timer - Poll actual player state instead of fixed increments
   useEffect(() => {
-    console.log('⏰ Progress timer effect:', {
-      playbackMode,
-      isPlaying,
-      duration,
-      hasSpotifyPlayer: !!spotifyPlayerRef.current,
-      willStartPolling: playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current
-    })
+    // console.log('⏰ Progress timer effect:', {
+    //   playbackMode,
+    //   isPlaying,
+    //   duration,
+    //   hasSpotifyPlayer: !!spotifyPlayerRef.current,
+    //   willStartPolling: playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current
+    // })
 
     if (playbackMode === 'spotify' && isPlaying && duration > 0 && spotifyPlayerRef.current) {
-      console.log('✅ Starting Spotify progress polling')
+      // console.log('✅ Starting Spotify progress polling')
       progressTimerRef.current = setInterval(async () => {
         try {
           // Get actual player state from Spotify Web SDK
@@ -267,12 +305,12 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             const state = await player.getCurrentState()
             if (state && !state.paused) {
               // Use actual position from Spotify (already in milliseconds)
-              console.log('📍 Spotify position update:', state.position)
+              // console.log('📍 Spotify position update:', state.position)
               setCurrentTime(state.position)
 
               // Check if song has ended (position reached duration)
               if (state.position >= state.duration - 100) { // 100ms tolerance
-                console.log('🎵 Spotify track ended')
+                // console.log('🎵 Spotify track ended')
                 setIsPlaying(false)
                 setCurrentTime(0)
               }
@@ -282,7 +320,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             }
           } else if (spotifyPlayerRef.current?.playerState) {
             // Fallback: Use last known player state
-            console.log('📍 Fallback position:', spotifyPlayerRef.current.playerState.position)
+            // console.log('📍 Fallback position:', spotifyPlayerRef.current.playerState.position)
             setCurrentTime(spotifyPlayerRef.current.playerState.position)
           }
         } catch (error) {
@@ -748,6 +786,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
     setIsMuted(newVolume === 0)
   }
 
+
   const toggleMute = () => setIsMuted(!isMuted)
 
   const formatTime = (time: number) => {
@@ -909,8 +948,6 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
           <span>{formatTime(duration)}</span>
         </div>
       </div>
-
-      {/* Speed control moved to translation modal */}
 
       {/* Preview indicator */}
       {playbackMode === 'preview' && (
