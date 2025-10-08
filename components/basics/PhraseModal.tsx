@@ -3,7 +3,7 @@
 import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Volume2 } from 'lucide-react'
-import type { PhraseCategory } from '@/data/phrases'
+import type { PhraseCategory } from '@/data/es/phrases'
 
 interface PhraseModalProps {
   category: PhraseCategory | null

@@ -4,7 +4,7 @@ import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import type { Tense } from '@/data/tenses'
+import type { Tense } from '@/data/es/tenses'
 
 interface TenseModalProps {
   tense: Tense | null

@@ -1,27 +1,48 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { LevelCard } from '@/components/LevelCard'
 import { fetchLevels } from '@/lib/client'
 import { Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { getLanguageName } from '@/lib/languageUtils'
 
 export default function HomePage() {
+  const { language } = useLanguage()
+  const languageName = getLanguageName(language)
+  const [animationKey, setAnimationKey] = useState(0)
+
   const { data: levelsData, isLoading, error } = useQuery({
-    queryKey: ['levels'],
-    queryFn: fetchLevels,
+    queryKey: ['levels', language],
+    queryFn: () => fetchLevels(language),
   })
 
+  // Debug logging
   useEffect(() => {
-    // Apply brand background to body on homepage
-    document.body.style.backgroundColor = 'hsl(19 68% 71%)'
+    console.log('🌍 Current language:', language)
+    console.log('📊 Levels data:', levelsData)
+    if (levelsData?.levels) {
+      Object.keys(levelsData.levels).forEach(level => {
+        console.log(`  Level ${level}: ${levelsData.levels[level].length} songs`)
+      })
+    }
+  }, [language, levelsData])
+
+  useEffect(() => {
+    // Apply language-specific background to body on homepage
+    const bgColor = language === 'es' ? '#F77373' : '#F79F73'
+    document.body.style.backgroundColor = bgColor
+
+    // Trigger animation when language changes
+    setAnimationKey(prev => prev + 1)
 
     // Cleanup: reset when leaving the page
     return () => {
       document.body.style.backgroundColor = ''
     }
-  }, [])
+  }, [language])
 
   if (isLoading) {
     return (
@@ -55,24 +76,40 @@ export default function HomePage() {
   const stats = levelsData?.stats || {}
 
   return (
-    <div className="bg-brand min-h-screen">
-      <div className="container py-8">
+    <div className="min-h-screen" style={{ backgroundColor: language === 'es' ? '#F77373' : '#F79F73' }}>
+      <style jsx>{`
+        @keyframes cascadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .cascade-item {
+          animation: cascadeIn 0.5s ease-out forwards;
+          opacity: 0;
+        }
+      `}</style>
+      <div className="container py-8 relative" key={animationKey}>
       {/* Hero Section */}
       <div className="mb-12 text-center">
-        <div className="mb-6">
+        <div className="mb-6 cascade-item" style={{ animationDelay: '0ms' }}>
           <Image
-            src="/images/mascot_music.png"
-            alt="Music Mascot"
+            src={language === 'fr' ? '/images/Mascot_French.png' : '/images/Mascot_Spanish.png'}
+            alt={`${languageName} Music Mascot`}
             width={200}
             height={200}
             className="mx-auto"
             priority
           />
         </div>
-        <h1 className="text-[44px] leading-[52px] font-medium tracking-tight mb-4">
-          Learn Language<br />Through Music
+        <h1 className="text-[44px] leading-[52px] font-medium tracking-tight mb-4 cascade-item" style={{ animationDelay: '100ms' }}>
+          Learn Languages<br />Through Music
         </h1>
-        <p className="text-lg leading-6 text-muted-foreground max-w-3xl mx-auto mb-6">
+        <p className="text-lg leading-6 max-w-3xl mx-auto mb-6 cascade-item" style={{ animationDelay: '200ms', color: 'rgba(0, 0, 0, 0.66)' }}>
           La la la your way to a new language and discover some of the world's greatest music along the way
         </p>
 
@@ -83,19 +120,22 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {Array.from({ length: 5 }, (_, i) => i + 1).map((level) => {
             const levelSongs = levels[level.toString()] || []
+            console.log(`🎵 Rendering Level ${level} card with ${levelSongs.length} songs`, levelSongs)
             return (
-              <LevelCard
-                key={level}
-                level={level}
-                songs={levelSongs}
-              />
+              <div key={level} className="cascade-item" style={{ animationDelay: `${300 + (level - 1) * 80}ms` }}>
+                <LevelCard
+                  level={level}
+                  songs={levelSongs}
+                  language={language}
+                />
+              </div>
             )
           })}
         </div>
       </div>
 
       {/* Getting Started Guide */}
-      <div className="bg-muted/50 rounded-lg p-8">
+      <div className="bg-muted/50 rounded-lg p-8 cascade-item" style={{ animationDelay: '700ms' }}>
         <h3 className="text-xl font-semibold mb-4 text-center">How to Use diddydum</h3>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center">
@@ -104,10 +144,10 @@ export default function HomePage() {
             </div>
             <h4 className="font-medium mb-2">Choose Your Level</h4>
             <p className="text-sm text-muted-foreground">
-              Start with Spanish 1 for beginners or pick a level that matches your Spanish proficiency
+              Start with {languageName} 1 for beginners or pick a level that matches your {languageName.toLowerCase()} proficiency
             </p>
           </div>
-          
+
           <div className="text-center">
             <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
               2
@@ -117,7 +157,7 @@ export default function HomePage() {
               Click on sentences to see translations and select words for definitions and conjugations
             </p>
           </div>
-          
+
           <div className="text-center">
             <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
               3

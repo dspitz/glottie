@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { AuthButton } from '@/components/AuthButton'
+import { LanguageSelector } from '@/components/LanguageSelector'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,10 +14,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { getLanguageName } from '@/lib/languageUtils'
 
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
+  const { language } = useLanguage()
+  const languageName = getLanguageName(language)
   const isHomepage = pathname === '/'
   const isLevelPage = pathname.startsWith('/levels/')
   const isSongPage = pathname.startsWith('/song/')
@@ -31,12 +36,27 @@ export function Header() {
   // Extract current level from pathname
   const currentLevel = isLevelPage ? parseInt(pathname.split('/')[2], 10) : null
 
+  // Determine header background color
+  const getHeaderBgClass = () => {
+    if (isHomepage) {
+      return 'backdrop-blur-[36px]'
+    }
+    return 'bg-white/90 supports-[backdrop-filter]:bg-white/90'
+  }
+
+  const getHeaderStyle = () => {
+    if (isHomepage) {
+      const bgColor = language === 'es' ? 'rgba(247, 115, 115, 0.9)' : 'rgba(247, 159, 115, 0.9)'
+      return { backgroundColor: bgColor }
+    }
+    return {}
+  }
+
   return (
-    <header className={`sticky top-0 z-50 w-full border-b border-white/[0.12] backdrop-blur-[36px] ${
-      isHomepage
-        ? 'bg-brand/90 supports-[backdrop-filter]:bg-brand/90'
-        : 'bg-white/90 supports-[backdrop-filter]:bg-white/90'
-    }`}>
+    <header
+      className={`sticky top-0 z-50 w-full border-b border-white/[0.12] ${getHeaderBgClass()}`}
+      style={getHeaderStyle()}
+    >
       <div className="container flex h-16 items-center px-6 relative">
         {/* Logo or Back Button - absolute positioned */}
         <div className="absolute left-6">
@@ -72,7 +92,7 @@ export function Header() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="font-medium hover:bg-transparent">
-                  Spanish {currentLevel}
+                  {languageName} {currentLevel}
                   <ChevronDown className="ml-1 h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -83,7 +103,7 @@ export function Header() {
                     onClick={() => router.push(`/levels/${lvl}`)}
                     className={lvl === currentLevel ? 'bg-accent' : ''}
                   >
-                    Spanish {lvl}
+                    {languageName} {lvl}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -91,8 +111,9 @@ export function Header() {
           )}
         </div>
 
-        {/* Auth Button - absolute positioned */}
-        <div className="absolute right-6">
+        {/* Right side - Language Selector and Auth Button */}
+        <div className="absolute right-6 flex items-center gap-3">
+          <LanguageSelector />
           <AuthButton />
         </div>
       </div>

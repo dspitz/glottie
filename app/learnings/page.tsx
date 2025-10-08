@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, Bookmark, BookOpen } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VocabularyModal } from '@/components/vocab/VocabularyModal'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface VocabularyWord {
   id: string
@@ -40,6 +41,7 @@ interface BookmarkedLine {
 }
 
 export default function LearningsPage() {
+  const { language } = useLanguage()
   const [engagedWords, setEngagedWords] = useState<EngagedWord[]>([])
   const [bookmarkedLines, setBookmarkedLines] = useState<BookmarkedLine[]>([])
   const [isLoadingEngaged, setIsLoadingEngaged] = useState(true)
@@ -52,7 +54,7 @@ export default function LearningsPage() {
     const loadEngagedWords = async (showLoading = true) => {
       if (showLoading) setIsLoadingEngaged(true)
       try {
-        const response = await fetch('/api/word-clicks?limit=20')
+        const response = await fetch(`/api/word-clicks?limit=20&language=${language}`)
         const data = await response.json()
 
         // Sort by click count (desc) then by recency (desc) within each tier
@@ -80,14 +82,14 @@ export default function LearningsPage() {
     // Poll for updates every 3 seconds without showing loading
     const interval = setInterval(() => loadEngagedWords(false), 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [language])
 
   // Load bookmarked lines
   useEffect(() => {
     const loadBookmarks = async () => {
       setIsLoadingBookmarks(true)
       try {
-        const response = await fetch('/api/bookmarks/lines')
+        const response = await fetch(`/api/bookmarks/lines?language=${language}`)
         const data = await response.json()
         setBookmarkedLines(data)
       } catch (error) {
@@ -97,7 +99,7 @@ export default function LearningsPage() {
       }
     }
     loadBookmarks()
-  }, [])
+  }, [language])
 
   const handleEngagedWordClick = async (engaged: EngagedWord) => {
     // If it has vocabulary data, use that

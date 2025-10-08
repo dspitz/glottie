@@ -1,14 +1,52 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { BookOpen, MessageCircle, Library } from 'lucide-react'
 import { BasicsCard } from '@/components/basics/BasicsCard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { tenses } from '@/data/tenses'
-import { phraseCategories } from '@/data/phrases'
-import { vocabLists } from '@/data/essentialVocab'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function BasicsPage() {
+  const { language } = useLanguage()
+  const [tenses, setTenses] = useState<any[]>([])
+  const [phraseCategories, setPhraseCategories] = useState<any[]>([])
+  const [vocabLists, setVocabLists] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Dynamically import data based on language
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        const tensesModule = await import(`@/data/${language}/tenses`)
+        const phrasesModule = await import(`@/data/${language}/phrases`)
+        const vocabModule = await import(`@/data/${language}/essentialVocab`)
+
+        setTenses(tensesModule.tenses)
+        setPhraseCategories(phrasesModule.phraseCategories)
+        setVocabLists(vocabModule.vocabLists)
+      } catch (error) {
+        console.error('Error loading language data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [language])
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-6 pb-20">
+        <div className="py-6">
+          <h1 className="mb-6" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500 }}>Basics</h1>
+          <div className="text-center py-12">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-6 pb-20">
       <div className="py-6">

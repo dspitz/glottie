@@ -3,7 +3,7 @@
 import React from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import type { VocabList } from '@/data/essentialVocab'
+import type { VocabList } from '@/data/es/essentialVocab'
 
 interface VocabListModalProps {
   list: VocabList | null

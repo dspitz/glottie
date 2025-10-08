@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(req: NextRequest) {
   try {
-    const { word, translation, definition } = await req.json()
+    const { word, translation, definition, language } = await req.json()
 
     if (!word || typeof word !== 'string') {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       where: { word: normalizedWord }
     })
 
-    // Create word click record with translation and definition
+    // Create word click record with translation, definition, and language
     await prisma.wordClick.create({
       data: {
         word: normalizedWord,
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
         userId: null, // TODO: Add user tracking when auth is implemented
         translation: translation || null,
         definition: definition || null,
+        language: language || 'es',
       }
     })
 
@@ -46,12 +47,16 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
     const limit = parseInt(searchParams.get('limit') || '20')
     const specificWord = searchParams.get('word')
+    const language = searchParams.get('language') || 'es'
 
     // If specific word is requested, return just that word's count
     if (specificWord) {
       const normalizedWord = specificWord.toLowerCase().trim()
       const clickCount = await prisma.wordClick.count({
-        where: { word: normalizedWord }
+        where: {
+          word: normalizedWord,
+          language: language
+        }
       })
 
       const vocab = await prisma.vocabulary.findUnique({
@@ -67,9 +72,12 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Get most engaged words by click count
+    // Get most engaged words by click count for the specified language
     const wordClicks = await prisma.wordClick.groupBy({
       by: ['word'],
+      where: {
+        language: language
+      },
       _count: {
         word: true
       },
@@ -88,9 +96,12 @@ export async function GET(req: NextRequest) {
           where: { word: wc.word }
         })
 
-        // Get most recent click to retrieve translation/definition
+        // Get most recent click to retrieve translation/definition (filtered by language)
         const recentClick = await prisma.wordClick.findFirst({
-          where: { word: wc.word },
+          where: {
+            word: wc.word,
+            language: language
+          },
           orderBy: { clickedAt: 'desc' }
         })
 

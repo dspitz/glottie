@@ -1,16 +1,66 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { tenses } from '@/data/tenses'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function TensePage() {
   const params = useParams()
   const router = useRouter()
-  const tense = tenses.find(t => t.id === params.id)
+  const { language } = useLanguage()
+  const [tense, setTense] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Language-specific conjugation labels
+  const pronouns = language === 'fr'
+    ? ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles']
+    : ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
+
+  const pronounKeys = language === 'fr'
+    ? ['je', 'tu', 'il', 'nous', 'vous', 'ils']
+    : ['yo', 'tú', 'él', 'nosotros', 'vosotros', 'ellos']
+
+  // Verb ending patterns
+  const verbPatterns = language === 'fr'
+    ? [
+        { key: 'er', label: '-ER Verbs', color: 'blue' },
+        { key: 'ir', label: '-IR Verbs', color: 'green' },
+        { key: 're', label: '-RE Verbs', color: 'purple' }
+      ]
+    : [
+        { key: 'ar', label: '-AR Verbs', color: 'blue' },
+        { key: 'er', label: '-ER Verbs', color: 'green' },
+        { key: 'ir', label: '-IR Verbs', color: 'purple' }
+      ]
+
+  useEffect(() => {
+    const loadTense = async () => {
+      setLoading(true)
+      try {
+        const tensesModule = await import(`@/data/${language}/tenses`)
+        const foundTense = tensesModule.tenses.find((t: any) => t.id === params.id)
+        setTense(foundTense)
+      } catch (error) {
+        console.error('Error loading tense:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadTense()
+  }, [language, params.id])
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 pb-20 py-6">
+        <div className="text-center py-12">Loading...</div>
+      </div>
+    )
+  }
 
   if (!tense) {
     return (
@@ -37,7 +87,7 @@ export default function TensePage() {
         <div className="mb-6">
           <div className="flex items-baseline gap-3 mb-2">
             <h1 className="text-3xl font-bold">{tense.name}</h1>
-            <span className="text-xl text-muted-foreground">{tense.nameSpanish}</span>
+            <span className="text-xl text-muted-foreground">{tense.nameSpanish || tense.nameFrench}</span>
           </div>
           <p className="text-muted-foreground">{tense.description}</p>
         </div>
@@ -57,41 +107,31 @@ export default function TensePage() {
           <section>
             <h2 className="text-xl font-bold mb-4">Regular Conjugation Patterns</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100">-AR Verbs</h3>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span>yo</span><span className="font-mono">{tense.regularPatterns.ar.yo}</span></div>
-                  <div className="flex justify-between"><span>tú</span><span className="font-mono">{tense.regularPatterns.ar.tú}</span></div>
-                  <div className="flex justify-between"><span>él/ella</span><span className="font-mono">{tense.regularPatterns.ar.él}</span></div>
-                  <div className="flex justify-between"><span>nosotros</span><span className="font-mono">{tense.regularPatterns.ar.nosotros}</span></div>
-                  <div className="flex justify-between"><span>vosotros</span><span className="font-mono">{tense.regularPatterns.ar.vosotros}</span></div>
-                  <div className="flex justify-between"><span>ellos/ellas</span><span className="font-mono">{tense.regularPatterns.ar.ellos}</span></div>
-                </div>
-              </div>
+              {verbPatterns.map((pattern, idx) => {
+                const bgColor = pattern.color === 'blue' ? 'bg-blue-50 dark:bg-blue-950/20' :
+                                pattern.color === 'green' ? 'bg-green-50 dark:bg-green-950/20' :
+                                'bg-purple-50 dark:bg-purple-950/20'
+                const textColor = pattern.color === 'blue' ? 'text-blue-900 dark:text-blue-100' :
+                                  pattern.color === 'green' ? 'text-green-900 dark:text-green-100' :
+                                  'text-purple-900 dark:text-purple-100'
 
-              <div className="space-y-2 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border">
-                <h3 className="font-semibold text-green-900 dark:text-green-100">-ER Verbs</h3>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span>yo</span><span className="font-mono">{tense.regularPatterns.er.yo}</span></div>
-                  <div className="flex justify-between"><span>tú</span><span className="font-mono">{tense.regularPatterns.er.tú}</span></div>
-                  <div className="flex justify-between"><span>él/ella</span><span className="font-mono">{tense.regularPatterns.er.él}</span></div>
-                  <div className="flex justify-between"><span>nosotros</span><span className="font-mono">{tense.regularPatterns.er.nosotros}</span></div>
-                  <div className="flex justify-between"><span>vosotros</span><span className="font-mono">{tense.regularPatterns.er.vosotros}</span></div>
-                  <div className="flex justify-between"><span>ellos/ellas</span><span className="font-mono">{tense.regularPatterns.er.ellos}</span></div>
-                </div>
-              </div>
+                const conjugations = tense.regularPatterns[pattern.key]
+                if (!conjugations) return null
 
-              <div className="space-y-2 p-4 rounded-lg bg-purple-50 dark:bg-purple-950/20 border">
-                <h3 className="font-semibold text-purple-900 dark:text-purple-100">-IR Verbs</h3>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span>yo</span><span className="font-mono">{tense.regularPatterns.ir.yo}</span></div>
-                  <div className="flex justify-between"><span>tú</span><span className="font-mono">{tense.regularPatterns.ir.tú}</span></div>
-                  <div className="flex justify-between"><span>él/ella</span><span className="font-mono">{tense.regularPatterns.ir.él}</span></div>
-                  <div className="flex justify-between"><span>nosotros</span><span className="font-mono">{tense.regularPatterns.ir.nosotros}</span></div>
-                  <div className="flex justify-between"><span>vosotros</span><span className="font-mono">{tense.regularPatterns.ir.vosotros}</span></div>
-                  <div className="flex justify-between"><span>ellos/ellas</span><span className="font-mono">{tense.regularPatterns.ir.ellos}</span></div>
-                </div>
-              </div>
+                return (
+                  <div key={pattern.key} className={`space-y-2 p-4 rounded-lg ${bgColor} border`}>
+                    <h3 className={`font-semibold ${textColor}`}>{pattern.label}</h3>
+                    <div className="space-y-1 text-sm">
+                      {pronounKeys.map((key, i) => (
+                        <div key={key} className="flex justify-between">
+                          <span>{pronouns[i]}</span>
+                          <span className="font-mono">{conjugations[key]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </section>
 
@@ -112,12 +152,12 @@ export default function TensePage() {
                       <span className="text-sm text-muted-foreground">({example.english})</span>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">yo:</span> <span className="font-medium">{example.conjugations.yo}</span></div>
-                      <div><span className="text-muted-foreground">tú:</span> <span className="font-medium">{example.conjugations.tú}</span></div>
-                      <div><span className="text-muted-foreground">él/ella:</span> <span className="font-medium">{example.conjugations.él}</span></div>
-                      <div><span className="text-muted-foreground">nosotros:</span> <span className="font-medium">{example.conjugations.nosotros}</span></div>
-                      <div><span className="text-muted-foreground">vosotros:</span> <span className="font-medium">{example.conjugations.vosotros}</span></div>
-                      <div><span className="text-muted-foreground">ellos/ellas:</span> <span className="font-medium">{example.conjugations.ellos}</span></div>
+                      {pronounKeys.map((key, idx) => (
+                        <div key={key}>
+                          <span className="text-muted-foreground">{pronouns[idx]}:</span>{' '}
+                          <span className="font-medium">{example.conjugations[key]}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -132,12 +172,12 @@ export default function TensePage() {
                       <Badge variant="outline" className="ml-auto">Irregular</Badge>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">yo:</span> <span className="font-medium">{example.conjugations.yo}</span></div>
-                      <div><span className="text-muted-foreground">tú:</span> <span className="font-medium">{example.conjugations.tú}</span></div>
-                      <div><span className="text-muted-foreground">él/ella:</span> <span className="font-medium">{example.conjugations.él}</span></div>
-                      <div><span className="text-muted-foreground">nosotros:</span> <span className="font-medium">{example.conjugations.nosotros}</span></div>
-                      <div><span className="text-muted-foreground">vosotros:</span> <span className="font-medium">{example.conjugations.vosotros}</span></div>
-                      <div><span className="text-muted-foreground">ellos/ellas:</span> <span className="font-medium">{example.conjugations.ellos}</span></div>
+                      {pronounKeys.map((key, idx) => (
+                        <div key={key}>
+                          <span className="text-muted-foreground">{pronouns[idx]}:</span>{' '}
+                          <span className="font-medium">{example.conjugations[key]}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -151,7 +191,7 @@ export default function TensePage() {
             <div className="space-y-3">
               {tense.exampleSentences.map((sentence, i) => (
                 <div key={i} className="p-4 rounded-lg bg-muted/50 border">
-                  <p className="font-medium mb-1">{sentence.spanish}</p>
+                  <p className="font-medium mb-1">{sentence.spanish || sentence.french}</p>
                   <p className="text-sm text-muted-foreground italic">{sentence.english}</p>
                 </div>
               ))}

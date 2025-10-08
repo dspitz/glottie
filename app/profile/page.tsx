@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, Music, Crown, LogOut, ChevronRight, TrendingUp, Music2, BarChart3, Star, Trophy } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { getLanguageName } from '@/lib/languageUtils'
 
 const SpotifyIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -27,6 +29,8 @@ interface UserStats {
 export default function ProfilePage() {
   const { data: session, status, update } = useSession()
   const router = useRouter()
+  const { language } = useLanguage()
+  const languageName = getLanguageName(language)
   const [stats, setStats] = React.useState<UserStats | null>(null)
   const [statsLoading, setStatsLoading] = React.useState(true)
   const [uploading, setUploading] = React.useState(false)
@@ -39,10 +43,11 @@ export default function ProfilePage() {
     }
   }, [status, router])
 
-  // Fetch user stats
+  // Fetch user stats for current language
   React.useEffect(() => {
     if (session?.user) {
-      fetch('/api/user/stats')
+      setStatsLoading(true)
+      fetch(`/api/user/stats?language=${language}`)
         .then(res => res.json())
         .then(data => {
           setStats(data)
@@ -53,7 +58,7 @@ export default function ProfilePage() {
           setStatsLoading(false)
         })
     }
-  }, [session])
+  }, [session, language])
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -160,11 +165,11 @@ export default function ProfilePage() {
               />
               <div className="text-center">
                 <span className="font-medium text-sm">
-                  {statsLoading ? 'Level 1 - Beginner' : `Level ${stats?.userLevel || 1} - ${stats?.userLevelName || 'Beginner'}`}
+                  {statsLoading ? `${languageName} Level 1 - Beginner` : `${languageName} Level ${stats?.userLevel || 1} - ${stats?.userLevelName || 'Beginner'}`}
                 </span>
                 {stats?.userLevel === 1 && (
                   <p className="text-sm text-black/60 mt-1 px-8">
-                    Listen to 5 songs, and pass the post-song quizzes to advance to level 2
+                    Listen to 5 {languageName.toLowerCase()} songs, and pass the post-song quizzes to advance to level 2
                   </p>
                 )}
               </div>

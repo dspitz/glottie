@@ -4,6 +4,7 @@ import React, { useRef } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { SessionProvider } from 'next-auth/react'
 import { SpotifyWebPlayer } from '@/components/SpotifyWebPlayer'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -23,13 +24,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        <SpotifyPlayerContext.Provider value={playerRef}>
-          {/* Global Spotify Web Player - hidden but always available */}
-          <SpotifyWebPlayer ref={playerRef} />
-          {children}
-        </SpotifyPlayerContext.Provider>
-      </QueryClientProvider>
+      <LanguageProvider>
+        <QueryClientProvider client={queryClient}>
+          <SpotifyPlayerContext.Provider value={playerRef}>
+            {/* Global Spotify Web Player - hidden but always available */}
+            <SpotifyWebPlayer ref={playerRef} />
+            {children}
+          </SpotifyPlayerContext.Provider>
+        </QueryClientProvider>
+      </LanguageProvider>
     </SessionProvider>
   )
 }

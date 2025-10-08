@@ -4,9 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 // GET /api/bookmarks/lines - Get all bookmarked lines for the user
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    const searchParams = request.nextUrl.searchParams
+    const language = searchParams.get('language') || 'es'
 
     if (!session?.user?.email) {
       // Return empty array for unauthenticated users
@@ -23,9 +25,14 @@ export async function GET() {
       return NextResponse.json([])
     }
 
-    // Get bookmarked lines for the user
+    // Get bookmarked lines for the user filtered by language
     const bookmarkedLines = await prisma.bookmarkedLine.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        song: {
+          language: language
+        }
+      },
       include: {
         song: {
           select: {

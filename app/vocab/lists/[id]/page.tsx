@@ -1,10 +1,11 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { vocabLists } from '@/data/essentialVocab'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const partOfSpeechColors: Record<string, string> = {
   noun: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
@@ -23,7 +24,34 @@ const partOfSpeechColors: Record<string, string> = {
 export default function VocabListPage() {
   const params = useParams()
   const router = useRouter()
-  const list = vocabLists.find(l => l.id === params.id)
+  const { language } = useLanguage()
+  const [list, setList] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadList = async () => {
+      setLoading(true)
+      try {
+        const vocabModule = await import(`@/data/${language}/essentialVocab`)
+        const foundList = vocabModule.vocabLists.find((l: any) => l.id === params.id)
+        setList(foundList)
+      } catch (error) {
+        console.error('Error loading vocab list:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadList()
+  }, [language, params.id])
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 pb-20 py-6">
+        <div className="text-center py-12">Loading...</div>
+      </div>
+    )
+  }
 
   if (!list) {
     return (

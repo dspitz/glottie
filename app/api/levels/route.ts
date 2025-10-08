@@ -3,10 +3,14 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams
+    const language = searchParams.get('language') || 'es'
+
     const songs = await prisma.song.findMany({
       where: {
         isActive: true,
-        level: { not: null }
+        level: { not: null },
+        language: language
       },
       select: {
         id: true,

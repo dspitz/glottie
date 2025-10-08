@@ -128,10 +128,12 @@ model User {
   spotifyId       String?   @unique  // Spotify user ID
   isPremium       Boolean   @default(false)  // Spotify Premium status
   country         String?   // User's country from Spotify
+  preferredLanguage String  @default("es")  // ISO 639-1 language code
   accounts        Account[]
   sessions        Session[]
   savedSongs      SavedSong[]
   songProgress    SongProgress[]
+  languageProgress UserLanguageProgress[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -185,12 +187,14 @@ model WordClick {
   userId       String?    // Optional: track by user if authenticated
   translation  String?    // Store the translation at time of click
   definition   String?    // Store definition JSON at time of click
+  language     String     @default("es") // ISO 639-1 code of the word's language
   clickedAt    DateTime   @default(now())
 
   @@index([word])
   @@index([vocabularyId])
   @@index([userId])
   @@index([clickedAt])
+  @@index([language])
 }
 
 model BookmarkedLine {
@@ -226,4 +230,19 @@ model SongProgress {
   @@index([userId])
   @@index([songId])
   @@index([completed])
+}
+
+model UserLanguageProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  language    String   // ISO 639-1 code (es, fr, etc.)
+  level       Int      @default(1)
+  levelName   String   @default("Beginner")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, language])
+  @@index([userId])
+  @@index([language])
 }

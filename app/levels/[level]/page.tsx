@@ -19,20 +19,24 @@ import { fetchLevels } from '@/lib/client'
 import { getLevelDescription } from '@/lib/utils'
 import { getLevelTags } from '@/lib/levelTags'
 import { Loader2, AlertCircle, ArrowLeft, ChevronDown } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { getLanguageName } from '@/lib/languageUtils'
 
 function LevelPageContent() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
   const level = parseInt(params?.level as string, 10) || 1
-  
+  const { language } = useLanguage()
+  const languageName = getLanguageName(language)
+
   // Modal state
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const { data: levelsData, isLoading, error } = useQuery({
-    queryKey: ['levels'],
-    queryFn: fetchLevels,
+    queryKey: ['levels', language],
+    queryFn: () => fetchLevels(language),
   })
 
   // Handle URL synchronization for direct song links
@@ -201,7 +205,7 @@ function LevelPageContent() {
           <div className="text-6xl mb-4">🎵</div>
           <h3 className="text-xl font-semibold mb-2">No Songs Yet</h3>
           <p className="text-muted-foreground mb-4">
-            There are no songs available for Spanish {level} at the moment.
+            There are no songs available for {languageName} {level} at the moment.
           </p>
           <p className="text-sm text-muted-foreground">
             Try seeding more data or check other levels.
@@ -231,7 +235,7 @@ function LevelPageContent() {
           <Link href={`/levels/${level - 1}`}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Spanish {level - 1}
+              {languageName} {level - 1}
             </Button>
           </Link>
         )}
@@ -240,7 +244,7 @@ function LevelPageContent() {
         {level < 5 ? (
           <Link href={`/levels/${level + 1}`}>
             <Button variant="outline" size="sm">
-              Spanish {level + 1}
+              {languageName} {level + 1}
               <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
             </Button>
           </Link>

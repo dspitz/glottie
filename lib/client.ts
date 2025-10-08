@@ -11,8 +11,8 @@ export const queryClient = new QueryClient({
 })
 
 // API client functions
-export async function fetchLevels() {
-  const response = await fetch('/api/levels')
+export async function fetchLevels(language: string = 'es') {
+  const response = await fetch(`/api/levels?language=${language}`)
   if (!response.ok) {
     throw new Error('Failed to fetch levels')
   }

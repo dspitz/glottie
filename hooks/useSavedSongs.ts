@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface SavedSong {
   id: string
@@ -23,21 +24,37 @@ interface SavedSong {
 
 export function useSavedSongs() {
   const queryClient = useQueryClient()
+  const { language } = useLanguage()
   const [localSavedSongs, setLocalSavedSongs] = useState<SavedSong[]>([])
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount and when language changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('savedSongs')
+      const storageKey = `savedSongs_${language}`
+      let saved = localStorage.getItem(storageKey)
+
+      // MIGRATION: If no language-specific saved songs exist, check for old 'savedSongs' key
+      if (!saved && language === 'es') {
+        const oldSaved = localStorage.getItem('savedSongs')
+        if (oldSaved) {
+          console.log('Migrating saved songs from old key to savedSongs_es')
+          // Copy to new key
+          localStorage.setItem(storageKey, oldSaved)
+          saved = oldSaved
+        }
+      }
+
       if (saved) {
         try {
           setLocalSavedSongs(JSON.parse(saved))
         } catch (error) {
           console.error('Error parsing saved songs from localStorage:', error)
         }
+      } else {
+        setLocalSavedSongs([])
       }
     }
-  }, [])
+  }, [language])
 
   // For now, we're only using localStorage
   // This query is disabled but kept for future authentication implementation
@@ -95,12 +112,13 @@ export function useSavedSongs() {
     verbDensity?: number
   }) => {
     const isSaved = isSongSaved(song.id)
+    const storageKey = `savedSongs_${language}`
 
     // Use localStorage for all users
     if (isSaved) {
       const filtered = localSavedSongs.filter(s => s.id !== song.id)
       setLocalSavedSongs(filtered)
-      localStorage.setItem('savedSongs', JSON.stringify(filtered))
+      localStorage.setItem(storageKey, JSON.stringify(filtered))
     } else {
       const newSong: SavedSong = {
         ...song,
@@ -108,7 +126,7 @@ export function useSavedSongs() {
       }
       const updated = [...localSavedSongs, newSong]
       setLocalSavedSongs(updated)
-      localStorage.setItem('savedSongs', JSON.stringify(updated))
+      localStorage.setItem(storageKey, JSON.stringify(updated))
     }
 
     // Also call API (non-blocking)
@@ -120,10 +138,11 @@ export function useSavedSongs() {
     }
   }
 
-  // Clear all saved songs
+  // Clear all saved songs for current language
   const clearSavedSongs = () => {
+    const storageKey = `savedSongs_${language}`
     setLocalSavedSongs([])
-    localStorage.removeItem('savedSongs')
+    localStorage.removeItem(storageKey)
   }
 
   return {

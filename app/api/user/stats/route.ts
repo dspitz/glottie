@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
+    const searchParams = request.nextUrl.searchParams
+    const language = searchParams.get('language') || 'es'
 
     if (!session?.user?.email) {
       return NextResponse.json(
@@ -26,20 +28,26 @@ export async function GET() {
       )
     }
 
-    // Get completed songs count
+    // Get completed songs count for this language
     const completedSongs = await prisma.songProgress.count({
       where: {
         userId: user.id,
-        completed: true
+        completed: true,
+        song: {
+          language: language
+        }
       }
     })
 
-    // Get average quiz score
+    // Get average quiz score for this language
     const progressWithScores = await prisma.songProgress.findMany({
       where: {
         userId: user.id,
         completed: true,
-        quizScore: { not: null }
+        quizScore: { not: null },
+        song: {
+          language: language
+        }
       },
       select: {
         quizScore: true
@@ -50,11 +58,14 @@ export async function GET() {
       ? progressWithScores.reduce((sum, p) => sum + (p.quizScore || 0), 0) / progressWithScores.length
       : null
 
-    // Get completed songs with their levels to calculate average level
+    // Get completed songs with their levels to calculate average level for this language
     const completedSongsWithLevels = await prisma.songProgress.findMany({
       where: {
         userId: user.id,
-        completed: true
+        completed: true,
+        song: {
+          language: language
+        }
       },
       include: {
         song: {
@@ -71,12 +82,27 @@ export async function GET() {
       ? songsWithLevels.reduce((sum, s) => sum + (s.song.level || 0), 0) / songsWithLevels.length
       : 0
 
-    // Get saved songs count for user level calculation
+    // Get saved songs count for this language
     const savedSongsCount = await prisma.savedSong.count({
-      where: { userId: user.id }
+      where: {
+        userId: user.id,
+        song: {
+          language: language
+        }
+      }
     })
 
-    // Determine user level based on saved songs and average level
+    // Get or create user language progress for this language
+    let userLangProgress = await prisma.userLanguageProgress.findUnique({
+      where: {
+        userId_language: {
+          userId: user.id,
+          language: language
+        }
+      }
+    })
+
+    // Calculate user level based on progress in this language
     let userLevel = 1
     let userLevelName = 'Beginner'
 
@@ -103,13 +129,38 @@ export async function GET() {
       userLevelName = 'Advanced'
     }
 
+    // Update or create user language progress
+    if (userLangProgress) {
+      // Update existing progress if level changed
+      if (userLangProgress.level !== userLevel) {
+        userLangProgress = await prisma.userLanguageProgress.update({
+          where: { id: userLangProgress.id },
+          data: {
+            level: userLevel,
+            levelName: userLevelName
+          }
+        })
+      }
+    } else {
+      // Create new language progress
+      userLangProgress = await prisma.userLanguageProgress.create({
+        data: {
+          userId: user.id,
+          language: language,
+          level: userLevel,
+          levelName: userLevelName
+        }
+      })
+    }
+
     return NextResponse.json({
-      userLevel,
-      userLevelName,
+      userLevel: userLangProgress.level,
+      userLevelName: userLangProgress.levelName,
       songsCompleted: completedSongs,
       averageSongLevel: averageSongLevel > 0 ? Number(averageSongLevel.toFixed(1)) : 1.0,
       averageGrade: averageGrade !== null ? Number(averageGrade.toFixed(0)) : 0,
-      totalSavedSongs: savedSongsCount
+      totalSavedSongs: savedSongsCount,
+      language: language
     })
   } catch (error) {
     console.error('Error fetching user stats:', error)

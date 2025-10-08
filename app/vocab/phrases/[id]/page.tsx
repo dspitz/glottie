@@ -1,14 +1,42 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Volume2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { phraseCategories } from '@/data/phrases'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function PhraseCategoryPage() {
   const params = useParams()
   const router = useRouter()
-  const category = phraseCategories.find(c => c.id === params.id)
+  const { language } = useLanguage()
+  const [category, setCategory] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadCategory = async () => {
+      setLoading(true)
+      try {
+        const phrasesModule = await import(`@/data/${language}/phrases`)
+        const foundCategory = phrasesModule.phraseCategories.find((c: any) => c.id === params.id)
+        setCategory(foundCategory)
+      } catch (error) {
+        console.error('Error loading phrase category:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadCategory()
+  }, [language, params.id])
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 pb-20 py-6">
+        <div className="text-center py-12">Loading...</div>
+      </div>
+    )
+  }
 
   if (!category) {
     return (

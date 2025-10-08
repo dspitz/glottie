@@ -11,11 +11,15 @@ interface BasicsCardProps {
 }
 
 interface ExamplePhrase {
-  spanish: string
+  spanish?: string
+  french?: string
   english: string
 }
 
 export function BasicsCard({ icon, title, subtitle, description, onClick, examplePhrase }: BasicsCardProps & { examplePhrase?: ExamplePhrase }) {
+  // Get the target language text (Spanish or French)
+  const targetText = examplePhrase?.spanish || examplePhrase?.french
+
   return (
     <Card
       className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] overflow-hidden"
@@ -36,9 +40,9 @@ export function BasicsCard({ icon, title, subtitle, description, onClick, exampl
           </div>
         </div>
       </CardContent>
-      {examplePhrase && (
+      {examplePhrase && targetText && (
         <div style={{ padding: '12px 20px', backgroundColor: '#F7F7F7' }}>
-          <p className="text-sm font-medium">{examplePhrase.spanish}</p>
+          <p className="text-sm font-medium">{targetText}</p>
           <p className="text-sm text-muted-foreground" style={{ marginTop: '2px' }}>{examplePhrase.english}</p>
         </div>
       )}

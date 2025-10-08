@@ -16,10 +16,15 @@ interface LevelSummary {
 interface LevelCardProps {
   level: number
   songs: LevelSummary[]
+  language?: string
   className?: string
 }
 
-export function LevelCard({ level, songs, className }: LevelCardProps) {
+export function LevelCard({ level, songs, language = 'es', className }: LevelCardProps) {
+  const languageNames: Record<string, string> = {
+    es: 'Spanish',
+    fr: 'French'
+  }
   const featuredSongs = songs.slice(0, 3) // Show top 3 songs
   const totalSongs = songs.length
 
@@ -27,7 +32,7 @@ export function LevelCard({ level, songs, className }: LevelCardProps) {
     <Link href={`/levels/${level}`} className="block transition-transform hover:scale-105">
       <Card className={cn('h-full cursor-pointer hover:shadow-lg @container', className)}>
         <CardHeader className="pb-3 text-center">
-          <CardTitle className="text-lg">Spanish {level}</CardTitle>
+          <CardTitle className="text-lg">{languageNames[language] || 'Spanish'} {level}</CardTitle>
           <p className="text-sm text-muted-foreground">
             {getLevelDescription(level)}
           </p>
