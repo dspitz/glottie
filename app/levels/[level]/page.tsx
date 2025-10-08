@@ -34,6 +34,16 @@ function LevelPageContent() {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  // Set background color based on language
+  useEffect(() => {
+    const bgColor = language === 'es' ? '#F77373' : '#F79F73'
+    document.body.style.backgroundColor = bgColor
+
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
+
   const { data: levelsData, isLoading, error } = useQuery({
     queryKey: ['levels', language],
     queryFn: () => fetchLevels(language),
@@ -141,37 +151,9 @@ function LevelPageContent() {
     <div className="px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-muted-foreground mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem' }}>
-            {tags?.focus || getLevelDescription(level)}
+          <h2 className="text-white mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem' }}>
+            {getLevelDescription(level)}
           </h2>
-
-        {/* Educational Tags */}
-        {tags && (
-          <div className="mb-10">
-            <div className="flex flex-wrap justify-center gap-2">
-              {/* Grammar Tags */}
-              {tags.grammar.map((tag, index) => (
-                <span
-                  key={`grammar-${index}`}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-gray-700"
-                  style={{ backgroundColor: '#f7f7f7' }}
-                >
-                  {tag.label}
-                </span>
-              ))}
-              {/* Theme Tags */}
-              {tags.themes.map((tag, index) => (
-                <span
-                  key={`theme-${index}`}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-gray-700"
-                  style={{ backgroundColor: '#f7f7f7' }}
-                >
-                  {tag.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Songs List */}

@@ -54,7 +54,7 @@ export function SongListItem({
   
   return (
     <Link href={songUrl} onClick={handleClick} className="block">
-      <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer" style={{ borderRadius: '24px' }}>
+      <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer border-0" style={{ borderRadius: '24px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
         <CardContent className="flex items-center p-3" style={{ gap: '16px' }}>
           {/* Album Thumbnail */}
           <motion.div
@@ -79,21 +79,21 @@ export function SongListItem({
           </motion.div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg truncate">
+            <h3 className="font-semibold text-base truncate text-black">
               {title}
             </h3>
-            <p className="text-sm text-muted-foreground truncate" style={{ marginTop: '8px' }}>
+            <p className="text-xs truncate" style={{ marginTop: '8px', color: 'rgba(0, 0, 0, 0.66)' }}>
               {artist}
             </p>
 
             {/* Genre and word count - always show the row */}
-            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1 text-xs" style={{ color: 'rgba(0, 0, 0, 0.66)' }}>
               {genres ? (
                 <span>{genres.split(',')[0].trim().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</span>
               ) : (
                 <span className="italic">Genre pending</span>
               )}
-              <span className="text-muted-foreground/50">•</span>
+              <span className="text-black/50">•</span>
               {wordCount ? (
                 <span>{wordCount} words</span>
               ) : (

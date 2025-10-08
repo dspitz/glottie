@@ -38,14 +38,14 @@ export function Header() {
 
   // Determine header background color
   const getHeaderBgClass = () => {
-    if (isHomepage) {
+    if (isHomepage || isLevelPage) {
       return 'backdrop-blur-[36px]'
     }
     return 'bg-white/90 supports-[backdrop-filter]:bg-white/90'
   }
 
   const getHeaderStyle = () => {
-    if (isHomepage) {
+    if (isHomepage || isLevelPage) {
       const bgColor = language === 'es' ? 'rgba(247, 115, 115, 0.9)' : 'rgba(247, 159, 115, 0.9)'
       return { backgroundColor: bgColor }
     }
@@ -91,7 +91,7 @@ export function Header() {
           {isLevelPage && currentLevel && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="font-medium hover:bg-transparent">
+                <Button variant="ghost" className="font-medium hover:bg-transparent text-white">
                   {languageName} {currentLevel}
                   <ChevronDown className="ml-1 h-3 w-3" />
                 </Button>

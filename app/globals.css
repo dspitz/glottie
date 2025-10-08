@@ -58,7 +58,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: #F77373; /* Default Spanish background */
   }
   h5 {
     font-size: 1rem;

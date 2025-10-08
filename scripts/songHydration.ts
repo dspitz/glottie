@@ -90,6 +90,26 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)]
 }
 
+// Word count calculation helper
+function calculateWordCount(lyricsRaw: string | null): number {
+  if (!lyricsRaw) return 0
+
+  try {
+    // Try to parse as JSON first
+    const parsed = JSON.parse(lyricsRaw)
+    const lines = parsed.lines || []
+    const allText = lines.join(' ')
+
+    // Split by whitespace and count non-empty words
+    const words = allText.split(/\s+/).filter(word => word.length > 0)
+    return words.length
+  } catch {
+    // If not JSON, treat as plain text
+    const words = lyricsRaw.split(/\s+/).filter(word => word.length > 0)
+    return words.length
+  }
+}
+
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   h /= 360
   s /= 100
@@ -173,6 +193,33 @@ async function getAudioFeatures(trackId: string, token: string): Promise<AudioFe
     return await response.json() as AudioFeatures
   } catch (error) {
     console.error(`Failed to get audio features for ${trackId}:`, error)
+    return null
+  }
+}
+
+async function getArtistGenres(artistIds: string[], token: string): Promise<string | null> {
+  try {
+    // Spotify artists endpoint can handle up to 50 IDs at once
+    const idsParam = artistIds.slice(0, 50).join(',')
+    const response = await fetch(`https://api.spotify.com/v1/artists?ids=${idsParam}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+
+    if (!response.ok) return null
+    const data = await response.json() as any
+
+    // Collect all unique genres from all artists
+    const allGenres = new Set<string>()
+    data.artists.forEach((artist: any) => {
+      if (artist && artist.genres) {
+        artist.genres.forEach((genre: string) => allGenres.add(genre))
+      }
+    })
+
+    // Return top 3 genres as comma-separated string
+    return Array.from(allGenres).slice(0, 3).join(', ') || null
+  } catch (error) {
+    console.error(`Failed to get genres for artists:`, error)
     return null
   }
 }
@@ -291,6 +338,16 @@ async function hydrateSong(songId: string, options: HydrationOptions = {}): Prom
             updates.tempo = features.tempo
           }
 
+          // Get genres from artists
+          const artistIds = track.artists.map(a => a.id)
+          if (artistIds.length > 0 && (!song.genres || options.force)) {
+            const genres = await getArtistGenres(artistIds, token)
+            if (genres) {
+              updates.genres = genres
+              console.log(`  🎸 Genres: ${genres}`)
+            }
+          }
+
           stats.spotifyFetched = true
           console.log('  ✅ Spotify data fetched')
         } else {
@@ -328,15 +385,33 @@ async function hydrateSong(songId: string, options: HydrationOptions = {}): Prom
       if (!lyricsResult.error && (lyricsResult.raw || lyricsResult.synchronized)) {
         // If we have synchronized data, store it as JSON with timing info
         if (lyricsResult.synchronized?.lines?.length > 0) {
+          const syncData = lyricsResult.synchronized
           const structuredData = {
             lines: lyricsResult.lines,
-            synchronized: lyricsResult.synchronized
+            synchronized: syncData
           }
           updates.lyricsRaw = JSON.stringify(structuredData)
-          console.log(`  ✅ Storing synchronized lyrics with timing data`)
+
+          // Validate timestamp quality
+          const hasRealTimestamps = syncData.format === 'lrc' || syncData.format === 'dfxp'
+          const isEstimated = syncData.format === 'estimated'
+
+          if (hasRealTimestamps) {
+            console.log(`  ✅ Storing synchronized lyrics with REAL ${syncData.format.toUpperCase()} timestamps`)
+            console.log(`     Format: ${syncData.format}, Word-level: ${syncData.hasWordTiming ? 'Yes' : 'No (line-level only)'}`)
+            if (syncData.duration) {
+              console.log(`     Duration: ${(syncData.duration / 1000).toFixed(2)}s`)
+            }
+          } else if (isEstimated) {
+            console.log(`  ⚠️  Storing synchronized lyrics with ESTIMATED timestamps`)
+            console.log(`     Note: Timestamps are calculated, not from source`)
+          } else {
+            console.log(`  ✅ Storing synchronized lyrics (${syncData.lines.length} lines)`)
+          }
         } else if (lyricsResult.raw) {
           // Store raw text for backward compatibility
           updates.lyricsRaw = lyricsResult.raw
+          console.log(`  ⚠️  No synchronized timestamps available - storing plain text only`)
         }
 
         updates.lyricsProvider = lyricsResult.provider
@@ -349,6 +424,53 @@ async function hydrateSong(songId: string, options: HydrationOptions = {}): Prom
         stats.lyricsFetched = true
         const hasSynced = lyricsResult.synchronized?.lines?.length > 0
         console.log(`  ✅ Lyrics fetched from ${lyricsResult.provider} (${lyricsResult.lines.length} lines${hasSynced ? ', synchronized' : ''})`)
+
+        // Calculate and store word count in Metrics
+        const wordCount = calculateWordCount(updates.lyricsRaw)
+        if (wordCount > 0) {
+          console.log(`  📊 Word count: ${wordCount} words`)
+
+          // Check if metrics exist for this song
+          const existingMetrics = await prisma.metrics.findUnique({
+            where: { songId: songId }
+          })
+
+          if (existingMetrics) {
+            // Update existing metrics
+            await prisma.metrics.update({
+              where: { songId: songId },
+              data: {
+                wordCount,
+                uniqueWordCount: wordCount, // Simplified for now
+                typeTokenRatio: 0.5,
+                avgWordFreqZipf: 3.5,
+                verbDensity: 0.2,
+                tenseWeights: 1.0,
+                idiomCount: 0,
+                punctComplexity: 1.0,
+                difficultyScore: song.level || 1
+              }
+            })
+            console.log(`  ✅ Updated metrics with word count`)
+          } else {
+            // Create new metrics
+            await prisma.metrics.create({
+              data: {
+                songId: songId,
+                wordCount,
+                uniqueWordCount: wordCount,
+                typeTokenRatio: 0.5,
+                avgWordFreqZipf: 3.5,
+                verbDensity: 0.2,
+                tenseWeights: 1.0,
+                idiomCount: 0,
+                punctComplexity: 1.0,
+                difficultyScore: song.level || 1
+              }
+            })
+            console.log(`  ✅ Created metrics with word count`)
+          }
+        }
       } else {
         stats.errors.push(`Failed to fetch lyrics: ${lyricsResult.error}`)
       }
@@ -591,10 +713,22 @@ Examples:
 
       const stats = await hydrateSong(songId, options)
 
+      // Get final song state for summary
+      const finalSong = await prisma.song.findUnique({
+        where: { id: songId },
+        include: { metrics: true }
+      })
+
       console.log('\n📊 Summary:')
       console.log(`  Spotify data: ${stats.spotifyFetched ? '✅' : '⏭️'}`)
+      if (finalSong?.genres) {
+        console.log(`    └─ Genres: ${finalSong.genres}`)
+      }
       console.log(`  Color extraction: ${stats.colorExtracted ? '✅' : '⏭️'}`)
       console.log(`  Lyrics: ${stats.lyricsFetched ? '✅' : '⏭️'}`)
+      if (finalSong?.metrics?.wordCount) {
+        console.log(`    └─ Word count: ${finalSong.metrics.wordCount} words`)
+      }
       console.log(`  Translation: ${stats.translationCreated ? '✅' : '⏭️'}`)
 
       if (stats.errors.length > 0) {
