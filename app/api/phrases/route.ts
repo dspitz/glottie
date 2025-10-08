@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(phrases)
   } catch (error) {
-    console.error('Error fetching phrases:', error)
+    // console.error('Error fetching phrases:', error)
     return NextResponse.json(
       { error: 'Failed to fetch phrases' },
       { status: 500 }

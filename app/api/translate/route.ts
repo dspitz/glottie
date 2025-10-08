@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       provider: translation.provider
     })
   } catch (error) {
-    console.error('Translation API error:', error)
+    // console.error('Translation API error:', error)
 
     return NextResponse.json(
       {

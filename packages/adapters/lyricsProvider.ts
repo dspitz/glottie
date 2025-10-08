@@ -40,6 +40,8 @@ export interface LyricsProvider {
 function parseLRC(lrcContent: string): { lines: LyricsLine[], duration: number, hasRealWordTiming: boolean } {
   const lines: LyricsLine[] = []
   let maxTime = 0
+  // LRC format only provides line-level timing, not real word-level timing
+  // We estimate word timing by distributing line duration evenly
   let hasRealWordTiming = false
 
   // Split content into lines and process each line
@@ -77,21 +79,48 @@ function parseLRC(lrcContent: string): { lines: LyricsLine[], duration: number, 
 
       maxTime = Math.max(maxTime, endTime)
 
-      // Create words array for compatibility with SynchronizedLyrics component
-      // Since LRC only provides line-level timing, all words share the line timing
+      // Create words array with estimated word-level timing
+      // Since LRC only provides line-level timing, we distribute time evenly across words
       const lineWords = textContent.split(/(\s+)/).filter(part => part.length > 0)
-      const words: Word[] = lineWords.map((wordText): Word => ({
-        text: wordText,
-        startTime,  // All words share the line's exact start time
-        endTime,    // All words share the line's exact end time
-        isWhitespace: !wordText.trim()
-      }))
+
+      // Count non-whitespace words for timing distribution
+      const nonWhitespaceWords = lineWords.filter(w => w.trim()).length
+      const lineDuration = endTime - startTime
+      const wordDuration = nonWhitespaceWords > 0 ? lineDuration / nonWhitespaceWords : lineDuration
+
+      let currentWordIndex = 0
+      const words: Word[] = lineWords.map((wordText): Word => {
+        const isWhitespace = !wordText.trim()
+
+        if (isWhitespace) {
+          // Whitespace gets minimal duration and doesn't affect timing
+          return {
+            text: wordText,
+            startTime: startTime + (currentWordIndex * wordDuration),
+            endTime: startTime + (currentWordIndex * wordDuration) + 10, // 10ms for whitespace
+            isWhitespace: true
+          }
+        } else {
+          // Distribute timing evenly across actual words
+          const wordStart = startTime + (currentWordIndex * wordDuration)
+          const wordEnd = startTime + ((currentWordIndex + 1) * wordDuration)
+          currentWordIndex++
+
+          return {
+            text: wordText,
+            startTime: Math.round(wordStart),
+            endTime: Math.round(wordEnd),
+            isWhitespace: false
+          }
+        }
+      })
 
       lines.push({
         text: textContent,
         words,  // Include words array for component compatibility
         startTime,
-        endTime
+        endTime,
+        time: startTime / 1000  // Add time in seconds for compatibility
       })
     }
   }

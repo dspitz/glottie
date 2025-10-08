@@ -3,54 +3,96 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { AuthButton } from '@/components/AuthButton'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export function Header() {
   const pathname = usePathname()
+  const router = useRouter()
   const isHomepage = pathname === '/'
   const isLevelPage = pathname.startsWith('/levels/')
+  const isSongPage = pathname.startsWith('/song/')
+
+  // Only show header on homepage, level pages, and song pages
+  const shouldShowHeader = isHomepage || isLevelPage || isSongPage
+
+  if (!shouldShowHeader) {
+    return null
+  }
+
+  // Extract current level from pathname
+  const currentLevel = isLevelPage ? parseInt(pathname.split('/')[2], 10) : null
 
   return (
-    <header className={`sticky top-0 z-50 w-full border-b border-white/[0.12] backdrop-blur ${
+    <header className={`sticky top-0 z-50 w-full border-b border-white/[0.12] backdrop-blur-[36px] ${
       isHomepage
-        ? 'bg-brand/60 supports-[backdrop-filter]:bg-brand/60'
-        : 'bg-white/60 supports-[backdrop-filter]:bg-white/60'
+        ? 'bg-brand/90 supports-[backdrop-filter]:bg-brand/90'
+        : 'bg-white/90 supports-[backdrop-filter]:bg-white/90'
     }`}>
-      <div className="container flex h-16 items-center px-6">
-        {/* Logo or Back Button */}
-        {isLevelPage ? (
-          <Link href="/">
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-background/80 backdrop-blur-sm rounded-full w-9 h-9 mr-6"
-            >
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">Back to home</span>
-            </Button>
-          </Link>
-        ) : (
-          <Link href="/" className="flex items-center space-x-1 mr-6">
-            <Image
-              src="/images/music_note@2x.png"
-              alt="Music note icon"
-              width={28}
-              height={28}
-              style={{ objectFit: 'contain' }}
-              className="text-primary w-7 h-7"
-            />
-            <span className="font-bold text-xl">diddydum</span>
-          </Link>
-        )}
+      <div className="container flex h-16 items-center px-6 relative">
+        {/* Logo or Back Button - absolute positioned */}
+        <div className="absolute left-6">
+          {isLevelPage ? (
+            <Link href="/">
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-background/80 backdrop-blur-sm rounded-full w-9 h-9"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Back to home</span>
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/" className="flex items-center space-x-1">
+              <Image
+                src="/images/music_note@2x.png"
+                alt="Music note icon"
+                width={28}
+                height={28}
+                style={{ objectFit: 'contain' }}
+                className="text-primary w-7 h-7"
+              />
+              <span className="font-bold text-xl">diddydum</span>
+            </Link>
+          )}
+        </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/* Center content - Level Dropdown on level pages - truly centered */}
+        <div className="flex-1 flex justify-center">
+          {isLevelPage && currentLevel && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="font-medium hover:bg-transparent">
+                  Spanish {currentLevel}
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {[1, 2, 3, 4, 5].map((lvl) => (
+                  <DropdownMenuItem
+                    key={lvl}
+                    onClick={() => router.push(`/levels/${lvl}`)}
+                    className={lvl === currentLevel ? 'bg-accent' : ''}
+                  >
+                    Spanish {lvl}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
-        {/* Only show Auth Button for sign in - logged in users use tab navigation */}
-        <div className="auth-button-container">
+        {/* Auth Button - absolute positioned */}
+        <div className="absolute right-6">
           <AuthButton />
         </div>
       </div>

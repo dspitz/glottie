@@ -6,6 +6,8 @@ import { parseTextIntoWords } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { defineWord } from '@/lib/client'
 import { AudioPlayerControls } from '@/components/EnhancedAudioPlayer'
+import { LineBookmarkButton } from '@/components/LineBookmarkButton'
+import confetti from 'canvas-confetti'
 
 interface TranslationBottomSheetProps {
   isOpen: boolean
@@ -40,6 +42,10 @@ interface TranslationBottomSheetProps {
   onPause?: () => void
   onPlayFromTime?: ((time: number) => Promise<boolean>) | null
   onSetLineLock?: (locked: boolean, lineIndex?: number) => void
+  // For line bookmarking
+  songId?: string
+  songTitle?: string
+  songArtist?: string
 }
 
 export function TranslationBottomSheet({
@@ -64,8 +70,14 @@ export function TranslationBottomSheet({
   onPlay,
   onPause,
   onPlayFromTime,
-  onSetLineLock
+  onSetLineLock,
+  songId,
+  songTitle,
+  songArtist
 }: TranslationBottomSheetProps) {
+  // Debug: Log bookmark props
+  // console.log('📑 TranslationBottomSheet bookmark props:', { songId, songTitle, songArtist, currentLineIndex })
+
   const [translation, setTranslation] = useState<string>('')
   const controls = useAnimation()
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -108,7 +120,7 @@ export function TranslationBottomSheet({
     if (false) {
       const currentLine = synchronizedData.lines?.[currentLineIndex]
       if (!currentLine) {
-        console.log('⚠️ No current line found at index:', currentLineIndex)
+        // console.log('⚠️ No current line found at index:', currentLineIndex)
         return
       }
 
@@ -174,16 +186,16 @@ export function TranslationBottomSheet({
       const loopEndBufferMs = 200
       const bufferedEndTimeMs = endTimeMs ? endTimeMs + loopEndBufferMs : endTimeMs
 
-      console.log('🔄 Loop monitoring started:', {
-        loopMode,
-        currentLineIndex,
-        startTimeMs,
-        endTimeMs: bufferedEndTimeMs,
-        duration: bufferedEndTimeMs ? bufferedEndTimeMs - startTimeMs : 'unknown',
-        buffer: loopEndBufferMs,
-        lineText: currentLine.text || 'No text',
-        nextLine: synchronizedData.lines?.[currentLineIndex + 1]?.text || 'No next line'
-      })
+      // console.log('🔄 Loop monitoring started:', {
+      //   loopMode,
+      //   currentLineIndex,
+      //   startTimeMs,
+      //   endTimeMs: bufferedEndTimeMs,
+      //   duration: bufferedEndTimeMs ? bufferedEndTimeMs - startTimeMs : 'unknown',
+      //   buffer: loopEndBufferMs,
+      //   lineText: currentLine.text || 'No text',
+      //   nextLine: synchronizedData.lines?.[currentLineIndex + 1]?.text || 'No next line'
+      // })
 
       // Monitor for line end
       let checkCount = 0
@@ -197,19 +209,19 @@ export function TranslationBottomSheet({
           // getState() now always returns currentTime in milliseconds
           currentTimeMs = state.currentTime || 0
         } else {
-          console.warn('⚠️ No audioControls available in loop monitor')
+          // console.warn('⚠️ No audioControls available in loop monitor')
         }
 
         // Debug log every 10 checks (500ms)
         if (checkCount % 10 === 0) {
-          console.log('🔍 Loop monitor check:', {
-            checkCount,
-            currentTimeMs,
-            endTimeMs: bufferedEndTimeMs,
-            timeUntilEnd: bufferedEndTimeMs ? bufferedEndTimeMs - currentTimeMs : 'N/A',
-            loopMode,
-            loopCount: loopCountRef.current
-          })
+          // console.log('🔍 Loop monitor check:', {
+          //   checkCount,
+          //   currentTimeMs,
+          //   endTimeMs: bufferedEndTimeMs,
+          //   timeUntilEnd: bufferedEndTimeMs ? bufferedEndTimeMs - currentTimeMs : 'N/A',
+          //   loopMode,
+          //   loopCount: loopCountRef.current
+          // })
         }
 
         // Check if we've reached the end of the line
@@ -219,20 +231,20 @@ export function TranslationBottomSheet({
         // Trigger when we've reached or passed the buffered end time
         // Using buffered end time to allow line to play fully
         if (bufferedEndTimeMs && currentTimeMs >= bufferedEndTimeMs) {
-          console.log('🎯 Line end reached!', {
-            currentTimeMs,
-            endTimeMs: bufferedEndTimeMs,
-            lineProgress: `${(lineProgress * 100).toFixed(1)}%`,
-            actualDuration: currentTimeMs - startTimeMs,
-            expectedDuration: bufferedEndTimeMs - startTimeMs,
-            loopMode,
-            loopCount: loopCountRef.current
-          })
+          // console.log('🎯 Line end reached!', {
+          //   currentTimeMs,
+          //   endTimeMs: bufferedEndTimeMs,
+          //   lineProgress: `${(lineProgress * 100).toFixed(1)}%`,
+          //   actualDuration: currentTimeMs - startTimeMs,
+          //   expectedDuration: bufferedEndTimeMs - startTimeMs,
+          //   loopMode,
+          //   loopCount: loopCountRef.current
+          // })
 
           if (loopMode === 'once') {
             if (loopCountRef.current === 0) {
               // First loop, replay once more
-              console.log('🔁 Looping once - seeking back to start')
+              // console.log('🔁 Looping once - seeking back to start')
               loopCountRef.current = 1
               if (audioControls) {
                 audioControls.seek(startTimeMs)
@@ -245,7 +257,7 @@ export function TranslationBottomSheet({
               }
             } else {
               // Already looped once, stop looping
-              console.log('✅ Loop once complete - stopping loop')
+              // console.log('✅ Loop once complete - stopping loop')
               loopCountRef.current = 0
               setLoopMode('off')
               clearInterval(lineMonitorRef.current!)
@@ -253,7 +265,7 @@ export function TranslationBottomSheet({
             }
           } else if (loopMode === 'infinite') {
             // Keep looping
-            console.log('♾️ Infinite loop - seeking back to start')
+            // console.log('♾️ Infinite loop - seeking back to start')
             if (audioControls) {
               audioControls.seek(startTimeMs)
               // Ensure playback continues
@@ -284,26 +296,45 @@ export function TranslationBottomSheet({
     // Pause music when clicking on a word to look up definition
     audioControls?.pause()
 
-    // Toggle selection
-    if (selectedWord === cleanWord) {
-      setSelectedWord(null)
-      setWordDefinition(null)
-      return
-    }
+    const normalizedWord = cleanWord.toLowerCase().trim()
 
-    // Select new word and fetch definition
+    // Select new word and fetch definition first
     setSelectedWord(cleanWord)
     setIsLoadingDefinition(true)
     setWordDefinition(null)
 
+    let definition = null
     try {
-      const definition = await defineWord(cleanWord.toLowerCase().trim())
+      definition = await defineWord(normalizedWord)
       setWordDefinition(definition)
     } catch (error) {
       console.error('Failed to fetch definition:', error)
       setWordDefinition({ error: true })
     } finally {
       setIsLoadingDefinition(false)
+    }
+
+    // Track word click with translation and definition
+    // console.log('📊 Tracking word click:', normalizedWord)
+    fetch('/api/word-clicks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        word: normalizedWord,
+        translation: definition?.definitions?.[0] || null,
+        definition: definition ? JSON.stringify(definition) : null
+      }),
+    }).catch((err) => {
+      console.error('Failed to track word click:', err)
+    })
+
+    // Toggle selection
+    if (selectedWord === cleanWord) {
+      setSelectedWord(null)
+      setWordDefinition(null)
+      return
     }
   }
 
@@ -483,6 +514,17 @@ export function TranslationBottomSheet({
                 )}
               </div>
               <div className="flex-1" />
+              {songId && (
+                <div className="bg-background/80 backdrop-blur-sm rounded-full">
+                  <LineBookmarkButton
+                    songId={songId}
+                    lineText={sentence}
+                    lineTranslation={translation}
+                    lineIndex={currentLineIndex}
+                    className="h-9 w-9"
+                  />
+                </div>
+              )}
             </motion.div>
 
             {/* Content */}
@@ -746,13 +788,6 @@ export function TranslationBottomSheet({
                     if (onNavigatePrevious) {
                       onNavigatePrevious()
                     }
-                    // Pause the music after navigation (only if playing)
-                    setTimeout(() => {
-                      const state = audioControls?.getState()
-                      if (state?.isPlaying) {
-                        audioControls.pause()
-                      }
-                    }, 100)
                   }}
                   disabled={currentLineIndex === 0}
                   className="text-gray-700 hover:bg-gray-100 disabled:opacity-30 h-8 w-8"
@@ -766,12 +801,12 @@ export function TranslationBottomSheet({
                   size="default"
                   onClick={(e) => {
                     e.stopPropagation()
-                    console.log('🎵 Play Line button clicked', {
-                      currentLineIndex,
-                      hasOnSetLineLock: !!onSetLineLock,
-                      hasSynchronizedData: !!synchronizedData,
-                      linesCount: synchronizedData?.lines?.length
-                    })
+                    // console.log('🎵 Play Line button clicked', {
+                    //   currentLineIndex,
+                    //   hasOnSetLineLock: !!onSetLineLock,
+                    //   hasSynchronizedData: !!synchronizedData,
+                    //   linesCount: synchronizedData?.lines?.length
+                    // })
 
                     // Get line timing if available
                     if (synchronizedData?.lines?.[currentLineIndex]) {
@@ -780,34 +815,34 @@ export function TranslationBottomSheet({
                       const nextLine = synchronizedData.lines[currentLineIndex + 1]
 
                       // Debug log to see what timing data we have
-                      console.log('📊 Line timing data:', {
-                        currentLineIndex,
-                        currentLine: {
-                          text: currentLine.text,
-                          time: currentLine.time,
-                          startTime: currentLine.startTime,
-                          endTime: currentLine.endTime,
-                          duration: currentLine.duration,
-                          words: currentLine.words?.length,
-                          rawData: currentLine
-                        },
-                        nextLine: nextLine ? {
-                          text: nextLine.text,
-                          time: nextLine.time,
-                          startTime: nextLine.startTime,
-                          endTime: nextLine.endTime,
-                          rawData: nextLine
-                        } : null,
-                        previousLine: currentLineIndex > 0 ? {
-                          text: synchronizedData.lines[currentLineIndex - 1].text,
-                          endTime: synchronizedData.lines[currentLineIndex - 1].endTime
-                        } : null
-                      })
+                      // console.log('📊 Line timing data:', {
+                      //   currentLineIndex,
+                      //   currentLine: {
+                      //     text: currentLine.text,
+                      //     time: currentLine.time,
+                      //     startTime: currentLine.startTime,
+                      //     endTime: currentLine.endTime,
+                      //     duration: currentLine.duration,
+                      //     words: currentLine.words?.length,
+                      //     rawData: currentLine
+                      //   },
+                      //   nextLine: nextLine ? {
+                      //     text: nextLine.text,
+                      //     time: nextLine.time,
+                      //     startTime: nextLine.startTime,
+                      //     endTime: nextLine.endTime,
+                      //     rawData: nextLine
+                      //   } : null,
+                      //   previousLine: currentLineIndex > 0 ? {
+                      //     text: synchronizedData.lines[currentLineIndex - 1].text,
+                      //     endTime: synchronizedData.lines[currentLineIndex - 1].endTime
+                      //   } : null
+                      // })
 
                       // Expand the raw data to see all properties
-                      console.log('🔍 Current line raw data:', JSON.stringify(currentLine, null, 2))
+                      // console.log('🔍 Current line raw data:', JSON.stringify(currentLine, null, 2))
                       if (nextLine) {
-                        console.log('🔍 Next line raw data:', JSON.stringify(nextLine, null, 2))
+                        // console.log('🔍 Next line raw data:', JSON.stringify(nextLine, null, 2))
                       }
 
                       // Calculate start time
@@ -818,7 +853,7 @@ export function TranslationBottomSheet({
                       } else if (typeof currentLine.startTime === 'number') {
                         startTimeMs = currentLine.startTime
                       } else {
-                        console.warn('No timing data for current line')
+                        // console.warn('No timing data for current line')
                         return
                       }
 
@@ -841,7 +876,7 @@ export function TranslationBottomSheet({
                       } else {
                         // Last line - use remaining song duration
                         // This is the only case where we might need to estimate
-                        console.warn('⚠️ Last line - using remaining song duration')
+                        // console.warn('⚠️ Last line - using remaining song duration')
                         // Could potentially use song duration here if available
                         // For now, use a longer default for last line
                         endTimeMs = startTimeMs + 5000 // 5 seconds for last line
@@ -849,7 +884,7 @@ export function TranslationBottomSheet({
                       }
 
                       // Log where we got the end time from
-                      console.log('⏰ End time source:', endTimeSource, 'value:', endTimeMs)
+                      // console.log('⏰ End time source:', endTimeSource, 'value:', endTimeMs)
 
                       // Add 200ms buffer to the end to let the line finish completely
                       const endBufferMs = 200
@@ -858,18 +893,18 @@ export function TranslationBottomSheet({
                       const bufferMs = 0  // No buffer to avoid display issues
                       const adjustedStartMs = startTimeMs  // Use exact start time
 
-                      console.log('🎯 Playing line:', {
-                        startTime: startTimeMs,
-                        endTime: endTimeMs,
-                        duration: endTimeMs - startTimeMs,
-                        endTimeSource,
-                        lineText: currentLine.text,
-                        currentLineIndex
-                      })
+                      // console.log('🎯 Playing line:', {
+                      //   startTime: startTimeMs,
+                      //   endTime: endTimeMs,
+                      //   duration: endTimeMs - startTimeMs,
+                      //   endTimeSource,
+                      //   lineText: currentLine.text,
+                      //   currentLineIndex
+                      // })
 
                       // FIRST: Enable line lock mode BEFORE seeking to prevent display issues
                       if (onSetLineLock) {
-                        console.log('🔒 Enabling line lock mode for line', currentLineIndex)
+                        // console.log('🔒 Enabling line lock mode for line', currentLineIndex)
                         onSetLineLock(true, currentLineIndex)
                       }
 
@@ -883,32 +918,32 @@ export function TranslationBottomSheet({
                       if (audioControls) {
                         // Longer delay to ensure React state updates have propagated
                         setTimeout(() => {
-                          console.log('⏩ Seeking to adjusted start time:', adjustedStartMs)
+                          // console.log('⏩ Seeking to adjusted start time:', adjustedStartMs)
                           audioControls.seek(adjustedStartMs)
 
                           // Another small delay to ensure seek completes, then play
                           setTimeout(() => {
                             if (!audioControls.getState().isPlaying) {
-                              console.log('▶️ Starting playback')
+                              // console.log('▶️ Starting playback')
                               audioControls.play()
                             }
 
                             // Set up auto-pause at line end (always enabled now that looping is removed)
                             // Calculate pause duration from original start (not buffered) plus end buffer
                             const pauseDuration = (endTimeMs! - startTimeMs) + endBufferMs
-                            console.log('⏱️ Setting auto-pause timer for:', pauseDuration, 'ms (includes', endBufferMs, 'ms buffer)')
+                            // console.log('⏱️ Setting auto-pause timer for:', pauseDuration, 'ms (includes', endBufferMs, 'ms buffer)')
 
                             // Use a single timeout for precise pause timing
                             setTimeout(() => {
                               const state = audioControls.getState()
                               // Only pause if we're still playing
                               if (state.isPlaying) {
-                                console.log('⏸️ Auto-pausing at line end')
+                                // console.log('⏸️ Auto-pausing at line end')
                                 audioControls.pause()
                                 setIsRepeatingLine(false) // Stop rotating animation
                                 // Disable line lock after playing the line
                                 if (onSetLineLock) {
-                                  console.log('🔓 Disabling line lock mode')
+                                  // console.log('🔓 Disabling line lock mode')
                                   onSetLineLock(false)
                                 }
                               }
@@ -943,10 +978,10 @@ export function TranslationBottomSheet({
                     } else {
                       // When starting song playback, always disable line lock to allow auto-advancing
                       if (onSetLineLock) {
-                        console.log('🔓 Play song clicked - disabling line lock for auto-advance')
+                        // console.log('🔓 Play song clicked - disabling line lock for auto-advance')
                         onSetLineLock(false)
                       } else {
-                        console.warn('⚠️ onSetLineLock is not defined!')
+                        // console.warn('⚠️ onSetLineLock is not defined!')
                       }
                       audioControls?.play()
                     }
@@ -977,13 +1012,6 @@ export function TranslationBottomSheet({
                     if (onNavigateNext) {
                       onNavigateNext()
                     }
-                    // Pause the music after navigation (only if playing)
-                    setTimeout(() => {
-                      const state = audioControls?.getState()
-                      if (state?.isPlaying) {
-                        audioControls.pause()
-                      }
-                    }, 100)
                   }}
                   disabled={currentLineIndex === totalLines - 1}
                   className="text-gray-700 hover:bg-gray-100 disabled:opacity-30 h-8 w-8"

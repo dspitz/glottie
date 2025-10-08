@@ -4,6 +4,11 @@ import { SpotifyPlayerManager } from '@/components/SpotifyWebPlayer'
 /**
  * Adapter for Spotify Web Playback SDK
  * Handles all Spotify-specific playback operations and normalizes to standard interface
+ *
+ * LIMITATION: Playback rate control is not supported by Spotify Web SDK.
+ * The SDK uses an isolated, encrypted audio pipeline (likely iframe-based or Web Worker)
+ * that cannot be accessed or modified from the parent page's JavaScript context.
+ * This is by design for DRM/licensing protection.
  */
 export class SpotifyAdapter implements AudioAdapter {
   private manager: SpotifyPlayerManager
@@ -12,7 +17,7 @@ export class SpotifyAdapter implements AudioAdapter {
   private errorCallbacks: Set<(error: Error) => void> = new Set()
   private spotifyState: Spotify.PlaybackState | null = null
   private volume: number = 1
-  private playbackRate: number = 1 // Note: Spotify doesn't support playback rate changes
+  private playbackRate: number = 1
 
   constructor() {
     this.manager = SpotifyPlayerManager.getInstance()
@@ -111,10 +116,11 @@ export class SpotifyAdapter implements AudioAdapter {
   }
 
   /**
-   * Get playback rate (always 1 for Spotify)
+   * Get playback rate
+   * Always returns 1 as Spotify does not support playback rate modification
    */
   getPlaybackRate(): number {
-    return this.playbackRate
+    return 1
   }
 
   /**
@@ -133,12 +139,14 @@ export class SpotifyAdapter implements AudioAdapter {
   }
 
   /**
-   * Set playback rate (not supported by Spotify)
+   * Set playback rate
+   *
+   * NOTE: This is a no-op for Spotify. Playback rate cannot be modified
+   * due to SDK's isolated audio pipeline. Value is stored for state tracking only.
    */
   setPlaybackRate(rate: number): void {
-    // Spotify doesn't support playback rate changes
-    console.warn('Playback rate control is not supported by Spotify')
-    this.playbackRate = 1 // Always 1 for Spotify
+    // Store for consistency but cannot actually apply to Spotify playback
+    this.playbackRate = 1
   }
 
   /**

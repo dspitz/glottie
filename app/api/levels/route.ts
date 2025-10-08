@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Error fetching levels:', error)
+    // console.error('Error fetching levels:', error)
     return NextResponse.json(
       { error: 'Failed to fetch levels' },
       { status: 500 }

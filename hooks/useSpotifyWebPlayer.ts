@@ -10,24 +10,24 @@ export function useSpotifyWebPlayer() {
 
   const playTrack = useCallback(async (spotifyId: string) => {
     if (!playerRef?.current || !spotifyId) {
-      console.log('[useSpotifyWebPlayer] Missing playerRef or spotifyId')
+      // console.log('[useSpotifyWebPlayer] Missing playerRef or spotifyId')
       return false
     }
 
     const trackUri = `spotify:track:${spotifyId}`
-    console.log('[useSpotifyWebPlayer] Playing track:', trackUri)
+    // console.log('[useSpotifyWebPlayer] Playing track:', trackUri)
 
     try {
       const result = await playerRef.current.playTrack(trackUri)
 
       if (result === 'PREMIUM_REQUIRED') {
-        console.warn('[useSpotifyWebPlayer] Premium account required for playback')
+        // console.warn('[useSpotifyWebPlayer] Premium account required for playback')
         alert('A Spotify Premium account is required for full song playback.')
         return false
       }
 
       if (result === 'PLAYER_NOT_READY') {
-        console.warn('[useSpotifyWebPlayer] Player not ready yet')
+        // console.warn('[useSpotifyWebPlayer] Player not ready yet')
         alert('Spotify player is initializing. Please try again in a moment.')
         return false
       }
@@ -41,7 +41,7 @@ export function useSpotifyWebPlayer() {
 
   const togglePlayPause = useCallback(async () => {
     if (!playerRef?.current) {
-      console.log('[useSpotifyWebPlayer] No playerRef available')
+      // console.log('[useSpotifyWebPlayer] No playerRef available')
       return false
     }
 

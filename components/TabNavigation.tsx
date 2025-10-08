@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Music, BookOpen, Brain, Bookmark, User } from 'lucide-react'
+import { Music, GraduationCap, Brain, Bookmark, User } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface TabItem {
@@ -27,8 +27,8 @@ export function TabNavigation() {
     },
     {
       href: '/vocab',
-      icon: <BookOpen className="h-5 w-5" />,
-      label: 'Vocab'
+      icon: <GraduationCap className="h-5 w-5" />,
+      label: 'Basics'
     },
     {
       href: '/learnings',
@@ -63,7 +63,7 @@ export function TabNavigation() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] backdrop-blur bg-white/60 supports-[backdrop-filter]:bg-white/60">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] backdrop-blur-[36px] bg-white/90 supports-[backdrop-filter]:bg-white/90">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-around h-16">
           {tabs.map((tab) => {
@@ -87,8 +87,13 @@ export function TabNavigation() {
                 `}
               >
                 {tab.href === '/profile' && session ? (
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage src={session.user?.image || ''} alt={session.user?.name || ''} />
+                  <Avatar className="h-5 w-5 ring-1 ring-black/[0.08]">
+                    <AvatarImage
+                      src={session.user?.image || ''}
+                      alt={session.user?.name || ''}
+                      referrerPolicy="no-referrer"
+                      className="object-cover"
+                    />
                     <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
                   </Avatar>
                 ) : (

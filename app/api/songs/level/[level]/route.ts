@@ -34,7 +34,7 @@ export async function GET(
 
     return NextResponse.json(songs)
   } catch (error) {
-    console.error('Failed to fetch level songs:', error)
+    // console.error('Failed to fetch level songs:', error)
     return NextResponse.json(
       { error: 'Failed to fetch songs' },
       { status: 500 }

@@ -66,29 +66,29 @@ class SpotifyPlayerManager {
   }
 
   async initialize(accessToken: string): Promise<void> {
-    console.log('[SpotifyPlayerManager] Initialize called:', {
-      hasAccessToken: !!accessToken,
-      scriptLoaded: this.scriptLoaded,
-      hasPlayer: !!this.player,
-      isInitializing: this.isInitializing,
-      deviceId: this.deviceId
-    })
+    // console.log('[SpotifyPlayerManager] Initialize called:', {
+    //   hasAccessToken: !!accessToken,
+    //   scriptLoaded: this.scriptLoaded,
+    //   hasPlayer: !!this.player,
+    //   isInitializing: this.isInitializing,
+    //   deviceId: this.deviceId
+    // })
 
     if (!accessToken || !this.scriptLoaded) {
-      console.log('[SpotifyPlayerManager] Missing requirements for initialization')
+      // console.log('[SpotifyPlayerManager] Missing requirements for initialization')
       return
     }
 
     // If already initialized with same token, return existing
     if (this.player && this.deviceId && this.currentAccessToken === accessToken) {
-      console.log('[SpotifyPlayerManager] Already initialized, broadcasting ready')
+      // console.log('[SpotifyPlayerManager] Already initialized, broadcasting ready')
       this.broadcastReady(this.deviceId)
       return
     }
 
     // If initialization in progress, wait for it
     if (this.initializationPromise) {
-      console.log('[SpotifyPlayerManager] Initialization in progress, waiting...')
+      // console.log('[SpotifyPlayerManager] Initialization in progress, waiting...')
       return await this.initializationPromise
     }
 
@@ -103,7 +103,7 @@ class SpotifyPlayerManager {
       this.isInitializing = true
       this.currentAccessToken = accessToken
 
-      console.log('[SpotifyPlayerManager] Starting player initialization...')
+      // console.log('[SpotifyPlayerManager] Starting player initialization...')
       
       if (typeof window === 'undefined' || !window.Spotify) {
         throw new Error('Spotify SDK not available')
@@ -111,7 +111,7 @@ class SpotifyPlayerManager {
 
       // Clean up existing player if any
       if (this.player) {
-        console.log('[SpotifyPlayerManager] Cleaning up existing player')
+        // console.log('[SpotifyPlayerManager] Cleaning up existing player')
         await this.player.disconnect()
         this.player = null
         this.deviceId = ''
@@ -144,30 +144,30 @@ class SpotifyPlayerManager {
 
       // State changes
       player.addListener('player_state_changed', (state) => {
-        console.log('[SpotifyPlayerManager] Player state changed:', state)
+        // console.log('[SpotifyPlayerManager] Player state changed:', state)
         this.broadcastStateChange(state)
       })
 
       // Ready
       player.addListener('ready', ({ device_id }) => {
-        console.log('[SpotifyPlayerManager] Player ready with device ID:', device_id)
+        // console.log('[SpotifyPlayerManager] Player ready with device ID:', device_id)
         this.deviceId = device_id
         this.player = player
         this.broadcastReady(device_id)
       })
 
       player.addListener('not_ready', ({ device_id }) => {
-        console.log('[SpotifyPlayerManager] Player not ready:', device_id)
+        // console.log('[SpotifyPlayerManager] Player not ready:', device_id)
       })
 
       // Connect
-      console.log('[SpotifyPlayerManager] Connecting to Spotify...')
+      // console.log('[SpotifyPlayerManager] Connecting to Spotify...')
       const success = await player.connect()
       if (!success) {
         throw new Error('Failed to connect to Spotify')
       }
       
-      console.log('[SpotifyPlayerManager] Successfully connected to Spotify')
+      // console.log('[SpotifyPlayerManager] Successfully connected to Spotify')
     } catch (error) {
       console.error('[SpotifyPlayerManager] Initialization failed:', error)
       this.player = null
@@ -179,7 +179,7 @@ class SpotifyPlayerManager {
   }
 
   async cleanup() {
-    console.log('[SpotifyPlayerManager] Cleaning up player')
+    // console.log('[SpotifyPlayerManager] Cleaning up player')
     if (this.player) {
       await this.player.disconnect()
       this.player = null
@@ -209,13 +209,13 @@ class SpotifyDeviceManager {
   static async ensureDeviceActive(deviceId: string, accessToken: string): Promise<boolean> {
     // If device hasn't changed and is already active, return quickly
     if (this.isDeviceActive && this.lastActiveDeviceId === deviceId) {
-      console.log('[SpotifyDeviceManager] Device already active, skipping activation')
+      // console.log('[SpotifyDeviceManager] Device already active, skipping activation')
       return true
     }
     
     // If activation in progress for same device, wait for it
     if (this.deviceActivationPromise) {
-      console.log('[SpotifyDeviceManager] Device activation in progress, waiting...')
+      // console.log('[SpotifyDeviceManager] Device activation in progress, waiting...')
       return await this.deviceActivationPromise
     }
     
@@ -233,7 +233,7 @@ class SpotifyDeviceManager {
   
   private static async activateDevice(deviceId: string, accessToken: string): Promise<boolean> {
     try {
-      console.log('[SpotifyDeviceManager] Activating device:', deviceId)
+      // console.log('[SpotifyDeviceManager] Activating device:', deviceId)
       
       // First check if device is already active
       const currentStateResponse = await fetch('https://api.spotify.com/v1/me/player', {
@@ -248,16 +248,16 @@ class SpotifyDeviceManager {
         if (responseText) {
           const currentState = JSON.parse(responseText)
           if (currentState?.device?.id === deviceId && currentState.device.is_active) {
-            console.log('[SpotifyDeviceManager] Device already active')
+            // console.log('[SpotifyDeviceManager] Device already active')
             return true
           }
         } else {
-          console.log('[SpotifyDeviceManager] No current playback state')
+          // console.log('[SpotifyDeviceManager] No current playback state')
         }
       }
       
       // Transfer playback to our device
-      console.log('[SpotifyDeviceManager] Transferring playback to device')
+      // console.log('[SpotifyDeviceManager] Transferring playback to device')
       const transferResponse = await fetch('https://api.spotify.com/v1/me/player', {
         method: 'PUT',
         headers: {
@@ -271,13 +271,13 @@ class SpotifyDeviceManager {
       })
       
       if (transferResponse.ok || transferResponse.status === 202) {
-        console.log('[SpotifyDeviceManager] Device transfer successful')
+        // console.log('[SpotifyDeviceManager] Device transfer successful')
         // Give time for transfer to complete
         await new Promise(resolve => setTimeout(resolve, 2000))
         return true
       } else {
         const errorText = await transferResponse.text()
-        console.warn('[SpotifyDeviceManager] Device transfer failed:', transferResponse.status, errorText)
+        // console.warn('[SpotifyDeviceManager] Device transfer failed:', transferResponse.status, errorText)
         return false
       }
     } catch (error) {
@@ -371,12 +371,12 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
 
   // Play a specific track with progressive retry
   const playTrack = useCallback(async (trackUri: string) => {
-    console.log('[SpotifyWebPlayer] PlayTrack called:', { 
-      hasAccessToken: !!session?.accessToken, 
-      isReady, 
-      trackUri,
-      deviceId: playerManager.getDeviceId()
-    })
+    // console.log('[SpotifyWebPlayer] PlayTrack called:', {
+    //   hasAccessToken: !!session?.accessToken,
+    //   isReady,
+    //   trackUri,
+    //   deviceId: playerManager.getDeviceId()
+    // })
 
     if (!session?.accessToken) {
       console.error('[SpotifyWebPlayer] No access token available')
@@ -389,13 +389,13 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
     }
 
     const deviceId = playerManager.getDeviceId()
-    console.log('[SpotifyWebPlayer] Attempting to play track:', trackUri, 'on device:', deviceId)
+    // console.log('[SpotifyWebPlayer] Attempting to play track:', trackUri, 'on device:', deviceId)
 
     try {
       // Ensure device is active first
       const deviceActivated = await SpotifyDeviceManager.ensureDeviceActive(deviceId, session.accessToken)
       if (!deviceActivated) {
-        console.warn('[SpotifyWebPlayer] Device activation failed, attempting playback anyway')
+        // console.warn('[SpotifyWebPlayer] Device activation failed, attempting playback anyway')
       }
 
       // Progressive retry strategy for playback
@@ -404,7 +404,7 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
 
       for (let attempt = 0; attempt < retryDelays.length; attempt++) {
         if (attempt > 0) {
-          console.log(`[SpotifyWebPlayer] Retry attempt ${attempt} after ${retryDelays[attempt]}ms delay...`)
+          // console.log(`[SpotifyWebPlayer] Retry attempt ${attempt} after ${retryDelays[attempt]}ms delay...`)
           await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]))
         }
 
@@ -421,7 +421,7 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
           })
 
           if (response.ok || response.status === 204) {
-            console.log(`[SpotifyWebPlayer] Playback started successfully on attempt ${attempt + 1}`)
+            // console.log(`[SpotifyWebPlayer] Playback started successfully on attempt ${attempt + 1}`)
             setIsActive(true)
             return true
           }
@@ -438,7 +438,7 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
           }
 
           lastError = error
-          console.warn(`[SpotifyWebPlayer] Attempt ${attempt + 1} failed:`, response.status, error)
+          // console.warn(`[SpotifyWebPlayer] Attempt ${attempt + 1} failed:`, response.status, error)
 
           // Check for specific error types that don't need retry
           if (error.error?.reason === 'PREMIUM_REQUIRED') {
@@ -523,32 +523,32 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
   }))
 
   // Debug session status
-  console.log('SpotifyWebPlayer session check:', {
-    hasSession: !!session,
-    hasAccessToken: !!session?.accessToken,
-    sessionStatus: status,
-    isClient: typeof window !== 'undefined'
-  })
+  // console.log('SpotifyWebPlayer session check:', {
+  //   hasSession: !!session,
+  //   hasAccessToken: !!session?.accessToken,
+  //   sessionStatus: status,
+  //   isClient: typeof window !== 'undefined'
+  // })
 
   // Don't render anything if user is not authenticated
   if (status === 'loading') {
-    console.log('SpotifyWebPlayer: Session loading...')
+    // console.log('SpotifyWebPlayer: Session loading...')
     return null
   }
 
   if (!session?.accessToken) {
-    console.log('SpotifyWebPlayer: No access token, not rendering')
+    // console.log('SpotifyWebPlayer: No access token, not rendering')
     return null
   }
 
-  console.log('SpotifyWebPlayer: Rendering with access token:', !!session.accessToken)
+  // console.log('SpotifyWebPlayer: Rendering with access token:', !!session.accessToken)
 
   return (
     <>
       <Script
         src="https://sdk.scdn.co/spotify-player.js"
         onLoad={() => {
-          console.log('[SpotifyWebPlayer] Spotify Player SDK loaded')
+          // console.log('[SpotifyWebPlayer] Spotify Player SDK loaded')
           playerManager.setScriptLoaded(true)
           
           // Initialize if we have a session
@@ -581,7 +581,7 @@ SpotifyWebPlayer.displayName = 'SpotifyWebPlayer'
 export function cleanupSpotifyPlayer() {
   SpotifyPlayerManager.reset()
   SpotifyDeviceManager.resetDeviceState()
-  console.log('[SpotifyWebPlayer] Global Spotify player state cleaned up')
+  // console.log('[SpotifyWebPlayer] Global Spotify player state cleaned up')
 }
 
 // Player control hook for easy access in other components

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       devRating: updatedSong.devRating
     })
   } catch (error) {
-    console.error('Error updating dev rating:', error)
+    // console.error('Error updating dev rating:', error)
     return NextResponse.json({ error: 'Failed to update rating' }, { status: 500 })
   }
 }

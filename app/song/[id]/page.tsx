@@ -11,12 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { fetchLyrics } from '@/lib/client'
 import { formatPercentage } from '@/lib/utils'
 import { Loader2, AlertCircle, ArrowLeft, Music, BarChart3 } from 'lucide-react'
+import { useSpotifyWebPlayer } from '@/hooks/useSpotifyWebPlayer'
+import { useSession } from 'next-auth/react'
+import confetti from 'canvas-confetti'
 
 export default function SongPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
   const songId = params?.id as string
+  const { data: session } = useSession()
+  const { togglePlayPause: spotifyTogglePlayPause } = useSpotifyWebPlayer()
 
 
   // Get the level from search params to enable smart back navigation
@@ -33,31 +38,31 @@ export default function SongPage() {
 
   // Debug: Log when playPauseFunction changes
   useEffect(() => {
-    console.log('🔵 SongPage: playPauseFunction state changed', {
-      hasFunction: !!playPauseFunction,
-      type: typeof playPauseFunction,
-      functionString: playPauseFunction ? playPauseFunction.toString().substring(0, 50) : 'null'
-    })
+    // console.log('🔵 SongPage: playPauseFunction state changed', {
+    //   hasFunction: !!playPauseFunction,
+    //   type: typeof playPauseFunction,
+    //   functionString: playPauseFunction ? playPauseFunction.toString().substring(0, 50) : 'null'
+    // })
   }, [playPauseFunction])
 
   // Debug: Log what we're passing to SongHeader
-  console.log('🔵 SongPage: Rendering with playPauseFunction:', !!playPauseFunction)
-  
-  console.log('SongPage render - pageBackgroundColor:', pageBackgroundColor, 'isClient:', typeof window !== 'undefined')
-  
+  // console.log('🔵 SongPage: Rendering with playPauseFunction:', !!playPauseFunction)
+
+  // console.log('SongPage render - pageBackgroundColor:', pageBackgroundColor, 'isClient:', typeof window !== 'undefined')
+
   // Test if client-side JavaScript is working at all
   useEffect(() => {
-    console.log('BASIC CLIENT TEST: useEffect ran!')
-    
+    // console.log('BASIC CLIENT TEST: useEffect ran!')
+
     // Test background with default color immediately
     const testBg = 'rgb(59, 130, 246)40' // Blue with 25% opacity
-    console.log('TESTING: Setting background to', testBg)
+    // console.log('TESTING: Setting background to', testBg)
     document.body.style.backgroundColor = testBg
     document.documentElement.style.backgroundColor = testBg
-    
-    console.log('TESTING: Background set, checking styles...')
-    console.log('Body style:', document.body.style.backgroundColor)
-    console.log('HTML style:', document.documentElement.style.backgroundColor)
+
+    // console.log('TESTING: Background set, checking styles...')
+    // console.log('Body style:', document.body.style.backgroundColor)
+    // console.log('HTML style:', document.documentElement.style.backgroundColor)
   }, [])
 
   // ALL HOOKS MUST BE AT THE TOP - React Query hook
@@ -74,13 +79,13 @@ export default function SongPage() {
 
   // Log level detection
   useEffect(() => {
-    console.log('🎯 LEVEL DETECTION:', {
-      fromURL: levelNumber,
-      fromLyricsData: lyricsData?.level,
-      fromSongData: lyricsData?.song?.level,
-      effectiveLevel: effectiveLevel,
-      songId: songId
-    })
+    // console.log('🎯 LEVEL DETECTION:', {
+    //   fromURL: levelNumber,
+    //   fromLyricsData: lyricsData?.level,
+    //   fromSongData: lyricsData?.song?.level,
+    //   effectiveLevel: effectiveLevel,
+    //   songId: songId
+    // })
   }, [levelNumber, lyricsData, effectiveLevel, songId])
 
   // Fetch songs from the same level for navigation
@@ -166,13 +171,13 @@ export default function SongPage() {
   // Debug what we're getting from the API
   useEffect(() => {
     if (lyricsData) {
-      console.log('📡 API Response received:', {
-        hasData: !!lyricsData,
-        hasSynchronized: !!lyricsData.synchronized,
-        synchronizedFormat: lyricsData.synchronized?.format,
-        synchronizedLines: lyricsData.synchronized?.lines?.length,
-        keys: Object.keys(lyricsData)
-      })
+      // console.log('📡 API Response received:', {
+      //   hasData: !!lyricsData,
+      //   hasSynchronized: !!lyricsData.synchronized,
+      //   synchronizedFormat: lyricsData.synchronized?.format,
+      //   synchronizedLines: lyricsData.synchronized?.lines?.length,
+      //   keys: Object.keys(lyricsData)
+      // })
     }
   }, [lyricsData])
   
@@ -181,7 +186,7 @@ export default function SongPage() {
     if (typeof window === 'undefined') return
 
     const backgroundColor = pageBackgroundColor
-    console.log('Setting CSS custom property --page-bg to:', backgroundColor)
+    // console.log('Setting CSS custom property --page-bg to:', backgroundColor)
 
     // Just set the CSS variable, don't inject aggressive styles
     document.documentElement.style.setProperty('--page-bg', backgroundColor)
@@ -230,54 +235,146 @@ export default function SongPage() {
   }
 
   if (!lyricsData) {
-    console.log('❌ No lyricsData available')
+    // console.log('❌ No lyricsData available')
     return null
   }
 
-  console.log('📦 lyricsData available:', {
-    hasData: !!lyricsData,
-    hasSynchronized: !!lyricsData.synchronized,
-    keys: Object.keys(lyricsData)
-  })
+  // console.log('📦 lyricsData available:', {
+  //   hasData: !!lyricsData,
+  //   hasSynchronized: !!lyricsData.synchronized,
+  //   keys: Object.keys(lyricsData)
+  // })
 
   const isDemo = lyricsData.mode === 'demo'
   
   // Color change handler
   const handleColorChange = (color: string) => {
-    console.log('handleColorChange called with:', color)
+    // console.log('handleColorChange called with:', color)
     setPageBackgroundColor(color)
   }
 
   // Navigation handlers
-  const handlePrevious = () => {
-    console.log('🔄 HANDLE PREVIOUS CALLED')
-    console.log('Previous song:', prevSong)
-    console.log('Effective level:', effectiveLevel)
-    console.log('Debug info:', debugInfo)
+  const handlePrevious = async () => {
+    // console.log('🔄 HANDLE PREVIOUS CALLED')
+    // console.log('Previous song:', prevSong)
+    // console.log('Effective level:', effectiveLevel)
+    // console.log('Debug info:', debugInfo)
+
+    // Stop current playback using all available methods
+    // console.log('⏸️ Stopping current playback before navigation')
+
+    // Method 1: Use local play/pause function
+    if (playPauseFunction) {
+      // console.log('⏸️ Using playPauseFunction')
+      playPauseFunction()
+    }
+
+    // Method 2: Use Spotify hook toggle
+    if (spotifyTogglePlayPause) {
+      // console.log('⏸️ Using spotifyTogglePlayPause')
+      await spotifyTogglePlayPause()
+    }
+
+    // Method 3: Direct Spotify API pause call
+    if (session?.accessToken) {
+      // console.log('⏸️ Using direct Spotify API pause')
+      try {
+        await fetch('https://api.spotify.com/v1/me/player/pause', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${session.accessToken}`,
+          },
+        })
+      } catch (error) {
+        console.error('Failed to pause via Spotify API:', error)
+      }
+    }
+
+    // Method 4: Send pause event to LyricsView component (which controls EnhancedAudioPlayer)
+    // Force a state update that will trigger the audio player to pause
+    setIsPlaying(false)
+
+    // Give time for all pause commands to execute
+    await new Promise(resolve => setTimeout(resolve, 500))
 
     if (prevSong && effectiveLevel) {
       const url = `/song/${prevSong.id}?level=${effectiveLevel}`
-      console.log('✅ Navigating to:', url)
+      // console.log('✅ Navigating to:', url)
       router.push(url)
     } else {
-      console.log('❌ Cannot navigate - missing data')
+      // console.log('❌ Cannot navigate - missing data')
     }
   }
 
-  const handleNext = () => {
-    console.log('🔄 HANDLE NEXT CALLED')
-    console.log('Next song:', nextSong)
-    console.log('Effective level:', effectiveLevel)
-    console.log('Debug info:', debugInfo)
+  const handleNext = async () => {
+    // console.log('🔄 HANDLE NEXT CALLED')
+    // console.log('Next song:', nextSong)
+    // console.log('Effective level:', effectiveLevel)
+    // console.log('Debug info:', debugInfo)
+
+    // Stop current playback using all available methods
+    // console.log('⏸️ Stopping current playback before navigation')
+
+    // Method 1: Use local play/pause function
+    if (playPauseFunction) {
+      // console.log('⏸️ Using playPauseFunction')
+      playPauseFunction()
+    }
+
+    // Method 2: Use Spotify hook toggle
+    if (spotifyTogglePlayPause) {
+      // console.log('⏸️ Using spotifyTogglePlayPause')
+      await spotifyTogglePlayPause()
+    }
+
+    // Method 3: Direct Spotify API pause call
+    if (session?.accessToken) {
+      // console.log('⏸️ Using direct Spotify API pause')
+      try {
+        await fetch('https://api.spotify.com/v1/me/player/pause', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${session.accessToken}`,
+          },
+        })
+      } catch (error) {
+        console.error('Failed to pause via Spotify API:', error)
+      }
+    }
+
+    // Method 4: Send pause event to LyricsView component (which controls EnhancedAudioPlayer)
+    // Force a state update that will trigger the audio player to pause
+    setIsPlaying(false)
+
+    // Give time for all pause commands to execute
+    await new Promise(resolve => setTimeout(resolve, 500))
 
     if (nextSong && effectiveLevel) {
       const url = `/song/${nextSong.id}?level=${effectiveLevel}`
-      console.log('✅ Navigating to:', url)
+      // console.log('✅ Navigating to:', url)
       router.push(url)
     } else {
-      console.log('❌ Cannot navigate - missing data')
+      // console.log('❌ Cannot navigate - missing data')
     }
   }
+
+  // Cleanup on unmount to stop playback
+  useEffect(() => {
+    return () => {
+      // console.log('🧹 SongPage unmounting - stopping playback')
+      // When component unmounts (during navigation), stop playback
+      if (isPlaying) {
+        if (playPauseFunction) {
+          // console.log('🛑 Calling playPauseFunction on unmount')
+          playPauseFunction()
+        }
+        if (spotifyTogglePlayPause) {
+          // console.log('🛑 Calling spotifyTogglePlayPause on unmount')
+          spotifyTogglePlayPause()
+        }
+      }
+    }
+  }, [isPlaying, playPauseFunction, spotifyTogglePlayPause])
 
   // Update debug info for level information
   useEffect(() => {
@@ -294,14 +391,14 @@ export default function SongPage() {
       }
     }
 
-    console.log('📊 NAVIGATION STATE UPDATE:', {
-      effectiveLevel,
-      levelSongsCount: levelSongs?.length || 0,
-      hasPrevSong: !!prevSong,
-      hasNextSong: !!nextSong,
-      prevSongTitle: prevSong?.title,
-      nextSongTitle: nextSong?.title
-    })
+    // console.log('📊 NAVIGATION STATE UPDATE:', {
+    //   effectiveLevel,
+    //   levelSongsCount: levelSongs?.length || 0,
+    //   hasPrevSong: !!prevSong,
+    //   hasNextSong: !!nextSong,
+    //   prevSongTitle: prevSong?.title,
+    //   nextSongTitle: nextSong?.title
+    // })
 
     setDebugInfo((prev: any) => ({
       ...prev,
@@ -364,24 +461,24 @@ export default function SongPage() {
             albumArtSmall: lyricsData.albumArtSmall
           }}
           onPlayStateChange={(playing) => {
-          console.log('🔵 SongPage: Play state changed to:', playing)
+          // console.log('🔵 SongPage: Play state changed to:', playing)
           setIsPlaying(playing)
         }}
           onPlayPauseReady={(fn) => {
-            console.log('🟢 SongPage: onPlayPauseReady called', {
-              hasFunction: !!fn,
-              functionType: typeof fn,
-              functionString: fn ? fn.toString().substring(0, 50) : 'null'
-            })
+            // console.log('🟢 SongPage: onPlayPauseReady called', {
+            //   hasFunction: !!fn,
+            //   functionType: typeof fn,
+            //   functionString: fn ? fn.toString().substring(0, 50) : 'null'
+            // })
             if (fn && typeof fn === 'function') {
               // Wrap in a stable function to avoid re-renders
               setPlayPauseFunction(() => {
                 return () => {
-                  console.log('🎯 SongPage: Wrapped play/pause function called')
+                  // console.log('🎯 SongPage: Wrapped play/pause function called')
                   fn()
                 }
               })
-              console.log('🟢 SongPage: playPauseFunction state updated with wrapped function')
+              // console.log('🟢 SongPage: playPauseFunction state updated with wrapped function')
             }
           }}
         />

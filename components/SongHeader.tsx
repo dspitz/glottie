@@ -235,11 +235,11 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l, 33, 50)
           const [finalR, finalG, finalB] = hslToRgb(constrainedH, constrainedS, constrainedL)
 
-          console.log('🎨 Color Extraction (Saturated):')
-          console.log('  Original RGB:', `rgb(${mostSaturatedColor.r}, ${mostSaturatedColor.g}, ${mostSaturatedColor.b})`)
-          console.log('  Original HSL:', `H: ${h.toFixed(0)}°, S: ${s.toFixed(0)}%, L: ${l.toFixed(0)}%`)
-          console.log('  Constrained HSL:', `H: ${constrainedH.toFixed(0)}°, S: ${constrainedS.toFixed(0)}%, L: ${constrainedL.toFixed(0)}%`)
-          console.log('  Final RGB:', `rgb(${finalR}, ${finalG}, ${finalB})`)
+          // console.log('🎨 Color Extraction (Saturated):')
+          // console.log('  Original RGB:', `rgb(${mostSaturatedColor.r}, ${mostSaturatedColor.g}, ${mostSaturatedColor.b})`)
+          // console.log('  Original HSL:', `H: ${h.toFixed(0)}°, S: ${s.toFixed(0)}%, L: ${l.toFixed(0)}%`)
+          // console.log('  Constrained HSL:', `H: ${constrainedH.toFixed(0)}°, S: ${constrainedS.toFixed(0)}%, L: ${constrainedL.toFixed(0)}%`)
+          // console.log('  Final RGB:', `rgb(${finalR}, ${finalG}, ${finalB})`)
 
           resolve(`rgb(${finalR}, ${finalG}, ${finalB})`)
         } else if (avgCount > 0) {
@@ -251,11 +251,11 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
           const [constrainedH, constrainedS, constrainedL] = constrainLightness(h, s, l, 33, 50)
           const [finalR, finalG, finalB] = hslToRgb(constrainedH, constrainedS, constrainedL)
 
-          console.log('🎨 Color Extraction (Average):')
-          console.log('  Average RGB:', `rgb(${avgRFinal}, ${avgGFinal}, ${avgBFinal})`)
-          console.log('  Original HSL:', `H: ${h.toFixed(0)}°, S: ${s.toFixed(0)}%, L: ${l.toFixed(0)}%`)
-          console.log('  Constrained HSL:', `H: ${constrainedH.toFixed(0)}°, S: ${constrainedS.toFixed(0)}%, L: ${constrainedL.toFixed(0)}%`)
-          console.log('  Final RGB:', `rgb(${finalR}, ${finalG}, ${finalB})`)
+          // console.log('🎨 Color Extraction (Average):')
+          // console.log('  Average RGB:', `rgb(${avgRFinal}, ${avgGFinal}, ${avgBFinal})`)
+          // console.log('  Original HSL:', `H: ${h.toFixed(0)}°, S: ${s.toFixed(0)}%, L: ${l.toFixed(0)}%`)
+          // console.log('  Constrained HSL:', `H: ${constrainedH.toFixed(0)}°, S: ${constrainedS.toFixed(0)}%, L: ${constrainedL.toFixed(0)}%`)
+          // console.log('  Final RGB:', `rgb(${finalR}, ${finalG}, ${finalB})`)
 
           resolve(`rgb(${finalR}, ${finalG}, ${finalB})`)
         } else {
@@ -281,39 +281,39 @@ const extractDominantColor = (imageUrl: string): Promise<string> => {
 }
 
 export function SongHeader({ track, backHref, backText, level, levelName, difficultyScore, genres, wordCount, verbDensity, onColorChange, onBackClick, isPlaying = false, onPlayPause, onNext, onPrevious, devRating, userRating, hasLyrics, hasTranslations, synced, hideNavigation = false }: SongHeaderProps) {
-  console.log('🎵 SongHeader received track:', {
-    title: track?.title,
-    artist: track?.artist,
-    songSummary: track?.songSummary,
-    hasSummary: !!track?.songSummary,
-    hideNavigation: hideNavigation
-  });
+  // console.log('🎵 SongHeader received track:', {
+  //   title: track?.title,
+  //   artist: track?.artist,
+  //   songSummary: track?.songSummary,
+  //   hasSummary: !!track?.songSummary,
+  //   hideNavigation: hideNavigation
+  // });
   const [localIsPlaying, setLocalIsPlaying] = useState(isPlaying)
   const { data: session } = useSession()
   const { playTrack, togglePlayPause: sdkTogglePlay, isAuthenticated, isReady } = useSpotifyWebPlayer()
   const [hasStartedPlayback, setHasStartedPlayback] = useState(false)
 
   // Debug navigation props
-  console.log('🎯 SongHeader navigation props:', {
-    hasOnNext: !!onNext,
-    hasOnPrevious: !!onPrevious,
-    onNextType: typeof onNext,
-    onPreviousType: typeof onPrevious,
-    trackTitle: track?.title
-  })
+  // console.log('🎯 SongHeader navigation props:', {
+  //   hasOnNext: !!onNext,
+  //   hasOnPrevious: !!onPrevious,
+  //   onNextType: typeof onNext,
+  //   onPreviousType: typeof onPrevious,
+  //   trackTitle: track?.title
+  // })
 
   // Sync local state with prop
   useEffect(() => {
     setLocalIsPlaying(isPlaying)
   }, [isPlaying])
 
-  console.log('🟠 SongHeader rendered with props:', {
-    hasOnPlayPause: !!onPlayPause,
-    onPlayPauseType: typeof onPlayPause,
-    isPlaying: isPlaying,  // Log the actual playing state
-    localIsPlaying: localIsPlaying,
-    trackTitle: track?.title
-  })
+  // console.log('🟠 SongHeader rendered with props:', {
+  //   hasOnPlayPause: !!onPlayPause,
+  //   onPlayPauseType: typeof onPlayPause,
+  //   isPlaying: isPlaying,  // Log the actual playing state
+  //   localIsPlaying: localIsPlaying,
+  //   trackTitle: track?.title
+  // })
   // Early return if track is not defined
   if (!track) {
     return (
@@ -334,23 +334,23 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
   const imgRef = useRef<HTMLImageElement>(null)
   const { isExiting } = useSharedTransition()
 
-  console.log('SongHeader render:', { 
-    hasAlbumArt: !!track?.albumArt, 
-    albumArt: track?.albumArt, 
-    hasCallback: !!onColorChange,
-    title: track?.title 
-  })
+  // console.log('SongHeader render:', {
+  //   hasAlbumArt: !!track?.albumArt,
+  //   albumArt: track?.albumArt,
+  //   hasCallback: !!onColorChange,
+  //   title: track?.title
+  // })
 
   useEffect(() => {
     if (track?.albumArt) {
       extractDominantColor(track.albumArt)
         .then(color => {
-          console.log('Color extraction successful:', color)
+          // console.log('Color extraction successful:', color)
           setDominantColor(color)
           onColorChange?.(color)
         })
         .catch((error) => {
-          console.log('Color extraction failed:', error)
+          // console.log('Color extraction failed:', error)
           const fallbackColor = 'rgb(59, 130, 246)'
           setDominantColor(fallbackColor)
           onColorChange?.(fallbackColor)
@@ -397,7 +397,7 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
             size="icon"
             className="bg-background/80 backdrop-blur-sm rounded-full w-9 h-9 pointer-events-auto"
             onClick={() => {
-              console.log('Back button clicked in modal!')
+              // console.log('Back button clicked in modal!')
               onBackClick()
             }}
             aria-label={backText}
@@ -561,19 +561,19 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
               onClick={async (e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                console.log('🎵 SongHeader: Play/pause button clicked', {
-                  hasSpotifyId: !!track?.spotifyId,
-                  isAuthenticated,
-                  isReady,
-                  hasStartedPlayback,
-                  isPlaying
-                })
+                // console.log('🎵 SongHeader: Play/pause button clicked', {
+                //   hasSpotifyId: !!track?.spotifyId,
+                //   isAuthenticated,
+                //   isReady,
+                //   hasStartedPlayback,
+                //   isPlaying
+                // })
 
                 // If we have Spotify Web SDK and track ID, use it
                 if (isAuthenticated && isReady && track?.spotifyId) {
                   if (!hasStartedPlayback) {
                     // First play - start the track
-                    console.log('🎵 SongHeader: Starting Spotify Web SDK playback')
+                    // console.log('🎵 SongHeader: Starting Spotify Web SDK playback')
                     setLocalIsPlaying(true)  // Switch button immediately
                     const success = await playTrack(track.spotifyId)
                     if (success) {
@@ -583,7 +583,7 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
                     }
                   } else {
                     // Toggle play/pause
-                    console.log('🎵 SongHeader: Toggling Spotify Web SDK playback')
+                    // console.log('🎵 SongHeader: Toggling Spotify Web SDK playback')
                     const newState = !localIsPlaying
                     setLocalIsPlaying(newState)  // Switch button immediately
                     const success = await sdkTogglePlay()
@@ -593,26 +593,26 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
                   }
                 } else if (onPlayPause && typeof onPlayPause === 'function') {
                   // Fallback to preview or other player
-                  console.log('🎵 SongHeader: Using fallback player')
+                  // console.log('🎵 SongHeader: Using fallback player')
                   // Switch button immediately
                   setLocalIsPlaying(!localIsPlaying)
                   try {
                     onPlayPause()
-                    console.log('✅ SongHeader: onPlayPause executed')
+                    // console.log('✅ SongHeader: onPlayPause executed')
                   } catch (error) {
                     console.error('❌ SongHeader: Error calling onPlayPause:', error)
                     // Revert if there's an error
                     setLocalIsPlaying(localIsPlaying)
                   }
                 } else {
-                  console.warn('⚠️ SongHeader: No playback method available', {
-                    isAuthenticated,
-                    hasSpotifyId: !!track?.spotifyId,
-                    spotifyId: track?.spotifyId,
-                    trackTitle: track?.title,
-                    isReady,
-                    hasOnPlayPause: !!onPlayPause
-                  })
+                  // console.warn('⚠️ SongHeader: No playback method available', {
+                  //   isAuthenticated,
+                  //   hasSpotifyId: !!track?.spotifyId,
+                  //   spotifyId: track?.spotifyId,
+                  //   trackTitle: track?.title,
+                  //   isReady,
+                  //   hasOnPlayPause: !!onPlayPause
+                  // })
                   if (!isAuthenticated) {
                     alert('Please sign in with Spotify to play songs')
                   } else if (!track?.spotifyId) {

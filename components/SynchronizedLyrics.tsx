@@ -74,7 +74,7 @@ export function SynchronizedLyrics({
 
   // Process translations prop to always have an array
   const translationArray = useMemo(() => {
-    console.log('🔍 SynchronizedLyrics: Processing translations prop', {
+    // console.log('🔍 SynchronizedLyrics: Processing translations prop', {
       hasTranslations: !!translations,
       type: typeof translations,
       isArray: Array.isArray(translations),
@@ -82,23 +82,23 @@ export function SynchronizedLyrics({
     })
 
     if (!translations) {
-      console.log('🔴 TRANSLATION DEBUG: No translations prop provided')
+      // console.log('🔴 TRANSLATION DEBUG: No translations prop provided')
       return []
     }
     if (Array.isArray(translations)) {
-      console.log('🟢 TRANSLATION DEBUG: Using array translations, length:', translations.length)
+      // console.log('🟢 TRANSLATION DEBUG: Using array translations, length:', translations.length)
       // Log first few translations for debugging
       if (translations.length > 0) {
-        console.log('  First translation:', translations[0]?.substring(0, 40))
-        console.log('  Second translation:', translations[1]?.substring(0, 40))
+        // console.log('  First translation:', translations[0]?.substring(0, 40))
+        // console.log('  Second translation:', translations[1]?.substring(0, 40))
       }
       return translations
     }
     if (typeof translations === 'object' && translations['en']) {
-      console.log('🟢 TRANSLATION DEBUG: Using en translations from object, length:', translations['en'].length)
+      // console.log('🟢 TRANSLATION DEBUG: Using en translations from object, length:', translations['en'].length)
       return translations['en']
     }
-    console.log('🔴 TRANSLATION DEBUG: Unknown translation format:', translations)
+    // console.log('🔴 TRANSLATION DEBUG: Unknown translation format:', translations)
     return []
   }, [translations])
 
@@ -108,10 +108,10 @@ export function SynchronizedLyrics({
     const mapping: { [lineText: string]: number } = {}
 
     if (synchronizedData && synchronizedData.lines && lines.length > 0) {
-      console.log('📊 MAPPING DEBUG: Creating synchronized to translation mapping')
-      console.log(`  - Synchronized lines: ${synchronizedData.lines.length}`)
-      console.log(`  - Original lines: ${lines.length}`)
-      console.log(`  - Translation array: ${translationArray.length}`)
+      // console.log('📊 MAPPING DEBUG: Creating synchronized to translation mapping')
+      // console.log(`  - Synchronized lines: ${synchronizedData.lines.length}`)
+      // console.log(`  - Original lines: ${lines.length}`)
+      // console.log(`  - Translation array: ${translationArray.length}`)
 
       // For each synchronized line, find its match in the original lines
       synchronizedData.lines.forEach((syncLine, syncIndex) => {
@@ -122,17 +122,17 @@ export function SynchronizedLyrics({
           mapping[syncLine.text] = originalIndex
           // Log first few mappings for debugging
           if (syncIndex < 3) {
-            console.log(`  Mapping sync[${syncIndex}] "${syncLine.text.substring(0, 30)}..." -> original[${originalIndex}]`)
+            // console.log(`  Mapping sync[${syncIndex}] "${syncLine.text.substring(0, 30)}..." -> original[${originalIndex}]`)
             if (translationArray[originalIndex]) {
-              console.log(`    Translation: "${translationArray[originalIndex].substring(0, 30)}..."`)
+              // console.log(`    Translation: "${translationArray[originalIndex].substring(0, 30)}..."`)
             }
           }
         } else if (syncIndex < 3) {
-          console.warn(`  ⚠️ No match for sync[${syncIndex}]: "${syncLine.text.substring(0, 30)}..."`)
+          // console.warn(`  ⚠️ No match for sync[${syncIndex}]: "${syncLine.text.substring(0, 30)}..."`)
         }
       })
 
-      console.log(`  Total mappings created: ${Object.keys(mapping).length}`)
+      // console.log(`  Total mappings created: ${Object.keys(mapping).length}`)
     }
 
     return mapping
@@ -140,7 +140,7 @@ export function SynchronizedLyrics({
 
   // Debug: Track lineTranslations state changes
   useEffect(() => {
-    console.log('📝 lineTranslations state changed:', {
+    // console.log('📝 lineTranslations state changed:', {
       keys: Object.keys(lineTranslations),
       count: Object.keys(lineTranslations).length,
       sample: Object.entries(lineTranslations).slice(0, 3).map(([k, v]) => ({
@@ -156,7 +156,7 @@ export function SynchronizedLyrics({
     const preloadTranslations = async () => {
       // If we have translations from props (from database), use those
       if (translationArray.length > 0) {
-        console.log('📚 Loading translations from props:', translationArray.length, 'lines')
+        // console.log('📚 Loading translations from props:', translationArray.length, 'lines')
         const translationMap: { [key: number]: string } = {}
         translationArray.forEach((translation, index) => {
           if (translation) {
@@ -167,10 +167,10 @@ export function SynchronizedLyrics({
           // Only update if we don't already have translations
           // This prevents overwriting when lines change
           if (Object.keys(prev).length === 0) {
-            console.log('📚 Setting initial translation map:', Object.keys(translationMap).length, 'translations')
+            // console.log('📚 Setting initial translation map:', Object.keys(translationMap).length, 'translations')
             return translationMap
           }
-          console.log('📚 Keeping existing translations, not overwriting')
+          // console.log('📚 Keeping existing translations, not overwriting')
           return prev
         })
         return
@@ -183,11 +183,11 @@ export function SynchronizedLyrics({
           Object.keys(lineTranslations).length === 0 &&
           translationArray.length === 0) { // Also check if we have translations from props
         setIsPreloadingTranslations(true)
-        console.log(`🔄 Pre-loading translations for ${lines.length} lines (no existing translations)...`)
+        // console.log(`🔄 Pre-loading translations for ${lines.length} lines (no existing translations)...`)
 
         const translationPromises = lines.map(async (line, index) => {
           try {
-            console.log(`🔄 Fetching translation for line ${index}: "${line.substring(0, 30)}..."`)
+            // console.log(`🔄 Fetching translation for line ${index}: "${line.substring(0, 30)}..."`)
             const result = await translateText(line)
             return { index, translation: result.translation }
           } catch (error) {
@@ -203,22 +203,22 @@ export function SynchronizedLyrics({
           results.forEach(result => {
             if (result.translation) {
               newTranslations[result.index] = result.translation
-              console.log(`✅ Got translation for line ${result.index}: "${result.translation.substring(0, 30)}..."`)
+              // console.log(`✅ Got translation for line ${result.index}: "${result.translation.substring(0, 30)}..."`)
             }
           })
 
           setLineTranslations(prev => {
-            console.log('🔄 Setting fetched translations, overwriting:', Object.keys(prev).length, 'existing')
+            // console.log('🔄 Setting fetched translations, overwriting:', Object.keys(prev).length, 'existing')
             return { ...prev, ...newTranslations }
           })
-          console.log(`✅ Pre-loaded ${Object.keys(newTranslations).length} translations`)
+          // console.log(`✅ Pre-loaded ${Object.keys(newTranslations).length} translations`)
         } catch (error) {
           console.error('Failed to pre-load translations:', error)
         } finally {
           setIsPreloadingTranslations(false)
         }
       } else {
-        console.log('⏭️ Skipping translation fetch:', {
+        // console.log('⏭️ Skipping translation fetch:', {
           isDemo,
           linesLength: lines.length,
           isPreloadingTranslations,
@@ -275,12 +275,12 @@ export function SynchronizedLyrics({
   const synchronizedLines = useMemo((): Line[] => {
     // Debug the entire synchronizedData structure
     if (synchronizedData) {
-      console.log('📦 FULL synchronizedData:', JSON.stringify(synchronizedData, null, 2))
+      // console.log('📦 FULL synchronizedData:', JSON.stringify(synchronizedData, null, 2))
     }
 
     // If we have real synchronized data from the API, use it!
     if (synchronizedData?.lines && synchronizedData.lines.length > 0) {
-      console.log(`✅ Using real synchronized lyrics from API:`, {
+      // console.log(`✅ Using real synchronized lyrics from API:`, {
         format: synchronizedData.format,
         lineCount: synchronizedData.lines.length,
         duration: synchronizedData.duration,
@@ -291,7 +291,7 @@ export function SynchronizedLyrics({
       })
 
       // Debug: log the actual values being used
-      console.log('🔍 First line timing details:', {
+      // console.log('🔍 First line timing details:', {
         startTime: synchronizedData.lines[0]?.startTime,
         endTime: synchronizedData.lines[0]?.endTime,
         text: synchronizedData.lines[0]?.text,
@@ -344,7 +344,7 @@ export function SynchronizedLyrics({
       })
     }
 
-    console.log('⚠️ Using estimated timing - no synchronized data available')
+    // console.log('⚠️ Using estimated timing - no synchronized data available')
     
     // Use proportional timing - each line gets an equal slice of the song
     const lyricsStartTime = durationMs * 0.05 // 5% instrumental intro
@@ -412,7 +412,7 @@ export function SynchronizedLyrics({
         const firstLine = synchronizedLines[0]
         if (firstLine && !window.debuggedFirstLine) {
           window.debuggedFirstLine = true
-          console.log('🔍 DETAILED FIRST LINE DEBUG:', {
+          // console.log('🔍 DETAILED FIRST LINE DEBUG:', {
             lineStartTime: firstLine.startTime,
             lineEndTime: firstLine.endTime,
             lineText: firstLine.text,
@@ -422,7 +422,7 @@ export function SynchronizedLyrics({
           })
         }
 
-        console.log('🎵 SYNC DEBUG:', {
+        // console.log('🎵 SYNC DEBUG:', {
           time: currentTime.toFixed(2),
           timeMs: currentTimeMs.toFixed(0),
           mode: playbackMode,
@@ -699,7 +699,7 @@ export function SynchronizedLyrics({
                   /\b(y|que|la|el|en|es|un|una|para|con|por|del|las|los|yo|tu|me|te|se|nos|le|lo|su|mi|si|no|al|mas|ya|muy|tambien|hasta|desde|está|están|ser|son|soy|era|fue|sido|hacer|hace|puede|tiene|tengo|viene|quiero|cuando|donde|como|porque|pero|siempre|nunca|ahora|hoy|ayer|mañana|noche|día|tiempo|vez|año|años|cosa|cosas|vida|mundo|hombre|mujer|gente|niño|niña|casa|trabajo|lugar|persona|parte|nada|algo|mucho|poco|todo|todos|mismo|otra|otro|cada|todos|algunas|algunos|entonces|así|más|menos|muy|bien|mal|mejor|peor|grande|pequeño|nuevo|viejo|joven|largo|corto|alto|bajo|bueno|malo|bonito|feo|fácil|difícil|posible|imposible|necesario|importante|interesante|llamaba|llama)\b/i.test(translation)
                 )
                 const logType = isSpanish ? '🔴' : '🟢'
-                console.log(`${logType} ACTIVE Translation for line ${lineIndex}:`, {
+                // console.log(`${logType} ACTIVE Translation for line ${lineIndex}:`, {
                   lineText: line.text.substring(0, 40),
                   syncLineIndex: lineIndex,
                   translationIndex,

@@ -27,13 +27,18 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, account, user }) {
+    async jwt({ token, account, user, profile }) {
       // Persist the OAuth access_token and refresh_token to the token right after signin
       if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
         token.accessTokenExpires = account.expires_at
         token.spotifyId = account.providerAccountId
+      }
+
+      // Persist user image from profile on first sign in
+      if (user) {
+        token.picture = user.image
       }
 
       // Return previous token if the access token has not expired yet
@@ -44,25 +49,30 @@ export const authOptions: NextAuthOptions = {
       // Access token has expired, try to update it
       return await refreshAccessToken(token)
     },
-    async session({ session, token }) {
+    async session({ session, token, trigger }) {
       // Send properties to the client
       session.accessToken = token.accessToken as string
       session.error = token.error as string
       session.user.spotifyId = token.spotifyId as string
-      
+
+      // Always fetch the latest user data from database to get current image
+      if (session.user?.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { image: true, name: true }
+        })
+        if (dbUser) {
+          session.user.image = dbUser.image
+          session.user.name = dbUser.name
+        }
+      }
+
       return session
     },
     async signIn({ user, account, profile }) {
-      console.log('SignIn callback called:', { 
-        provider: account?.provider, 
-        hasProfile: !!profile,
-        userEmail: user?.email,
-        profileId: (profile as any)?.id,
-        accountId: account?.providerAccountId
-      })
-      
       // Let the Prisma adapter handle user/account creation
-      // We'll just ensure the process succeeds
+      // Profile images from Facebook CDN will be stored directly
+      // If the URL expires later, the Avatar component will gracefully fall back to initials
       return true
     }
   },

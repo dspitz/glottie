@@ -11,10 +11,23 @@ interface ClickableWordProps {
 export function ClickableWord({ word, cleanWord, children, onWordClick }: ClickableWordProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (cleanWord.length > 1) { // Only show popover for words longer than 1 character
       setIsPopoverOpen(true)
       onWordClick?.(cleanWord)
+
+      // Track word click
+      try {
+        await fetch('/api/word-clicks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ word: cleanWord }),
+        })
+      } catch (error) {
+        console.error('Failed to track word click:', error)
+      }
     }
   }
 

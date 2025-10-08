@@ -116,7 +116,7 @@ export function useSavedSongs() {
       const method = isSaved ? 'DELETE' : 'POST'
       await fetch(`/api/saved/${song.id}`, { method })
     } catch (error) {
-      console.error('API call failed:', error)
+      // console.error('API call failed:', error)
     }
   }
 

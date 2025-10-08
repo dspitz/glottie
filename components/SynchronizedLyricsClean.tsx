@@ -52,6 +52,10 @@ interface SynchronizedLyricsProps {
   lineLockMode?: boolean
   // The specific line index to lock to when in line lock mode
   lockedLineIndex?: number
+  // For line bookmarking
+  songId?: string
+  songTitle?: string
+  songArtist?: string
 }
 
 export function SynchronizedLyrics({
@@ -73,20 +77,23 @@ export function SynchronizedLyrics({
   onPause,
   onPlayFromTime,
   lineLockMode = false,
-  lockedLineIndex = -1
+  lockedLineIndex = -1,
+  songId,
+  songTitle,
+  songArtist
 }: SynchronizedLyricsProps) {
   // Debug props received
-  console.log('🎤 SynchronizedLyrics received props:', {
-    hasSynchronizedData: !!synchronizedData,
-    synchronizedLines: synchronizedData?.lines?.length,
-    hasOnTimeSeek: !!onTimeSeek,
-    hasOnPlayFromTime: !!onPlayFromTime,
-    onPlayFromTimeType: typeof onPlayFromTime,
-    hasOnPlay: !!onPlay,
-    hasOnPause: !!onPause,
-    playbackMode,
-    isPlaying
-  })
+  // console.log('🎤 SynchronizedLyrics received props:', {
+  //   hasSynchronizedData: !!synchronizedData,
+  //   synchronizedLines: synchronizedData?.lines?.length,
+  //   hasOnTimeSeek: !!onTimeSeek,
+  //   hasOnPlayFromTime: !!onPlayFromTime,
+  //   onPlayFromTimeType: typeof onPlayFromTime,
+  //   hasOnPlay: !!onPlay,
+  //   hasOnPause: !!onPause,
+  //   playbackMode,
+  //   isPlaying
+  // })
 
   const [selectedSentence, setSelectedSentence] = useState<string>('')
   const [selectedSentenceTranslations, setSelectedSentenceTranslations] = useState<string[]>([])
@@ -113,11 +120,11 @@ export function SynchronizedLyrics({
   // FOCUSED DEBUG: Only log translation issues
   useEffect(() => {
     if (translationArray.length === 0 && translations) {
-      console.log('🔴 TRANSLATION ISSUE: Empty translation array', {
-        translationsType: typeof translations,
-        isArray: Array.isArray(translations),
-        keys: translations && typeof translations === 'object' ? Object.keys(translations) : null
-      })
+      // console.log('🔴 TRANSLATION ISSUE: Empty translation array', {
+      //   translationsType: typeof translations,
+      //   isArray: Array.isArray(translations),
+      //   keys: translations && typeof translations === 'object' ? Object.keys(translations) : null
+      // })
     }
   }, [translationArray, translations])
 
@@ -139,28 +146,28 @@ export function SynchronizedLyrics({
 
   // Pre-load translations from props if available
   useEffect(() => {
-    console.log('🔍 SynchronizedLyricsClean: Translation preload check', {
-      translationArrayLength: translationArray.length,
-      lineTranslationsCount: Object.keys(lineTranslations).length,
-      translationArraySample: translationArray.slice(0, 3),
-      linesCount: lines.length
-    })
+    // console.log('🔍 SynchronizedLyricsClean: Translation preload check', {
+    //   translationArrayLength: translationArray.length,
+    //   lineTranslationsCount: Object.keys(lineTranslations).length,
+    //   translationArraySample: translationArray.slice(0, 3),
+    //   linesCount: lines.length
+    // })
 
     if (translationArray.length > 0 && Object.keys(lineTranslations).length === 0) {
       const translationMap: { [key: number]: string } = {}
       translationArray.forEach((translation, index) => {
         if (translation && typeof translation === 'string') {
           translationMap[index] = translation
-          console.log(`📝 Translation[${index}]: "${translation.substring(0, 50)}${translation.length > 50 ? '...' : ''}"`)
+          // console.log(`📝 Translation[${index}]: "${translation.substring(0, 50)}${translation.length > 50 ? '...' : ''}"`)
         } else {
-          console.warn(`⚠️ Invalid translation at index ${index}:`, translation)
+          // console.warn(`⚠️ Invalid translation at index ${index}:`, translation)
         }
       })
       if (Object.keys(translationMap).length > 0) {
-        console.log(`📚 Pre-loaded ${Object.keys(translationMap).length} translations out of ${translationArray.length} total`)
+        // console.log(`📚 Pre-loaded ${Object.keys(translationMap).length} translations out of ${translationArray.length} total`)
         setLineTranslations(translationMap)
       } else {
-        console.warn('⚠️ No valid translations found in translationArray')
+        // console.warn('⚠️ No valid translations found in translationArray')
       }
     }
   }, [translationArray, lineTranslations, lines.length])
@@ -169,12 +176,12 @@ export function SynchronizedLyrics({
   const currentTimeMs = useMemo(() => {
     // Log time updates periodically for debugging
     if (isPlaying && Math.floor(currentTime / 1000) % 5 === 0) {
-      console.log('🕒 SynchronizedLyrics time:', {
-        currentTime,
-        currentTimeMs: playbackMode === 'spotify' ? currentTime : currentTime * 1000,
-        isPlaying,
-        playbackMode
-      })
+      // console.log('🕒 SynchronizedLyrics time:', {
+      //   currentTime,
+      //   currentTimeMs: playbackMode === 'spotify' ? currentTime : currentTime * 1000,
+      //   isPlaying,
+      //   playbackMode
+      // })
     }
 
     if (playbackMode === 'spotify') {
@@ -401,29 +408,29 @@ export function SynchronizedLyrics({
 
   // Debug: Log active line changes
   useEffect(() => {
-    console.log('🎯 Active line changed:', {
-      activeLineIndex,
-      currentTimeMs,
-      isPlaying
-    })
+    // console.log('🎯 Active line changed:', {
+    //   activeLineIndex,
+    //   currentTimeMs,
+    //   isPlaying
+    // })
   }, [activeLineIndex])
 
   // Debug log the active line calculation
   if (lineLockMode) {
-    console.log('🎯 Active line calculation:', {
-      lineLockMode,
-      lockedLineIndex,
-      activeLineIndex,
-      currentTimeMs,
-      isPlaying
-    })
+    // console.log('🎯 Active line calculation:', {
+    //   lineLockMode,
+    //   lockedLineIndex,
+    //   activeLineIndex,
+    //   currentTimeMs,
+    //   isPlaying
+    // })
   }
 
   // Update current line index when active line changes and auto-scroll
   useEffect(() => {
     // When line lock is enabled with a specific line, immediately jump to that line
     if (lineLockMode && lockedLineIndex >= 0) {
-      console.log('🔒 Line lock active - jumping to locked line:', lockedLineIndex)
+      // console.log('🔒 Line lock active - jumping to locked line:', lockedLineIndex)
       setCurrentLineIndex(lockedLineIndex)
 
       // Immediately scroll to the locked line
@@ -484,7 +491,7 @@ export function SynchronizedLyrics({
 
   // Navigation functions
   const navigateToLine = useCallback((index: number) => {
-    console.log('🧭 navigateToLine called with index:', index, 'from:', currentLineIndex)
+    // console.log('🧭 navigateToLine called with index:', index, 'from:', currentLineIndex)
     if (index >= 0 && index < synchronizedLines.length && onTimeSeek) {
       const line = synchronizedLines[index]
       onTimeSeek(line.startTime)
@@ -516,7 +523,7 @@ export function SynchronizedLyrics({
   const handleSentenceClick = useCallback((text: string, index: number, clickEvent?: React.MouseEvent) => {
     // If external handler is provided, use it instead of internal modal
     if (externalOnSentenceClick) {
-      console.log('🎯 Using external sentence click handler')
+      // console.log('🎯 Using external sentence click handler')
       // Extract click position if event is provided
       const clickPosition = clickEvent ? {
         x: clickEvent.clientX,
@@ -527,13 +534,13 @@ export function SynchronizedLyrics({
       return
     }
 
-    console.log('🎯 SynchronizedLyricsClean: Sentence click debug', {
-      text: text.substring(0, 50),
-      clickedIndex: index,
-      hasSynchronizedData: !!synchronizedData,
-      lineTranslationsCount: Object.keys(lineTranslations).length,
-      translationArrayLength: translationArray.length
-    })
+    // console.log('🎯 SynchronizedLyricsClean: Sentence click debug', {
+    //   text: text.substring(0, 50),
+    //   clickedIndex: index,
+    //   hasSynchronizedData: !!synchronizedData,
+    //   lineTranslationsCount: Object.keys(lineTranslations).length,
+    //   translationArrayLength: translationArray.length
+    // })
 
     setSelectedSentence(text)
     setModalLineIndex(index) // Store which line was clicked for the modal
@@ -542,14 +549,14 @@ export function SynchronizedLyrics({
       ? synchronizedLineToTranslationIndex[text]
       : index
 
-    console.log('🔍 Translation lookup debug', {
-      originalIndex: index,
-      translationIndex: translationIndex,
-      hasLineTranslation: !!lineTranslations[translationIndex],
-      hasArrayTranslation: !!translationArray[translationIndex],
-      lineTranslation: lineTranslations[translationIndex]?.substring(0, 50),
-      arrayTranslation: translationArray[translationIndex]?.substring(0, 50)
-    })
+    // console.log('🔍 Translation lookup debug', {
+    //   originalIndex: index,
+    //   translationIndex: translationIndex,
+    //   hasLineTranslation: !!lineTranslations[translationIndex],
+    //   hasArrayTranslation: !!translationArray[translationIndex],
+    //   lineTranslation: lineTranslations[translationIndex]?.substring(0, 50),
+    //   arrayTranslation: translationArray[translationIndex]?.substring(0, 50)
+    // })
 
     // Always use pre-downloaded translations if available with multiple fallback strategies
     let foundTranslation = null
@@ -592,25 +599,25 @@ export function SynchronizedLyrics({
     }
 
     if (foundTranslation) {
-      console.log(`✅ Found translation via ${foundMethod}: "${foundTranslation.substring(0, 50)}..."`)
+      // console.log(`✅ Found translation via ${foundMethod}: "${foundTranslation.substring(0, 50)}..."`)
       setSelectedSentenceTranslations([foundTranslation])
     } else {
-      console.warn(`⚠️ No translation found for "${text.substring(0, 30)}" at index ${translationIndex} (original: ${index})`)
-      console.warn(`   Available lineTranslations indices:`, Object.keys(lineTranslations))
-      console.warn(`   translationArray length:`, translationArray.length)
+      // console.warn(`⚠️ No translation found for "${text.substring(0, 30)}" at index ${translationIndex} (original: ${index})`)
+      // console.warn(`   Available lineTranslations indices:`, Object.keys(lineTranslations))
+      // console.warn(`   translationArray length:`, translationArray.length)
       setSelectedSentenceTranslations([])
     }
 
     // Debug what will be passed to TranslationBottomSheet
-    console.log('📋 Opening TranslationBottomSheet with:', {
-      synchronizedData: !!synchronizedData,
-      synchronizedDataLines: synchronizedData?.lines?.length,
-      onTimeSeek: !!onTimeSeek,
-      onPlayFromTime: !!onPlayFromTime,
-      onPlay: !!onPlay,
-      onPause: !!onPause,
-      currentLineIndex
-    })
+    // console.log('📋 Opening TranslationBottomSheet with:', {
+    //   synchronizedData: !!synchronizedData,
+    //   synchronizedDataLines: synchronizedData?.lines?.length,
+    //   onTimeSeek: !!onTimeSeek,
+    //   onPlayFromTime: !!onPlayFromTime,
+    //   onPlay: !!onPlay,
+    //   onPause: !!onPause,
+    //   currentLineIndex
+    // })
 
     setIsModalOpen(true)
   }, [lineTranslations, translationArray, synchronizedData, synchronizedLineToTranslationIndex, externalOnSentenceClick])
@@ -714,13 +721,13 @@ export function SynchronizedLyrics({
                 const isSpanish = /[áéíóúñü]/i.test(translation) ||
                   /\b(llamaba|llama|que|para|con|por)\b/i.test(translation)
                 if (isSpanish) {
-                  console.log(`🔴 Spanish shown for line ${lineIndex}:`, {
-                    lineText: line.text.substring(0, 40),
-                    translation: translation.substring(0, 40),
-                    translationIndex,
-                    hasTranslationArray: translationArray.length > 0,
-                    translationArrayItem: translationArray[translationIndex]?.substring(0, 40) || null
-                  })
+                  // console.log(`🔴 Spanish shown for line ${lineIndex}:`, {
+                  //   lineText: line.text.substring(0, 40),
+                  //   translation: translation.substring(0, 40),
+                  //   translationIndex,
+                  //   hasTranslationArray: translationArray.length > 0,
+                  //   translationArrayItem: translationArray[translationIndex]?.substring(0, 40) || null
+                  // })
                 }
               }
 
@@ -735,12 +742,12 @@ export function SynchronizedLyrics({
   // Debug logging for line lock mode
   useEffect(() => {
     if (lineLockMode) {
-      console.log('📍 Line lock mode active - display state:', {
-        lockedLineIndex,
-        currentLineIndex,
-        activeLineIndex,
-        isPlaying
-      })
+      // console.log('📍 Line lock mode active - display state:', {
+      //   lockedLineIndex,
+      //   currentLineIndex,
+      //   activeLineIndex,
+      //   isPlaying
+      // })
     }
   }, [lineLockMode, lockedLineIndex, currentLineIndex, activeLineIndex, isPlaying])
 
@@ -799,6 +806,9 @@ export function SynchronizedLyrics({
         isPlaying={isPlaying}
         onPlay={onPlay}
         onPause={onPause}
+        songId={songId}
+        songTitle={songTitle}
+        songArtist={songArtist}
         onNavigatePrevious={() => {
           const newIndex = modalLineIndex - 1
           // Handle both synchronized and non-synchronized scenarios

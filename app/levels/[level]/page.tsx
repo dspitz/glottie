@@ -9,10 +9,16 @@ import { SharedTransitionProvider, useSharedTransition } from '@/contexts/Shared
 import { SongListItem } from '@/components/SongListItem'
 import { SongModal } from '@/components/SongModal'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { fetchLevels } from '@/lib/client'
 import { getLevelDescription } from '@/lib/utils'
 import { getLevelTags } from '@/lib/levelTags'
-import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowLeft, ChevronDown } from 'lucide-react'
 
 function LevelPageContent() {
   const params = useParams()
@@ -129,15 +135,11 @@ function LevelPageContent() {
 
   return (
     <div className="px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h5 className="font-medium mt-2 mb-2 text-center text-muted-foreground">
-          Spanish {level}
-        </h5>
-
-        <h2 className="text-muted-foreground mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem' }}>
-          {tags?.focus || getLevelDescription(level)}
-        </h2>
+        {/* Header */}
+        <div className="mb-8">
+          <h2 className="text-muted-foreground mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem' }}>
+            {tags?.focus || getLevelDescription(level)}
+          </h2>
 
         {/* Educational Tags */}
         {tags && (

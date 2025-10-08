@@ -20,6 +20,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+      </head>
       <body className={outfit.className}>
         <Providers>
           <div className="flex min-h-screen flex-col">

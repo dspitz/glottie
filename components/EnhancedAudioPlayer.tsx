@@ -49,11 +49,16 @@ export interface AudioPlayerControls {
   getState: () => AudioPlayerState
 }
 
+export interface AudioPlayerCallbacks {
+  onSongComplete?: () => void
+}
+
 interface EnhancedAudioPlayerProps {
   track: Track
   className?: string
   onStateChange?: (state: AudioPlayerState) => void
   onControlsReady?: (controls: AudioPlayerControls) => void
+  onSongComplete?: () => void
   // Legacy callbacks - will be deprecated
   onTimeSeek?: (seekFn: (time: number) => void, playFromTimeFn?: (time: number) => Promise<boolean>) => void
   onPlaybackRateChange?: (changeFn: (rate: number) => void) => void
@@ -62,7 +67,7 @@ interface EnhancedAudioPlayerProps {
 
 type PlaybackMode = 'preview' | 'spotify' | 'unavailable'
 
-export function EnhancedAudioPlayer({ track, className = '', onStateChange, onControlsReady, onTimeSeek, onPlaybackRateChange, onPlayPauseReady }: EnhancedAudioPlayerProps) {
+export function EnhancedAudioPlayer({ track, className = '', onStateChange, onControlsReady, onSongComplete, onTimeSeek, onPlaybackRateChange, onPlayPauseReady }: EnhancedAudioPlayerProps) {
   const { data: session } = useSession()
   const { isAuthenticated, hasSpotifyError } = useSpotifyPlayer()
   
@@ -234,8 +239,10 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
     }
 
     const handleEnded = () => {
+      console.log('🎵 Preview track ended, calling onSongComplete')
       setIsPlaying(false)
       setCurrentTime(0)
+      onSongComplete?.()
     }
 
     const handleError = () => {
@@ -269,7 +276,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
       audio.removeEventListener('canplay', handleCanPlay)
       audio.removeEventListener('playing', handlePlaying)
     }
-  }, [playbackMode, track.previewUrl])
+  }, [playbackMode, track.previewUrl, onSongComplete])
 
   // Spotify mode state handling
   useEffect(() => {
@@ -305,14 +312,35 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             const state = await player.getCurrentState()
             if (state && !state.paused) {
               // Use actual position from Spotify (already in milliseconds)
-              // console.log('📍 Spotify position update:', state.position)
               setCurrentTime(state.position)
 
+              // Log when we're close to the end
+              const remainingMs = state.duration - state.position
+              if (remainingMs < 5000) {
+                console.log('⏰ Approaching end of song:', {
+                  position: state.position,
+                  duration: state.duration,
+                  remainingMs,
+                  hasCallback: !!onSongComplete
+                })
+              }
+
               // Check if song has ended (position reached duration)
-              if (state.position >= state.duration - 100) { // 100ms tolerance
-                // console.log('🎵 Spotify track ended')
+              // Increased tolerance to 2 seconds to catch the end before Spotify auto-advances
+              if (state.position >= state.duration - 2000) {
+                console.log('🎵 Spotify track ended, calling onSongComplete', {
+                  position: state.position,
+                  duration: state.duration,
+                  hasCallback: !!onSongComplete
+                })
                 setIsPlaying(false)
                 setCurrentTime(0)
+                if (onSongComplete) {
+                  console.log('🎉 Calling onSongComplete callback')
+                  onSongComplete()
+                } else {
+                  console.warn('⚠️ No onSongComplete callback provided!')
+                }
               }
             } else if (state && state.paused) {
               // Track is paused, update playing state
@@ -346,7 +374,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         progressTimerRef.current = null
       }
     }
-  }, [playbackMode, isPlaying, duration, playbackRate])
+  }, [playbackMode, isPlaying, duration, playbackRate, onSongComplete])
 
   // Volume handling for both modes
   useEffect(() => {

@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(definition)
   } catch (error) {
-    console.error('Definition API error:', error)
+    // console.error('Definition API error:', error)
 
     return NextResponse.json(
       {

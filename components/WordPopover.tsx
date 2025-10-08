@@ -27,23 +27,52 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
   const [definition, setDefinition] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>('')
+  const [clickCount, setClickCount] = useState<number>(0)
 
   useEffect(() => {
-    if (isOpen && word && !definition) {
-      setIsLoading(true)
-      setError('')
-      
-      defineWord(word.toLowerCase().trim())
-        .then((result) => {
-          setDefinition(result)
+    if (isOpen && word) {
+      const normalizedWord = word.toLowerCase().trim()
+
+      // Track word click for analytics (always track, even on repeat clicks)
+      fetch('/api/word-clicks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ word: normalizedWord }),
+      }).catch((err) => {
+        console.error('Failed to track word click:', err)
+      })
+
+      // Fetch click count
+      fetch(`/api/word-clicks?word=${encodeURIComponent(normalizedWord)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.words && data.words.length > 0) {
+            setClickCount(data.words[0].clickCount)
+          }
         })
         .catch((err) => {
-          setError('Failed to get definition')
-          console.error('Definition error:', err)
+          console.error('Failed to fetch click count:', err)
         })
-        .finally(() => {
-          setIsLoading(false)
-        })
+
+      // Only fetch definition if we don't have it yet
+      if (!definition) {
+        setIsLoading(true)
+        setError('')
+
+        defineWord(normalizedWord)
+          .then((result) => {
+            setDefinition(result)
+          })
+          .catch((err) => {
+            setError('Failed to get definition')
+            console.error('Definition error:', err)
+          })
+          .finally(() => {
+            setIsLoading(false)
+          })
+      }
     }
   }, [isOpen, word, definition])
 
@@ -65,11 +94,18 @@ export function WordPopover({ children, word, isOpen, onOpenChange }: WordPopove
           <div className="border-b border-white/20 pb-2">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg text-white">{word}</h3>
-              {definition && (
-                <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">
-                  {definition.pos}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {clickCount > 0 && (
+                  <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full font-bold">
+                    {clickCount}× clicked
+                  </span>
+                )}
+                {definition && (
+                  <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">
+                    {definition.pos}
+                  </span>
+                )}
+              </div>
             </div>
             {definition && definition.lemma !== word && (
               <p className="text-sm text-white/70">

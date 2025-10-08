@@ -107,8 +107,8 @@ export async function GET() {
       userLevel,
       userLevelName,
       songsCompleted: completedSongs,
-      averageSongLevel: averageSongLevel > 0 ? Number(averageSongLevel.toFixed(1)) : null,
-      averageGrade: averageGrade !== null ? Number(averageGrade.toFixed(0)) : null,
+      averageSongLevel: averageSongLevel > 0 ? Number(averageSongLevel.toFixed(1)) : 1.0,
+      averageGrade: averageGrade !== null ? Number(averageGrade.toFixed(0)) : 0,
       totalSavedSongs: savedSongsCount
     })
   } catch (error) {

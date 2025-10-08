@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -9,8 +10,18 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Music, ExternalLink, BookOpen } from 'lucide-react'
+import { Music, ExternalLink, BookOpen, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface SongWithWord {
+  id: string
+  title: string
+  artist: string
+  albumArt: string | null
+  level: number | null
+  levelName: string | null
+  occurrences: number
+}
 
 interface VocabularyWord {
   id: string
@@ -49,18 +60,54 @@ const partOfSpeechLabels = {
 
 export function VocabularyModal({ word, open, onOpenChange }: VocabularyModalProps) {
   const router = useRouter()
+  const [songs, setSongs] = useState<SongWithWord[]>([])
+  const [isLoadingSongs, setIsLoadingSongs] = useState(false)
+
+  // Fetch songs when modal opens
+  useEffect(() => {
+    if (open && word) {
+      setIsLoadingSongs(true)
+      fetch(`/api/songs-with-word?word=${encodeURIComponent(word.word)}`)
+        .then(res => res.json())
+        .then(data => {
+          setSongs(data.songs || [])
+        })
+        .catch(err => {
+          console.error('Failed to fetch songs:', err)
+        })
+        .finally(() => {
+          setIsLoadingSongs(false)
+        })
+    }
+  }, [open, word])
 
   if (!word) return null
 
   const examples = word.examples ? JSON.parse(word.examples) : []
-  const posColor = partOfSpeechColors[word.partOfSpeech as keyof typeof partOfSpeechColors] || partOfSpeechColors.other
-  const posLabel = partOfSpeechLabels[word.partOfSpeech as keyof typeof partOfSpeechLabels] || word.partOfSpeech
 
-  const handleExploreInContext = () => {
-    // Navigate to the vocab page with this word selected/highlighted
-    // For now, just close the modal
+  // Extract part of speech from definition if not provided
+  let partOfSpeech = word.partOfSpeech || 'other'
+  if (word.definition && partOfSpeech === 'other') {
+    try {
+      const def = typeof word.definition === 'string' ? JSON.parse(word.definition) : word.definition
+      if (def.pos) {
+        const posLower = def.pos.toLowerCase()
+        if (posLower.includes('noun')) partOfSpeech = 'noun'
+        else if (posLower.includes('verb')) partOfSpeech = 'verb'
+        else if (posLower.includes('adj')) partOfSpeech = 'adjective'
+        else if (posLower.includes('adv')) partOfSpeech = 'adverb'
+      }
+    } catch {
+      // Keep default
+    }
+  }
+
+  const posColor = partOfSpeechColors[partOfSpeech as keyof typeof partOfSpeechColors] || partOfSpeechColors.other
+  const posLabel = partOfSpeechLabels[partOfSpeech as keyof typeof partOfSpeechLabels] || partOfSpeech
+
+  const handleSongClick = (songId: string) => {
     onOpenChange(false)
-    // Could implement: router.push(`/vocab?word=${word.word}`)
+    router.push(`/song/${songId}`)
   }
 
   return (
@@ -116,23 +163,59 @@ export function VocabularyModal({ word, open, onOpenChange }: VocabularyModalPro
             </div>
           )}
 
-          {/* Stats */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-            <span>Usefulness: {(word.usefulnessScore * 100).toFixed(0)}%</span>
-            <span>Frequency: {word.frequency.toFixed(1)} Zipf</span>
+          {/* Songs containing this word */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <Music className="h-4 w-4" />
+              Songs with "{word.word}"
+            </h4>
+
+            {isLoadingSongs ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            ) : songs.length > 0 ? (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {songs.map((song) => (
+                  <div
+                    key={song.id}
+                    onClick={() => handleSongClick(song.id)}
+                    className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors cursor-pointer"
+                  >
+                    {song.albumArt && (
+                      <img
+                        src={song.albumArt}
+                        alt={song.title}
+                        className="w-12 h-12 rounded object-cover"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{song.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{song.artist}</p>
+                      {song.levelName && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Level {song.level} • {song.occurrences}× in song
+                        </p>
+                      )}
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No songs found with this word
+              </p>
+            )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="default"
-              className="flex-1"
-              onClick={handleExploreInContext}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              Find in Songs
-            </Button>
-          </div>
+          {/* Stats */}
+          {word.usefulnessScore > 0 && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+              <span>Usefulness: {(word.usefulnessScore * 100).toFixed(0)}%</span>
+              <span>Frequency: {word.frequency.toFixed(1)} Zipf</span>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

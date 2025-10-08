@@ -25,18 +25,18 @@ export default function SignInPage() {
 
   const handleSpotifySignIn = async () => {
     try {
-      console.log('Attempting Spotify sign in...')
-      const result = await signIn('spotify', { 
+      // console.log('Attempting Spotify sign in...')
+      const result = await signIn('spotify', {
         callbackUrl,
-        redirect: false 
+        redirect: false
       })
-      
-      console.log('Sign in result:', result)
-      
+
+      // console.log('Sign in result:', result)
+
       if (result?.error) {
         console.error('Sign in error:', result.error)
       } else if (result?.ok) {
-        console.log('Sign in successful, redirecting...')
+        // console.log('Sign in successful, redirecting...')
         router.push(callbackUrl)
       }
     } catch (error) {

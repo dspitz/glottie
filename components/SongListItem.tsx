@@ -54,8 +54,8 @@ export function SongListItem({
   
   return (
     <Link href={songUrl} onClick={handleClick} className="block">
-      <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer" style={{ borderRadius: '20px' }}>
-        <CardContent className="flex items-center p-4" style={{ gap: '16px' }}>
+      <Card className="transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer" style={{ borderRadius: '24px' }}>
+        <CardContent className="flex items-center p-3" style={{ gap: '16px' }}>
           {/* Album Thumbnail */}
           <motion.div
             className="bg-muted rounded-lg flex items-center justify-center overflow-hidden shrink-0"

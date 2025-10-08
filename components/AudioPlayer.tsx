@@ -43,7 +43,7 @@ export function AudioPlayer({ track, className = '' }: AudioPlayerProps) {
   
   // Determine playback mode based on authentication and track availability
   const getPlaybackMode = (): PlaybackMode => {
-    console.log('AudioPlayer: Determining playback mode:', { 
+    // console.log('AudioPlayer: Determining playback mode:', { 
       isAuthenticated, 
       hasSpotifyId: !!track.spotifyId, 
       spotifyId: track.spotifyId,
@@ -59,7 +59,7 @@ export function AudioPlayer({ track, className = '' }: AudioPlayerProps) {
   // Update playback mode when authentication or track changes
   useEffect(() => {
     const newMode = getPlaybackMode()
-    console.log('AudioPlayer: Updating playback mode:', newMode)
+    // console.log('AudioPlayer: Updating playback mode:', newMode)
     setPlaybackMode(newMode)
   }, [isAuthenticated, track.spotifyId, track.previewUrl])
   const [isPlaying, setIsPlaying] = useState(false)
@@ -203,7 +203,7 @@ export function AudioPlayer({ track, className = '' }: AudioPlayerProps) {
 
     if (playbackMode === 'spotify' && spotifyPlayerRef.current && track.spotifyId) {
       try {
-        console.log('Attempting Spotify playback:', {
+        // console.log('Attempting Spotify playback:', {
           hasPlayerRef: !!spotifyPlayerRef.current,
           isReady: spotifyPlayerRef.current.isReady,
           deviceId: spotifyPlayerRef.current.deviceId,
@@ -215,7 +215,7 @@ export function AudioPlayer({ track, className = '' }: AudioPlayerProps) {
           // Start playback
           setIsLoading(true)
           const trackUri = `spotify:track:${track.spotifyId}`
-          console.log('Playing track:', trackUri)
+          // console.log('Playing track:', trackUri)
           const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
           
           if (result === 'PREMIUM_REQUIRED') {
@@ -232,7 +232,7 @@ export function AudioPlayer({ track, className = '' }: AudioPlayerProps) {
           setIsLoading(false)
         } else {
           // Toggle existing playback
-          console.log('Toggling existing playback')
+          // console.log('Toggling existing playback')
           await spotifyPlayerRef.current.togglePlayPause?.()
         }
       } catch (error) {

@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       totalCount
     })
   } catch (error) {
-    console.error('Error fetching vocabulary:', error)
+    // console.error('Error fetching vocabulary:', error)
     return NextResponse.json(
       { error: 'Failed to fetch vocabulary' },
       { status: 500 }

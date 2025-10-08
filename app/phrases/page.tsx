@@ -69,7 +69,7 @@ export default function PhrasesPage() {
         const total = data.reduce((sum: number, cat: PhraseCategory) => sum + cat.phraseCount, 0)
         setTotalPhrases(total)
       } catch (error) {
-        console.error('Error loading categories:', error)
+        // console.error('Error loading categories:', error)
       } finally {
         setIsLoadingCategories(false)
       }
@@ -94,7 +94,7 @@ export default function PhrasesPage() {
         })
         setPhrases(data)
       } catch (error) {
-        console.error('Error loading phrases:', error)
+        // console.error('Error loading phrases:', error)
       } finally {
         setIsLoadingPhrases(false)
       }

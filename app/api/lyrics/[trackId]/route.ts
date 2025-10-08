@@ -57,13 +57,13 @@ export async function GET(
 
     // If we don't have lyrics yet, try to fetch them
     if (!song.lyricsRaw) {
-      console.log(`🎵 Fetching lyrics for "${song.title}" by ${song.artist}`)
-      
+      // console.log(`🎵 Fetching lyrics for "${song.title}" by ${song.artist}`)
+
       try {
         const lyricsResult = await getLyricsByTrack(song.artist, song.title)
-        
+
         if (lyricsResult.lines.length > 0) {
-          console.log(`✅ Found lyrics using ${lyricsResult.provider} provider`)
+          // console.log(`✅ Found lyrics using ${lyricsResult.provider} provider`)
           
           // Store the lyrics in the database for future use
           await prisma.song.update({
@@ -87,7 +87,7 @@ export async function GET(
             synchronized: lyricsResult.synchronized
           }
         } else {
-          console.log(`⚠️ No lyrics found: ${lyricsResult.error || 'No lyrics available'}`)
+          // console.log(`⚠️ No lyrics found: ${lyricsResult.error || 'No lyrics available'}`)
         }
         
       } catch (error) {
@@ -119,34 +119,34 @@ export async function GET(
         .map(line => line.trim())
         .filter(line => line.length > 0 && !line.includes('******* This Lyrics'))
       if (rawLines.length > lyricsLines.length) {
-        console.log(`📚 Using full raw lyrics (${rawLines.length} lines instead of ${lyricsLines.length})`)
+        // console.log(`📚 Using full raw lyrics (${rawLines.length} lines instead of ${lyricsLines.length})`)
         finalLines = rawLines
       }
     }
 
     // Process database translations
     let dbTranslations: { [targetLang: string]: string[] } = {}
-    console.log(`📚 Processing translations for song ${song.id}:`, {
-      hasTranslations: !!song.translations,
-      translationCount: song.translations?.length || 0,
-      translations: song.translations?.map(t => ({
-        targetLang: t.targetLang,
-        provider: t.provider,
-        confidence: t.confidence,
-        lyricsLines: t.lyricsLines ? `${t.lyricsLines.length} chars` : 'null'
-      }))
-    })
+    // console.log(`📚 Processing translations for song ${song.id}:`, {
+    //   hasTranslations: !!song.translations,
+    //   translationCount: song.translations?.length || 0,
+    //   translations: song.translations?.map(t => ({
+    //     targetLang: t.targetLang,
+    //     provider: t.provider,
+    //     confidence: t.confidence,
+    //     lyricsLines: t.lyricsLines ? `${t.lyricsLines.length} chars` : 'null'
+    //   }))
+    // })
 
     if (song.translations && song.translations.length > 0) {
       for (const translation of song.translations) {
         try {
           const parsed = JSON.parse(translation.lyricsLines || '[]')
-          console.log(`  Translation ${translation.targetLang}:`, {
-            isParsed: !!parsed,
-            isArray: Array.isArray(parsed),
-            length: Array.isArray(parsed) ? parsed.length : 0,
-            firstItem: Array.isArray(parsed) && parsed[0] ? parsed[0].substring(0, 40) : null
-          })
+          // console.log(`  Translation ${translation.targetLang}:`, {
+          //   isParsed: !!parsed,
+          //   isArray: Array.isArray(parsed),
+          //   length: Array.isArray(parsed) ? parsed.length : 0,
+          //   firstItem: Array.isArray(parsed) && parsed[0] ? parsed[0].substring(0, 40) : null
+          // })
 
           // Handle different formats
           if (Array.isArray(parsed)) {
@@ -154,12 +154,12 @@ export async function GET(
             if (parsed.length > 0 && typeof parsed[0] === 'string') {
               // Check if first element is a JSON object (corrupted data)
               if (parsed[0].startsWith('{')) {
-                console.log(`⚠️ Fixing corrupted translation data for ${translation.targetLang}`)
+                // console.log(`⚠️ Fixing corrupted translation data for ${translation.targetLang}`)
                 continue // Skip corrupted data
               }
               dbTranslations[translation.targetLang] = parsed
-              console.log(`✅ Added ${translation.targetLang} translation with ${parsed.length} lines`)
-              console.log(`📚 Found ${parsed.length} translated lines for ${translation.targetLang}`)
+              // console.log(`✅ Added ${translation.targetLang} translation with ${parsed.length} lines`)
+              // console.log(`📚 Found ${parsed.length} translated lines for ${translation.targetLang}`)
             }
           }
         } catch (e) {
@@ -178,19 +178,19 @@ export async function GET(
     // The timings from Musixmatch are actually correct
     let adjustedSynchronized = lyricsData?.synchronized
 
-    console.log(`📤 Sending response with:`, {
-      hasTranslations: Object.keys(dbTranslations || {}).length > 0,
-      translationLanguages: Object.keys(dbTranslations || {}),
-      enTranslationCount: dbTranslations?.en?.length || 0,
-      hasSynchronized: !!adjustedSynchronized,
-      linesCount: finalLines.length,
-      feedbackValues: {
-        userRating: song.userRating,
-        hasLyrics: song.hasLyrics,
-        hasTranslations: song.hasTranslations,
-        synced: song.synced
-      }
-    })
+    // console.log(`📤 Sending response with:`, {
+    //   hasTranslations: Object.keys(dbTranslations || {}).length > 0,
+    //   translationLanguages: Object.keys(dbTranslations || {}),
+    //   enTranslationCount: dbTranslations?.en?.length || 0,
+    //   hasSynchronized: !!adjustedSynchronized,
+    //   linesCount: finalLines.length,
+    //   feedbackValues: {
+    //     userRating: song.userRating,
+    //     hasLyrics: song.hasLyrics,
+    //     hasTranslations: song.hasTranslations,
+    //     synced: song.synced
+    //   }
+    // })
 
     return NextResponse.json({
       // Core response data

@@ -54,7 +54,7 @@ export async function GET() {
 
     return NextResponse.json(songs)
   } catch (error) {
-    console.error('Error fetching saved songs:', error)
+    // console.error('Error fetching saved songs:', error)
     return NextResponse.json(
       { error: 'Failed to fetch saved songs' },
       { status: 500 }

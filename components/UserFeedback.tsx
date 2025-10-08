@@ -38,14 +38,14 @@ export default function UserFeedback({
 
   // Update state when props change (e.g., when navigating to a different song)
   useEffect(() => {
-    console.log('UserFeedback: Props changed', {
-      songId,
-      initialRating,
-      initialHasLyrics,
-      initialHasTranslations,
-      initialSynced,
-      initialLevel
-    })
+    // console.log('UserFeedback: Props changed', {
+    //   songId,
+    //   initialRating,
+    //   initialHasLyrics,
+    //   initialHasTranslations,
+    //   initialSynced,
+    //   initialLevel
+    // })
     setRating(initialRating || 0)
     setHasLyrics(initialHasLyrics ?? true)
     setHasTranslations(initialHasTranslations ?? true)
@@ -75,7 +75,7 @@ export default function UserFeedback({
     level?: number
   }) => {
     setIsSaving(true)
-    console.log('UserFeedback: Sending update', { songId, updates })
+    // console.log('UserFeedback: Sending update', { songId, updates })
 
     try {
       const response = await fetch(`/api/song/${songId}/feedback`, {
@@ -91,7 +91,7 @@ export default function UserFeedback({
       }
 
       const data = await response.json()
-      console.log('UserFeedback: Response received', data)
+      // console.log('UserFeedback: Response received', data)
 
       if (data.success) {
         // Update local state with server response
@@ -110,18 +110,18 @@ export default function UserFeedback({
         if (updates.level !== undefined) {
           setSelectedLevel(data.feedback.level)
         }
-        console.log('UserFeedback: State updated', {
-          rating: data.feedback.userRating,
-          hasLyrics: data.feedback.hasLyrics,
-          hasTranslations: data.feedback.hasTranslations,
-          synced: data.feedback.synced,
-          level: data.feedback.level
-        })
+        // console.log('UserFeedback: State updated', {
+        //   rating: data.feedback.userRating,
+        //   hasLyrics: data.feedback.hasLyrics,
+        //   hasTranslations: data.feedback.hasTranslations,
+        //   synced: data.feedback.synced,
+        //   level: data.feedback.level
+        // })
 
         // Invalidate the React Query cache for this song
         // This ensures fresh data is loaded when navigating back to this song
         queryClient.invalidateQueries({ queryKey: ['lyrics', songId] })
-        console.log('UserFeedback: Cache invalidated for song', songId)
+        // console.log('UserFeedback: Cache invalidated for song', songId)
       }
     } catch (error) {
       console.error('Error updating feedback:', error)

@@ -38,7 +38,7 @@ export function DebugModal({ debugInfo }: DebugModalProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['level', 'navigation']))
 
   // Debug: Log that component is rendering
-  console.log('🐛 DebugModal component rendered')
+  // console.log('🐛 DebugModal component rendered')
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections)

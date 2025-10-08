@@ -25,12 +25,12 @@ export async function fetchLyrics(trackId: string) {
     throw new Error('Failed to fetch lyrics')
   }
   const data = await response.json()
-  console.log('🔍 fetchLyrics response:', {
-    hasSynchronized: !!data.synchronized,
-    synchronizedFormat: data.synchronized?.format,
-    synchronizedLines: data.synchronized?.lines?.length,
-    firstLine: data.synchronized?.lines?.[0]
-  })
+  // console.log('🔍 fetchLyrics response:', {
+  //   hasSynchronized: !!data.synchronized,
+  //   synchronizedFormat: data.synchronized?.format,
+  //   synchronizedLines: data.synchronized?.lines?.length,
+  //   firstLine: data.synchronized?.lines?.[0]
+  // })
   return data
 }
 

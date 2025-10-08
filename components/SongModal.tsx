@@ -30,7 +30,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
 
   // Debug translation modal state
   useEffect(() => {
-    console.log('🔍 SongModal: Translation modal state changed:', isTranslationModalOpen)
+    // console.log('🔍 SongModal: Translation modal state changed:', isTranslationModalOpen)
   }, [isTranslationModalOpen])
 
   // Update current song when prop changes
@@ -53,11 +53,11 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
     queryKey: ['levelSongs', effectiveLevel],
     queryFn: async () => {
       if (!effectiveLevel) return []
-      console.log('🎵 Modal: Fetching songs for level:', effectiveLevel)
+      // console.log('🎵 Modal: Fetching songs for level:', effectiveLevel)
       const response = await fetch(`/api/songs/level/${effectiveLevel}`)
       if (!response.ok) return []
       const songs = await response.json()
-      console.log('🎵 Modal: Fetched', songs.length, 'songs for level', effectiveLevel)
+      // console.log('🎵 Modal: Fetched', songs.length, 'songs for level', effectiveLevel)
       return songs
     },
     enabled: !!effectiveLevel && isOpen,
@@ -66,15 +66,15 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
   // Calculate previous and next songs
   const { prevSong, nextSong } = useMemo(() => {
     if (!levelSongs || !currentSongId) {
-      console.log('🎵 Modal: No level songs or current song ID')
+      // console.log('🎵 Modal: No level songs or current song ID')
       return { prevSong: null, nextSong: null }
     }
 
     const currentIndex = levelSongs.findIndex((song: any) => song.id === currentSongId)
-    console.log('🎵 Modal: Current song index:', currentIndex, 'of', levelSongs.length)
+    // console.log('🎵 Modal: Current song index:', currentIndex, 'of', levelSongs.length)
 
     if (currentIndex === -1) {
-      console.log('🎵 Modal: Current song not found in level songs')
+      // console.log('🎵 Modal: Current song not found in level songs')
       return { prevSong: null, nextSong: null }
     }
 
@@ -83,12 +83,12 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
       nextSong: currentIndex < levelSongs.length - 1 ? levelSongs[currentIndex + 1] : null,
     }
 
-    console.log('🎵 Modal: Navigation ready:', {
-      hasPrev: !!result.prevSong,
-      hasNext: !!result.nextSong,
-      prevTitle: result.prevSong?.title,
-      nextTitle: result.nextSong?.title
-    })
+    // console.log('🎵 Modal: Navigation ready:', {
+    //   hasPrev: !!result.prevSong,
+    //   hasNext: !!result.nextSong,
+    //   prevTitle: result.prevSong?.title,
+    //   nextTitle: result.nextSong?.title
+    // })
 
     return result
   }, [levelSongs, currentSongId])
@@ -100,7 +100,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
 
   // Navigation handlers
   const handlePrevious = () => {
-    console.log('🎵 Modal: Previous clicked', { prevSong })
+    // console.log('🎵 Modal: Previous clicked', { prevSong })
     if (prevSong) {
       setCurrentSongId(prevSong.id)
       if (onSongChange) {
@@ -110,7 +110,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
   }
 
   const handleNext = () => {
-    console.log('🎵 Modal: Next clicked', { nextSong })
+    // console.log('🎵 Modal: Next clicked', { nextSong })
     if (nextSong) {
       setCurrentSongId(nextSong.id)
       if (onSongChange) {
@@ -120,15 +120,15 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
   }
 
   // Debug logging
-  console.log('SongModal render:', {
-    songId,
-    currentSongId,
-    isOpen,
-    hasOnClose: !!onClose,
-    effectiveLevel,
-    hasPrev: !!prevSong,
-    hasNext: !!nextSong
-  })
+  // console.log('SongModal render:', {
+  //   songId,
+  //   currentSongId,
+  //   isOpen,
+  //   hasOnClose: !!onClose,
+  //   effectiveLevel,
+  //   hasPrev: !!prevSong,
+  //   hasNext: !!nextSong
+  // })
 
   // Handle keyboard escape
   useEffect(() => {
@@ -314,7 +314,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                     albumArtSmall: lyricsData.albumArtSmall
                   }}
                   onPlayPauseReady={(fn) => {
-                    console.log('🎮 SongModal: Received play/pause function from LyricsView')
+                    // console.log('🎮 SongModal: Received play/pause function from LyricsView')
                   }}
                   onTranslationModalChange={setIsTranslationModalOpen}
                 />

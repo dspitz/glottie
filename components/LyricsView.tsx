@@ -7,6 +7,7 @@ import { TranslationBottomSheet } from '@/components/TranslationBottomSheet'
 import { WordPopover } from '@/components/WordPopover'
 import { segmentIntoSentences } from '@/lib/utils'
 import { ExternalLink, Music2 } from 'lucide-react'
+import confetti from 'canvas-confetti'
 
 interface LyricsViewProps {
   lines: string[]
@@ -144,19 +145,19 @@ export function LyricsView({
       setSelectedSentenceTranslations([])
     }
     setIsModalOpen(true)
-    console.log('📱 LyricsView: Opening translation modal, calling callback:', !!onTranslationModalChange)
+    // console.log('📱 LyricsView: Opening translation modal, calling callback:', !!onTranslationModalChange)
     onTranslationModalChange?.(true)
   }, [processedTranslations, synchronized, playFromTimeFunction, seekFunction, playPauseFunction, onTranslationModalChange])
 
   const handleAudioStateChange = useCallback((state: AudioPlayerState) => {
     // Log every 10th update to avoid spam
-    if (Math.floor(state.currentTime / 1000) % 10 === 0) {
-      console.log('🎵 Audio state update:', {
-        currentTime: state.currentTime,
-        isPlaying: state.isPlaying,
-        playbackMode: state.playbackMode
-      })
-    }
+    // if (Math.floor(state.currentTime / 1000) % 10 === 0) {
+    //   console.log('🎵 Audio state update:', {
+    //     currentTime: state.currentTime,
+    //     isPlaying: state.isPlaying,
+    //     playbackMode: state.playbackMode
+    //   })
+    // }
     setAudioState(state)
     // Track if the song has ever been played
     if (state.isPlaying) {
@@ -175,12 +176,12 @@ export function LyricsView({
         ? audioState.currentTime
         : audioState.currentTime * 1000
 
-      console.log('🔍 Auto-advance check:', {
-        currentTimeMs,
-        selectedLineIndex,
-        lineLockMode,
-        isPlaying: audioState.isPlaying
-      })
+      // console.log('🔍 Auto-advance check:', {
+      //   currentTimeMs,
+      //   selectedLineIndex,
+      //   lineLockMode,
+      //   isPlaying: audioState.isPlaying
+      // })
 
       // Find the current line based on playback time
       for (let i = 0; i < synchronized.lines.length; i++) {
@@ -196,15 +197,15 @@ export function LyricsView({
           : startTimeMs + 5000 // Default 5 seconds for last line
 
         if (currentTimeMs >= startTimeMs && currentTimeMs < endTimeMs) {
-          console.log('📍 Found current line:', {
-            lineIndex: i,
-            selectedLineIndex,
-            shouldUpdate: i !== selectedLineIndex,
-            lineText: lines[i]?.substring(0, 30)
-          })
+          // console.log('📍 Found current line:', {
+          //   lineIndex: i,
+          //   selectedLineIndex,
+          //   shouldUpdate: i !== selectedLineIndex,
+          //   lineText: lines[i]?.substring(0, 30)
+          // })
           // Only update if we've moved to a different line
           if (i !== selectedLineIndex) {
-            console.log('✅ Updating modal to line', i)
+            // console.log('✅ Updating modal to line', i)
             setSelectedLineIndex(i)
             setSelectedSentence(lines[i])
             if (processedTranslations[i]) {
@@ -259,6 +260,15 @@ export function LyricsView({
     }
   }, [onPlayPauseReady])
 
+  const handleSongComplete = useCallback(() => {
+    console.log('🎉 Song completed! Triggering confetti...')
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    })
+  }, [])
+
   return (
     <div className={`transition-all duration-300 ${hasEverPlayed ? 'pb-32' : 'pb-6'}`}>
       {/* Enhanced Audio Player */}
@@ -270,6 +280,7 @@ export function LyricsView({
           onTimeSeek={handleSeekFunctionSet}
           onPlaybackRateChange={handlePlaybackRateFunctionSet}
           onPlayPauseReady={handlePlayPauseReady}
+          onSongComplete={handleSongComplete}
         />
       )}
 
@@ -323,6 +334,9 @@ export function LyricsView({
         onSentenceClick={handleSentenceClick}
         lineLockMode={lineLockMode}
         lockedLineIndex={lockedLineIndex}
+        songId={track?.id}
+        songTitle={track?.title}
+        songArtist={track?.artist}
       />
 
       {/* Bottom Sheet */}
@@ -341,6 +355,9 @@ export function LyricsView({
         totalLines={lines.length}
         audioControls={audioControls}
         clickPosition={clickPosition}
+        songId={track?.id}
+        songTitle={track?.title}
+        songArtist={track?.artist}
         onSetLineLock={(locked: boolean, lineIndex?: number) => {
           setLineLockMode(locked)
           if (locked && lineIndex !== undefined) {

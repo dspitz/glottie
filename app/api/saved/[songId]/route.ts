@@ -15,7 +15,7 @@ export async function GET(
     // This endpoint is kept for future authentication implementation
     return NextResponse.json({ saved: false })
   } catch (error) {
-    console.error('Error checking saved song:', error)
+    // console.error('Error checking saved song:', error)
     return NextResponse.json(
       { error: 'Failed to check saved song' },
       { status: 500 }
@@ -52,7 +52,7 @@ export async function POST(
       }
     })
   } catch (error) {
-    console.error('Error saving song:', error)
+    // console.error('Error saving song:', error)
     return NextResponse.json(
       { error: 'Failed to save song' },
       { status: 500 }
@@ -71,7 +71,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error unsaving song:', error)
+    // console.error('Error unsaving song:', error)
     return NextResponse.json(
       { error: 'Failed to unsave song' },
       { status: 500 }
