@@ -263,8 +263,8 @@ export function LyricsView({
   const handleSongComplete = useCallback(() => {
     console.log('🎉 Song completed! Triggering confetti...')
     confetti({
-      particleCount: 100,
-      spread: 70,
+      particleCount: 200,
+      spread: 90,
       origin: { y: 0.6 }
     })
   }, [])
