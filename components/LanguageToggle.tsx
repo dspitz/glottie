@@ -2,14 +2,20 @@
 
 import React from 'react'
 import { cn } from '@/lib/utils'
+import { getLanguageNativeName } from '@/lib/languageUtils'
 
 interface LanguageToggleProps {
   value: 'spanish' | 'english' | 'both'
   onChange: (value: 'spanish' | 'english' | 'both') => void
   className?: string
+  language?: string // Language code (e.g., 'es', 'fr')
 }
 
-export function LanguageToggle({ value, onChange, className }: LanguageToggleProps) {
+export function LanguageToggle({ value, onChange, className, language = 'es' }: LanguageToggleProps) {
+  const nativeName = getLanguageNativeName(language)
+
+  console.log('🔍 LanguageToggle:', { language, nativeName })
+
   return (
     <div className={cn("inline-flex h-12 rounded-full bg-black/5 backdrop-blur-sm p-1.5", className)}>
       <button
@@ -22,7 +28,7 @@ export function LanguageToggle({ value, onChange, className }: LanguageTogglePro
         )}
         style={value === 'spanish' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.08)' } : {}}
       >
-        Español
+        {nativeName}
       </button>
       <button
         onClick={() => onChange('both')}

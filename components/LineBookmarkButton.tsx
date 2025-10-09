@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils'
 
 interface LineBookmarkButtonProps {
   songId: string
+  songTitle?: string
+  songArtist?: string
+  songLanguage?: string
   lineText: string
   lineTranslation: string
   lineIndex: number
@@ -16,6 +19,9 @@ interface LineBookmarkButtonProps {
 
 export function LineBookmarkButton({
   songId,
+  songTitle,
+  songArtist,
+  songLanguage,
   lineText,
   lineTranslation,
   lineIndex,
@@ -43,6 +49,9 @@ export function LineBookmarkButton({
   const getBookmarkedLinesFromLocalStorage = (): Array<{
     id: string
     songId: string
+    songTitle?: string
+    songArtist?: string
+    songLanguage?: string
     lineText: string
     lineTranslation: string
     lineIndex: number
@@ -63,6 +72,9 @@ export function LineBookmarkButton({
       const newBookmark = {
         id: `${songId}-${lineIndex}-${Date.now()}`, // Temporary ID
         songId,
+        songTitle,
+        songArtist,
+        songLanguage,
         lineText,
         lineTranslation,
         lineIndex,

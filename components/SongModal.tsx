@@ -277,6 +277,16 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                 <LanguageToggle
                   value={displayLanguage}
                   onChange={setDisplayLanguage}
+                  language={(() => {
+                    const lang = lyricsData?.song?.language || lyricsData?.language || 'es'
+                    console.log('🎵 SongModal language data:', {
+                      songLanguage: lyricsData?.song?.language,
+                      directLanguage: lyricsData?.language,
+                      finalLang: lang,
+                      lyricsDataKeys: lyricsData ? Object.keys(lyricsData) : []
+                    })
+                    return lang
+                  })()}
                 />
               </div>
 
@@ -307,6 +317,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                     title: lyricsData.title,
                     artist: lyricsData.artist,
                     album: lyricsData.album,
+                    language: lyricsData.language,
                     spotifyId: lyricsData.spotifyId,
                     spotifyUrl: lyricsData.spotifyUrl,
                     previewUrl: lyricsData.previewUrl,

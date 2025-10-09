@@ -32,6 +32,16 @@ function SavedPageContent() {
     }
   }, [language])
 
+  // Debug logging
+  useEffect(() => {
+    console.log('💾 SavedPage render:', {
+      language,
+      savedSongsCount: savedSongs.length,
+      isLoading,
+      savedSongs: savedSongs.map(s => ({ id: s.id, title: s.title, artist: s.artist }))
+    })
+  }, [savedSongs, language, isLoading])
+
   const openSongModal = (songId: string) => {
     setSelectedSongId(songId)
     setIsModalOpen(true)

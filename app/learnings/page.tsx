@@ -96,10 +96,116 @@ export default function LearningsPage() {
   useEffect(() => {
     const loadBookmarks = async () => {
       setIsLoadingBookmarks(true)
+      console.log('🔖 Loading bookmarks for language:', language)
       try {
+        // Try to fetch from API first (for authenticated users)
         const response = await fetch(`/api/bookmarks/lines?language=${language}`)
-        const data = await response.json()
-        setBookmarkedLines(data)
+        const apiBookmarks = await response.json()
+        console.log('🔖 API bookmarks:', apiBookmarks.length)
+
+        // Also load from localStorage (for non-authenticated users or as backup)
+        let localBookmarks: BookmarkedLine[] = []
+        if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('bookmarkedLines')
+          console.log('🔖 localStorage has bookmarks:', !!saved)
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved)
+              console.log('🔖 Total bookmarks in localStorage:', parsed.length)
+
+              // For old bookmarks without songLanguage, we need to fetch song data
+              const bookmarksWithLanguage = await Promise.all(
+                parsed.map(async (bookmark: any, index: number) => {
+                  console.log(`🔖 Processing bookmark ${index}:`, {
+                    songId: bookmark.songId,
+                    hasLanguage: !!bookmark.songLanguage,
+                    storedLanguage: bookmark.songLanguage,
+                    lineText: bookmark.lineText?.substring(0, 30)
+                  })
+
+                  // If bookmark already has language, use it
+                  if (bookmark.songLanguage) {
+                    const matches = bookmark.songLanguage === language
+                    console.log(`🔖 Bookmark ${index} has language '${bookmark.songLanguage}', looking for '${language}': ${matches ? 'MATCH' : 'NO MATCH'}`)
+                    return matches ? bookmark : null
+                  }
+
+                  // For old bookmarks, fetch from API to get language
+                  console.log(`🔖 Bookmark ${index} missing language, fetching from API...`)
+                  try {
+                    const songRes = await fetch(`/api/lyrics/${bookmark.songId}`)
+                    if (songRes.ok) {
+                      const songData = await songRes.json()
+                      console.log(`🔖 Bookmark ${index} song data:`, {
+                        title: songData.title,
+                        language: songData.language,
+                        matches: songData.language === language
+                      })
+
+                      // Update bookmark with language info
+                      const updatedBookmark = {
+                        ...bookmark,
+                        songLanguage: songData.language,
+                        songTitle: bookmark.songTitle || songData.title,
+                        songArtist: bookmark.songArtist || songData.artist
+                      }
+
+                      // Only return if it matches current language
+                      return updatedBookmark.songLanguage === language ? updatedBookmark : null
+                    } else {
+                      console.error(`🔖 Bookmark ${index} API failed:`, songRes.status)
+                    }
+                  } catch (e) {
+                    console.error(`🔖 Bookmark ${index} error:`, e)
+                  }
+                  return null
+                })
+              )
+
+              // Filter out nulls and map to BookmarkedLine format
+              localBookmarks = bookmarksWithLanguage
+                .filter(Boolean)
+                .map((bookmark: any) => ({
+                  id: bookmark.id,
+                  songId: bookmark.songId,
+                  songTitle: bookmark.songTitle || 'Unknown Song',
+                  songArtist: bookmark.songArtist || 'Unknown Artist',
+                  lineText: bookmark.lineText,
+                  lineTranslation: bookmark.lineTranslation,
+                  lineIndex: bookmark.lineIndex,
+                  bookmarkedAt: bookmark.bookmarkedAt
+                }))
+
+              console.log('🔖 localStorage bookmarks matching language:', localBookmarks.length)
+
+              // Save updated bookmarks back to localStorage with language metadata
+              if (bookmarksWithLanguage.some(b => b)) {
+                const allUpdatedBookmarks = parsed.map((bookmark: any) => {
+                  const updated = bookmarksWithLanguage.find((b: any) => b?.id === bookmark.id)
+                  return updated || bookmark
+                })
+                localStorage.setItem('bookmarkedLines', JSON.stringify(allUpdatedBookmarks))
+              }
+            } catch (e) {
+              console.error('Error parsing localStorage bookmarks:', e)
+            }
+          }
+        }
+
+        // Merge API and localStorage bookmarks, removing duplicates
+        const allBookmarks = [...apiBookmarks]
+        localBookmarks.forEach(local => {
+          const exists = allBookmarks.some(
+            api => api.songId === local.songId && api.lineIndex === local.lineIndex
+          )
+          if (!exists) {
+            allBookmarks.push(local)
+          }
+        })
+
+        console.log('🔖 Total bookmarks after merge:', allBookmarks.length)
+        console.log('🔖 Bookmarks:', allBookmarks)
+        setBookmarkedLines(allBookmarks)
       } catch (error) {
         // console.error('Error loading bookmarked lines:', error)
       } finally {

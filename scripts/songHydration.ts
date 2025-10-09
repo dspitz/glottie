@@ -175,10 +175,29 @@ async function getSpotifyTrack(trackId: string, token: string): Promise<SpotifyT
       headers: { 'Authorization': `Bearer ${token}` }
     })
 
-    if (!response.ok) return null
+    if (!response.ok) {
+      console.log(`  ⚠️ Track ID ${trackId} not found (status ${response.status})`)
+      return null
+    }
     return await response.json() as SpotifyTrack
   } catch (error) {
     console.error(`Failed to get track ${trackId}:`, error)
+    return null
+  }
+}
+
+async function searchSpotifyTrack(title: string, artist: string, token: string): Promise<SpotifyTrack | null> {
+  try {
+    const query = encodeURIComponent(`${title} ${artist}`)
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${query}&type=track&limit=1`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+
+    if (!response.ok) return null
+    const data = await response.json() as any
+    return data.tracks?.items[0] || null
+  } catch (error) {
+    console.error(`Failed to search for ${title} by ${artist}:`, error)
     return null
   }
 }
@@ -316,45 +335,58 @@ async function hydrateSong(songId: string, options: HydrationOptions = {}): Prom
     if (!song.spotifyId || !song.albumArt || options.force) {
       console.log('\n📡 Fetching Spotify data...')
 
+      const token = await getSpotifyToken()
+      let track: SpotifyTrack | null = null
+
+      // Try to fetch by ID if available
       if (song.spotifyId) {
-        const token = await getSpotifyToken()
-        const track = await getSpotifyTrack(song.spotifyId, token)
+        track = await getSpotifyTrack(song.spotifyId, token)
+      }
+
+      // If ID fetch failed or no ID, search by title/artist
+      if (!track) {
+        console.log(`  🔍 Searching for "${song.title}" by ${song.artist}...`)
+        track = await searchSpotifyTrack(song.title, song.artist, token)
 
         if (track) {
-          // Get album art URLs
-          const images = track.album.images.sort((a, b) => b.width - a.width)
-          updates.albumArt = images[0]?.url
-          updates.albumArtSmall = images.find(img => img.width <= 300)?.url || images[images.length - 1]?.url
-          updates.previewUrl = track.preview_url
-          updates.popularity = track.popularity
-          updates.spotifyUrl = track.external_urls.spotify
-
-          // Get audio features
-          const features = await getAudioFeatures(song.spotifyId, token)
-          if (features) {
-            updates.danceability = features.danceability
-            updates.energy = features.energy
-            updates.valence = features.valence
-            updates.tempo = features.tempo
-          }
-
-          // Get genres from artists
-          const artistIds = track.artists.map(a => a.id)
-          if (artistIds.length > 0 && (!song.genres || options.force)) {
-            const genres = await getArtistGenres(artistIds, token)
-            if (genres) {
-              updates.genres = genres
-              console.log(`  🎸 Genres: ${genres}`)
-            }
-          }
-
-          stats.spotifyFetched = true
-          console.log('  ✅ Spotify data fetched')
-        } else {
-          stats.errors.push('Failed to fetch Spotify track data')
+          console.log(`  ✅ Found track: ${track.name} by ${track.artists[0].name}`)
+          updates.spotifyId = track.id
         }
+      }
+
+      if (track) {
+        // Get album art URLs
+        const images = track.album.images.sort((a, b) => b.width - a.width)
+        updates.albumArt = images[0]?.url
+        updates.albumArtSmall = images.find(img => img.width <= 300)?.url || images[images.length - 1]?.url
+        updates.previewUrl = track.preview_url
+        updates.popularity = track.popularity
+        updates.spotifyUrl = track.external_urls.spotify
+
+        // Get audio features
+        const features = await getAudioFeatures(track.id, token)
+        if (features) {
+          updates.danceability = features.danceability
+          updates.energy = features.energy
+          updates.valence = features.valence
+          updates.tempo = features.tempo
+        }
+
+        // Get genres from artists
+        const artistIds = track.artists.map(a => a.id)
+        if (artistIds.length > 0 && (!song.genres || options.force)) {
+          const genres = await getArtistGenres(artistIds, token)
+          if (genres) {
+            updates.genres = genres
+            console.log(`  🎸 Genres: ${genres}`)
+          }
+        }
+
+        stats.spotifyFetched = true
+        console.log('  ✅ Spotify data fetched')
       } else {
-        console.log('  ⚠️ No Spotify ID available')
+        stats.errors.push('Failed to fetch Spotify track data')
+        console.log('  ❌ Could not find track on Spotify')
       }
     }
 

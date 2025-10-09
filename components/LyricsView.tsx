@@ -23,6 +23,7 @@ interface LyricsViewProps {
     title: string
     artist: string
     album?: string
+    language?: string
     spotifyId?: string
     spotifyUrl?: string
     previewUrl?: string
@@ -358,6 +359,7 @@ export function LyricsView({
         songId={track?.id}
         songTitle={track?.title}
         songArtist={track?.artist}
+        songLanguage={track?.language}
         onSetLineLock={(locked: boolean, lineIndex?: number) => {
           setLineLockMode(locked)
           if (locked && lineIndex !== undefined) {

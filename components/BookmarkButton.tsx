@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Bookmark, BookmarkCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface BookmarkButtonProps {
   songId: string
@@ -38,13 +39,14 @@ export function BookmarkButton({
   className,
   size = 'icon'
 }: BookmarkButtonProps) {
+  const { language } = useLanguage()
   const [isSaved, setIsSaved] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Check if song is saved on mount and when songId changes
+  // Check if song is saved on mount and when songId or language changes
   useEffect(() => {
     checkSavedStatus()
-  }, [songId])
+  }, [songId, language])
 
   const checkSavedStatus = () => {
     // Check localStorage
@@ -68,11 +70,13 @@ export function BookmarkButton({
     savedAt: string
   }> => {
     if (typeof window === 'undefined') return []
-    const saved = localStorage.getItem('savedSongs')
+    const storageKey = `savedSongs_${language}`
+    const saved = localStorage.getItem(storageKey)
     return saved ? JSON.parse(saved) : []
   }
 
   const saveSongToLocalStorage = () => {
+    const storageKey = `savedSongs_${language}`
     const savedSongs = getSavedSongsFromLocalStorage()
     if (!savedSongs.some(song => song.id === songId)) {
       savedSongs.push({
@@ -90,14 +94,17 @@ export function BookmarkButton({
         verbDensity: songVerbDensity,
         savedAt: new Date().toISOString()
       })
-      localStorage.setItem('savedSongs', JSON.stringify(savedSongs))
+      console.log('💾 BookmarkButton: Saving to', storageKey, '- Song:', songTitle)
+      localStorage.setItem(storageKey, JSON.stringify(savedSongs))
     }
   }
 
   const removeSongFromLocalStorage = () => {
+    const storageKey = `savedSongs_${language}`
     const savedSongs = getSavedSongsFromLocalStorage()
     const filtered = savedSongs.filter(song => song.id !== songId)
-    localStorage.setItem('savedSongs', JSON.stringify(filtered))
+    console.log('💾 BookmarkButton: Removing from', storageKey, '- Song:', songTitle)
+    localStorage.setItem(storageKey, JSON.stringify(filtered))
   }
 
   const toggleSave = async () => {

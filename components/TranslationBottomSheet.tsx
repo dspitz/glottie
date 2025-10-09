@@ -46,6 +46,7 @@ interface TranslationBottomSheetProps {
   songId?: string
   songTitle?: string
   songArtist?: string
+  songLanguage?: string
 }
 
 export function TranslationBottomSheet({
@@ -73,7 +74,8 @@ export function TranslationBottomSheet({
   onSetLineLock,
   songId,
   songTitle,
-  songArtist
+  songArtist,
+  songLanguage
 }: TranslationBottomSheetProps) {
   // Debug: Log bookmark props
   // console.log('📑 TranslationBottomSheet bookmark props:', { songId, songTitle, songArtist, currentLineIndex })
@@ -518,6 +520,9 @@ export function TranslationBottomSheet({
                 <div className="bg-background/80 backdrop-blur-sm rounded-full">
                   <LineBookmarkButton
                     songId={songId}
+                    songTitle={songTitle}
+                    songArtist={songArtist}
+                    songLanguage={songLanguage}
                     lineText={sentence}
                     lineTranslation={translation}
                     lineIndex={currentLineIndex}

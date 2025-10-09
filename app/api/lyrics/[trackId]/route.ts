@@ -16,6 +16,7 @@ export async function GET(
         title: true,
         artist: true,
         album: true,
+        language: true,
         spotifyId: true,
         spotifyUrl: true,
         previewUrl: true,
@@ -198,6 +199,7 @@ export async function GET(
       title: song.title,
       artist: song.artist,
       album: song.album,
+      language: song.language,
       spotifyId: song.spotifyId,
       spotifyUrl: song.spotifyUrl,
       previewUrl: song.previewUrl,
@@ -234,7 +236,8 @@ export async function GET(
         title: song.title,
         artist: song.artist,
         level: song.level,
-        levelName: song.levelName
+        levelName: song.levelName,
+        language: song.language
       }
     })
   } catch (error) {

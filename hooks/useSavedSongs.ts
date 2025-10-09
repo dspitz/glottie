@@ -33,11 +33,15 @@ export function useSavedSongs() {
       const storageKey = `savedSongs_${language}`
       let saved = localStorage.getItem(storageKey)
 
+      console.log('💾 useSavedSongs: Loading saved songs for language:', language)
+      console.log('💾 Storage key:', storageKey)
+      console.log('💾 Raw localStorage value:', saved ? saved.substring(0, 100) + '...' : 'null')
+
       // MIGRATION: If no language-specific saved songs exist, check for old 'savedSongs' key
       if (!saved && language === 'es') {
         const oldSaved = localStorage.getItem('savedSongs')
         if (oldSaved) {
-          console.log('Migrating saved songs from old key to savedSongs_es')
+          console.log('💾 Migrating saved songs from old key to savedSongs_es')
           // Copy to new key
           localStorage.setItem(storageKey, oldSaved)
           saved = oldSaved
@@ -46,11 +50,15 @@ export function useSavedSongs() {
 
       if (saved) {
         try {
-          setLocalSavedSongs(JSON.parse(saved))
+          const parsed = JSON.parse(saved)
+          console.log('💾 Parsed saved songs:', parsed.length, 'songs')
+          console.log('💾 Songs:', parsed.map((s: any) => ({ id: s.id, title: s.title, artist: s.artist })))
+          setLocalSavedSongs(parsed)
         } catch (error) {
-          console.error('Error parsing saved songs from localStorage:', error)
+          console.error('💾 Error parsing saved songs from localStorage:', error)
         }
       } else {
+        console.log('💾 No saved songs found for', language)
         setLocalSavedSongs([])
       }
     }
@@ -114,9 +122,18 @@ export function useSavedSongs() {
     const isSaved = isSongSaved(song.id)
     const storageKey = `savedSongs_${language}`
 
+    console.log('💾 toggleSave:', {
+      action: isSaved ? 'REMOVE' : 'ADD',
+      songId: song.id,
+      title: song.title,
+      language: language,
+      storageKey: storageKey
+    })
+
     // Use localStorage for all users
     if (isSaved) {
       const filtered = localSavedSongs.filter(s => s.id !== song.id)
+      console.log('💾 Removing song. New count:', filtered.length)
       setLocalSavedSongs(filtered)
       localStorage.setItem(storageKey, JSON.stringify(filtered))
     } else {
@@ -125,6 +142,7 @@ export function useSavedSongs() {
         savedAt: new Date().toISOString()
       }
       const updated = [...localSavedSongs, newSong]
+      console.log('💾 Adding song. New count:', updated.length)
       setLocalSavedSongs(updated)
       localStorage.setItem(storageKey, JSON.stringify(updated))
     }
