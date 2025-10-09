@@ -7,7 +7,7 @@ import { fetchLevels } from '@/lib/client'
 import { Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { getLanguageName } from '@/lib/languageUtils'
+import { getLanguageName, getFloodColor, getFloodComplementaryColor } from '@/lib/languageUtils'
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -32,8 +32,7 @@ export default function HomePage() {
 
   useEffect(() => {
     // Apply language-specific background to body on homepage
-    const bgColor = language === 'es' ? '#F77373' : '#F79F73'
-    document.body.style.backgroundColor = bgColor
+    document.body.style.backgroundColor = getFloodColor(language)
 
     // Trigger animation when language changes
     setAnimationKey(prev => prev + 1)
@@ -76,7 +75,7 @@ export default function HomePage() {
   const stats = levelsData?.stats || {}
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: language === 'es' ? '#F77373' : '#F79F73' }}>
+    <div className="min-h-screen" style={{ backgroundColor: getFloodColor(language) }}>
       <style jsx>{`
         @keyframes cascadeIn {
           from {
@@ -88,15 +87,32 @@ export default function HomePage() {
             transform: translateY(0);
           }
         }
+        @keyframes cascadeInOffset {
+          from {
+            opacity: 0;
+            transform: translateY(64px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(44px);
+          }
+        }
         .cascade-item {
-          animation: cascadeIn 0.5s ease-out forwards;
+          animation: cascadeIn 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+          opacity: 0;
+        }
+        .cascade-item-offset {
+          animation: cascadeInOffset 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
           opacity: 0;
         }
       `}</style>
-      <div className="container py-8 relative" key={animationKey}>
+      <div className="container pb-8 relative" key={animationKey}>
       {/* Hero Section */}
-      <div className="mb-12 text-center">
-        <div className="mb-6 cascade-item" style={{ animationDelay: '0ms' }}>
+      <div className="text-center" style={{ marginBottom: '-24px' }}>
+        <h1 className="text-[44px] leading-[52px] font-medium tracking-tight cascade-item-offset" style={{ animationDelay: '0ms', color: getFloodComplementaryColor(language) }}>
+          Learn Languages<br />Through Music
+        </h1>
+        <div className="cascade-item" style={{ animationDelay: '100ms' }}>
           <Image
             src={language === 'fr' ? '/images/Mascot_French.png' : '/images/Mascot_Spanish.png'}
             alt={`${languageName} Music Mascot`}
@@ -106,12 +122,6 @@ export default function HomePage() {
             priority
           />
         </div>
-        <h1 className="text-[44px] leading-[52px] font-medium tracking-tight mb-4 cascade-item" style={{ animationDelay: '100ms' }}>
-          Learn Languages<br />Through Music
-        </h1>
-        <p className="text-lg leading-6 max-w-3xl mx-auto mb-6 cascade-item" style={{ animationDelay: '200ms', color: 'rgba(0, 0, 0, 0.66)' }}>
-          La la la your way to a new language and discover some of the world's greatest music along the way
-        </p>
 
       </div>
 
@@ -122,7 +132,15 @@ export default function HomePage() {
             const levelSongs = levels[level.toString()] || []
             console.log(`🎵 Rendering Level ${level} card with ${levelSongs.length} songs`, levelSongs)
             return (
-              <div key={level} className="cascade-item" style={{ animationDelay: `${300 + (level - 1) * 80}ms` }}>
+              <div
+                key={level}
+                className="cascade-item"
+                style={{
+                  animationDelay: `${200 + (level - 1) * 2}ms`,
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)'
+                }}
+              >
                 <LevelCard
                   level={level}
                   songs={levelSongs}

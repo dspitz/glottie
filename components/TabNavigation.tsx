@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Music, GraduationCap, Brain, Bookmark, User } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 interface TabItem {
   href: string
@@ -17,6 +19,7 @@ interface TabItem {
 export function TabNavigation() {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { language } = useLanguage()
   const isHomepage = pathname === '/' || pathname.startsWith('/levels')
 
   const tabs: TabItem[] = [
@@ -63,7 +66,10 @@ export function TabNavigation() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] backdrop-blur-[36px] bg-white/90 supports-[backdrop-filter]:bg-white/90">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] backdrop-blur-[36px]"
+      style={{ backgroundColor: getFloodColor(language, 0.9) }}
+    >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-around h-16">
           {tabs.map((tab) => {
@@ -81,10 +87,11 @@ export function TabNavigation() {
                 className={`
                   flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all
                   ${active
-                    ? 'text-primary transform scale-110'
-                    : 'text-muted-foreground hover:text-foreground hover:scale-105'
+                    ? 'transform scale-110'
+                    : 'text-black/50 hover:text-black hover:scale-105'
                   }
                 `}
+                style={active ? { color: getSecondaryColor(language) } : {}}
               >
                 {tab.href === '/profile' && session ? (
                   <Avatar className="h-5 w-5 ring-1 ring-black/[0.08]">

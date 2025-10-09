@@ -20,7 +20,7 @@ import { getLevelDescription } from '@/lib/utils'
 import { getLevelTags } from '@/lib/levelTags'
 import { Loader2, AlertCircle, ArrowLeft, ChevronDown } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { getLanguageName } from '@/lib/languageUtils'
+import { getLanguageName, getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 function LevelPageContent() {
   const params = useParams()
@@ -36,8 +36,7 @@ function LevelPageContent() {
 
   // Set background color based on language
   useEffect(() => {
-    const bgColor = language === 'es' ? '#F77373' : '#F79F73'
-    document.body.style.backgroundColor = bgColor
+    document.body.style.backgroundColor = getFloodColor(language)
 
     return () => {
       document.body.style.backgroundColor = ''
@@ -151,7 +150,7 @@ function LevelPageContent() {
     <div className="px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-white mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem' }}>
+          <h2 className="mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem', color: getSecondaryColor(language) }}>
             {getLevelDescription(level)}
           </h2>
       </div>

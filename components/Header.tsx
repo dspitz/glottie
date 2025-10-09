@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { getLanguageName } from '@/lib/languageUtils'
+import { getLanguageName, getFloodColor, getFloodComplementaryColor } from '@/lib/languageUtils'
 
 export function Header() {
   const pathname = usePathname()
@@ -46,8 +46,7 @@ export function Header() {
 
   const getHeaderStyle = () => {
     if (isHomepage || isLevelPage) {
-      const bgColor = language === 'es' ? 'rgba(247, 115, 115, 0.9)' : 'rgba(247, 159, 115, 0.9)'
-      return { backgroundColor: bgColor }
+      return { backgroundColor: getFloodColor(language, 0.9) }
     }
     return {}
   }
@@ -81,7 +80,7 @@ export function Header() {
                 style={{ objectFit: 'contain' }}
                 className="text-primary w-7 h-7"
               />
-              <span className="font-bold text-xl">diddydum</span>
+              <span className="font-medium text-xl">diddydum</span>
             </Link>
           )}
         </div>

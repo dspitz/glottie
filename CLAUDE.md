@@ -3,6 +3,29 @@
 ## Project Overview
 Recanta (also known as Glottie) is an interactive Spanish learning platform where students learn through song lyrics organized by difficulty levels. The app provides sentence-level translations, word definitions, verb conjugations, and integrated Spotify playback.
 
+## Color System
+
+### Flood Color
+The **Flood Color** is the primary background color for each language:
+- **Spanish (es)**: `#F77373` - rgba(247, 115, 115)
+- **French (fr)**: `#F79F73` - rgba(247, 159, 115)
+
+Usage: `getFloodColor(language, alpha?)`
+
+### Secondary Color
+The **Secondary Color** is derived from the Flood Color using:
+- **210° hue rotation** (for blue shift from orange/red base)
+- **60% saturation**
+- **33% lightness**
+
+This produces:
+- **Spanish red** → **Dark teal**
+- **French orange** → **Dark blue**
+
+Usage: `getSecondaryColor(language, alpha?)`
+
+Both functions are available in `/lib/languageUtils.ts`
+
 ## Quick Commands
 
 ### Development
