@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
@@ -14,13 +14,23 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Bookmark, Music2, LogIn, Trash2, Quote } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 function SavedPageContent() {
   const { data: session } = useSession()
+  const { language } = useLanguage()
   const { savedSongs, isLoading, toggleSave, clearSavedSongs } = useSavedSongs()
   const { bookmarkedLines, removeBookmark } = useBookmarkedLines()
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  useEffect(() => {
+    document.body.style.backgroundColor = getFloodColor(language)
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
 
   const openSongModal = (songId: string) => {
     setSelectedSongId(songId)
@@ -68,8 +78,8 @@ function SavedPageContent() {
     <div className="container px-6 py-8 pb-24">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="mb-2" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500 }}>Saved</h1>
+        <div>
+          <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Saved</h1>
         </div>
 
         {/* Sign in prompt for unauthenticated users */}

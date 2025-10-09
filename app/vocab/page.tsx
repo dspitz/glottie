@@ -6,6 +6,7 @@ import { BookOpen, MessageCircle, Library } from 'lucide-react'
 import { BasicsCard } from '@/components/basics/BasicsCard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 export default function BasicsPage() {
   const { language } = useLanguage()
@@ -13,6 +14,13 @@ export default function BasicsPage() {
   const [phraseCategories, setPhraseCategories] = useState<any[]>([])
   const [vocabLists, setVocabLists] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    document.body.style.backgroundColor = getFloodColor(language)
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
 
   useEffect(() => {
     // Dynamically import data based on language
@@ -49,8 +57,8 @@ export default function BasicsPage() {
 
   return (
     <div className="container mx-auto px-6 pb-20">
-      <div className="py-6">
-        <h1 className="mb-6" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500 }}>Basics</h1>
+      <div className="pt-8 pb-6">
+        <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Basics</h1>
         <Tabs defaultValue="tenses" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tenses" className="flex items-center gap-2">
@@ -68,7 +76,7 @@ export default function BasicsPage() {
           </TabsList>
 
           <TabsContent value="tenses" className="mt-6">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {tenses.map((tense) => (
                 <Link key={tense.id} href={`/vocab/tenses/${tense.id}`}>
                   <BasicsCard
@@ -77,6 +85,7 @@ export default function BasicsPage() {
                     description={tense.briefUsage}
                     examplePhrase={tense.examplePhrase}
                     onClick={() => {}}
+                    language={language}
                   />
                 </Link>
               ))}
@@ -84,7 +93,7 @@ export default function BasicsPage() {
           </TabsContent>
 
           <TabsContent value="phrases" className="mt-6">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="grid grid-cols-2 gap-3">
               {phraseCategories.map((category) => (
                 <Link key={category.id} href={`/vocab/phrases/${category.id}`}>
                   <BasicsCard
@@ -92,6 +101,7 @@ export default function BasicsPage() {
                     title={category.name}
                     description={category.description}
                     onClick={() => {}}
+                    variant="grid"
                   />
                 </Link>
               ))}
@@ -99,7 +109,7 @@ export default function BasicsPage() {
           </TabsContent>
 
           <TabsContent value="vocab" className="mt-6">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="grid grid-cols-2 gap-3">
               {vocabLists.map((list) => (
                 <Link key={list.id} href={`/vocab/lists/${list.id}`}>
                   <BasicsCard
@@ -107,6 +117,7 @@ export default function BasicsPage() {
                     title={list.name}
                     description={list.description}
                     onClick={() => {}}
+                    variant="grid"
                   />
                 </Link>
               ))}

@@ -110,10 +110,9 @@ export function Header() {
           )}
         </div>
 
-        {/* Right side - Language Selector and Auth Button */}
+        {/* Right side - Language Selector */}
         <div className="absolute right-6 flex items-center gap-3">
           <LanguageSelector />
-          <AuthButton />
         </div>
       </div>
     </header>

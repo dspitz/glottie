@@ -6,6 +6,7 @@ import { TrendingUp, Bookmark, BookOpen } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VocabularyModal } from '@/components/vocab/VocabularyModal'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 interface VocabularyWord {
   id: string
@@ -48,6 +49,13 @@ export default function LearningsPage() {
   const [isLoadingBookmarks, setIsLoadingBookmarks] = useState(true)
   const [selectedWord, setSelectedWord] = useState<VocabularyWord | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+
+  useEffect(() => {
+    document.body.style.backgroundColor = getFloodColor(language)
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
 
   // Load most engaged words
   useEffect(() => {
@@ -212,8 +220,8 @@ export default function LearningsPage() {
 
   return (
     <div className="container mx-auto px-6 pb-20">
-      <div className="py-6">
-        <h1 className="mb-6" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500 }}>Learnings</h1>
+      <div className="pt-8 pb-6">
+        <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Learnings</h1>
         <Tabs defaultValue="words" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="words" className="flex items-center gap-2">
