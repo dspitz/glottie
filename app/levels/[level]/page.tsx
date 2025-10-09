@@ -169,6 +169,34 @@ function LevelPageContent() {
               </Button>
             </div>
           )}
+
+          {/* Level 2: Past Tense Button */}
+          {level === 2 && (
+            <div className="flex justify-center mt-6">
+              <Button
+                size="sm"
+                className="gap-2 rounded-xl border-0 px-4 py-3 h-auto bg-black/[0.08] hover:bg-black/[0.12] text-white"
+                onClick={() => setIsTenseModalOpen(true)}
+              >
+                <BookOpen className="h-4 w-4" />
+                Learn Past Tense
+              </Button>
+            </div>
+          )}
+
+          {/* Level 3: Future Tense Button */}
+          {level === 3 && (
+            <div className="flex justify-center mt-6">
+              <Button
+                size="sm"
+                className="gap-2 rounded-xl border-0 px-4 py-3 h-auto bg-black/[0.08] hover:bg-black/[0.12] text-white"
+                onClick={() => setIsTenseModalOpen(true)}
+              >
+                <BookOpen className="h-4 w-4" />
+                Learn Future Tense
+              </Button>
+            </div>
+          )}
       </div>
 
       {/* Songs List */}
@@ -220,7 +248,7 @@ function LevelPageContent() {
 
       {/* Tense Modal */}
       <TenseModal
-        tenseId="present"
+        tenseId={level === 1 ? "present" : level === 2 ? "preterite" : "future"}
         isOpen={isTenseModalOpen}
         onClose={() => setIsTenseModalOpen(false)}
       />
