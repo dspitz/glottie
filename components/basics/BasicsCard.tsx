@@ -28,7 +28,7 @@ export function BasicsCard({ icon, title, subtitle, description, onClick, exampl
       <Card
         className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] overflow-hidden border-0"
         onClick={onClick}
-        style={{ borderRadius: '24px', backgroundColor: 'rgba(0, 0, 0, 0.08)', height: '220px' }}
+        style={{ borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', height: '220px' }}
       >
         <CardContent className="px-5 pt-8 pb-5 h-full flex flex-col items-center text-center">
           <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 bg-white/70">
@@ -52,7 +52,7 @@ export function BasicsCard({ icon, title, subtitle, description, onClick, exampl
     <Card
       className="cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] overflow-hidden border-0"
       onClick={onClick}
-      style={{ borderRadius: '24px', backgroundColor: 'rgba(0, 0, 0, 0.08)' }}
+      style={{ borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}
     >
       <CardContent style={{ padding: '40px 20px 0 20px' }}>
         <div className="text-center">

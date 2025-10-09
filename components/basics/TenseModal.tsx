@@ -43,7 +43,7 @@ export function TenseModal({ tense, open, onOpenChange }: TenseModalProps) {
           <div>
             <h3 className="font-semibold mb-3">Regular Conjugation Patterns</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+              <div className="space-y-2 p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                 <h4 className="font-medium text-blue-900 dark:text-blue-100">-AR Verbs</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between"><span>yo</span><span className="font-mono">{tense.regularPatterns.ar.yo}</span></div>
@@ -55,7 +55,7 @@ export function TenseModal({ tense, open, onOpenChange }: TenseModalProps) {
                 </div>
               </div>
 
-              <div className="space-y-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
+              <div className="space-y-2 p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                 <h4 className="font-medium text-green-900 dark:text-green-100">-ER Verbs</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between"><span>yo</span><span className="font-mono">{tense.regularPatterns.er.yo}</span></div>
@@ -67,7 +67,7 @@ export function TenseModal({ tense, open, onOpenChange }: TenseModalProps) {
                 </div>
               </div>
 
-              <div className="space-y-2 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
+              <div className="space-y-2 p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                 <h4 className="font-medium text-purple-900 dark:text-purple-100">-IR Verbs</h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between"><span>yo</span><span className="font-mono">{tense.regularPatterns.ir.yo}</span></div>
@@ -90,7 +90,7 @@ export function TenseModal({ tense, open, onOpenChange }: TenseModalProps) {
 
             <TabsContent value="regular" className="space-y-4 mt-4">
               {tense.regularExamples.map((example, i) => (
-                <div key={i} className="p-4 rounded-lg border">
+                <div key={i} className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <h4 className="font-semibold text-lg">{example.infinitive}</h4>
                     <span className="text-sm text-muted-foreground">({example.english})</span>
@@ -109,7 +109,7 @@ export function TenseModal({ tense, open, onOpenChange }: TenseModalProps) {
 
             <TabsContent value="irregular" className="space-y-4 mt-4">
               {tense.irregularExamples.map((example, i) => (
-                <div key={i} className="p-4 rounded-lg border bg-orange-50/50 dark:bg-orange-950/10">
+                <div key={i} className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                   <div className="flex items-center gap-2 mb-3">
                     <h4 className="font-semibold text-lg">{example.infinitive}</h4>
                     <span className="text-sm text-muted-foreground">({example.english})</span>
@@ -133,7 +133,7 @@ export function TenseModal({ tense, open, onOpenChange }: TenseModalProps) {
             <h3 className="font-semibold mb-3">Example Sentences</h3>
             <div className="space-y-2">
               {tense.exampleSentences.map((sentence, i) => (
-                <div key={i} className="p-3 rounded-lg bg-muted/50">
+                <div key={i} className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                   <p className="font-medium">{sentence.spanish}</p>
                   <p className="text-sm text-muted-foreground italic">{sentence.english}</p>
                 </div>

@@ -29,7 +29,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-6 text-sm font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=inactive]:text-black/50 data-[state=active]:bg-white data-[state=active]:text-gray-900",
+      "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-6 text-sm font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 data-[state=inactive]:text-white data-[state=active]:bg-white data-[state=active]:text-gray-900",
       className
     )}
     style={props['data-state'] === 'active' ? { boxShadow: '0 6px 3px rgba(0, 0, 0, 0.08)' } as React.CSSProperties : {}}

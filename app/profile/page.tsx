@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, Music, Crown, LogOut, ChevronRight, TrendingUp, Music2, BarChart3, Star, Trophy } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { getLanguageName, getSecondaryColor } from '@/lib/languageUtils'
+import { getLanguageName, getSecondaryColor, getFloodColor } from '@/lib/languageUtils'
 
 const SpotifyIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -35,6 +35,15 @@ export default function ProfilePage() {
   const [statsLoading, setStatsLoading] = React.useState(true)
   const [uploading, setUploading] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Set background color based on language
+  React.useEffect(() => {
+    document.body.style.backgroundColor = getFloodColor(language)
+
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
 
   // Redirect to home if not authenticated
   React.useEffect(() => {

@@ -54,9 +54,10 @@ export function PhraseCard({ phrase }: PhraseCardProps) {
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all hover:shadow-md",
+        "cursor-pointer transition-all hover:shadow-md border-0",
         isExpanded && "shadow-lg"
       )}
+      style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}
       onClick={() => setIsExpanded(!isExpanded)}
     >
       <CardContent className="p-4">

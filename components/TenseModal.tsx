@@ -257,7 +257,7 @@ export function TenseModal({ tenseId, isOpen, onClose }: TenseModalProps) {
                   }
 
                   return (
-                    <div key={i} className="p-4 rounded-lg bg-white/[0.12] border border-white/20">
+                    <div key={i} className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                       <p className="font-medium mb-1 text-white">{sentence.english}</p>
                       <p className="text-sm text-white/60 italic">
                         {highlightVerb(sentence.spanish || sentence.french)}
@@ -271,7 +271,7 @@ export function TenseModal({ tenseId, isOpen, onClose }: TenseModalProps) {
             {/* Regular Patterns */}
             <section>
               <div className="overflow-x-auto mt-8">
-                <div className="p-6 rounded-lg bg-white/[0.12] border border-white/20">
+                <div className="p-6 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                   <table className="w-full text-white">
                     <thead>
                       <tr className="border-b border-white/20">
@@ -305,7 +305,7 @@ export function TenseModal({ tenseId, isOpen, onClose }: TenseModalProps) {
 
             {/* Examples with Tabs */}
             <section className="mt-8">
-              <div className="rounded-lg bg-white/[0.12] border border-white/20 p-6">
+              <div className="rounded-lg p-6" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                 <Tabs defaultValue="regular" className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-0">
                     <TabsTrigger value="regular" className="data-[state=inactive]:text-white">Regular Examples</TabsTrigger>
@@ -371,7 +371,7 @@ export function TenseModal({ tenseId, isOpen, onClose }: TenseModalProps) {
             {/* Recap */}
             <section className="mt-8">
               <h2 className="text-xl font-light mb-4 text-white text-center">Summary of the {tense.nameSpanish || tense.nameFrench}</h2>
-              <div className="rounded-lg bg-white/[0.12] border border-white/20">
+              <div className="rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                 {tense.whenToUse.map((usage: any, i: number) => {
                   const rule = typeof usage === 'string' ? usage : usage.rule
                   const example = typeof usage === 'string' ? null : usage.example

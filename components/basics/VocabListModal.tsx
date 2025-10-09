@@ -52,7 +52,8 @@ export function VocabListModal({ list, open, onOpenChange }: VocabListModalProps
           {list.words.map((word, i) => (
             <div
               key={i}
-              className="p-3 rounded-lg border hover:shadow-md transition-all"
+              className="p-3 rounded-lg hover:shadow-md transition-all"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}
             >
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="flex-1 min-w-0">

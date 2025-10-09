@@ -318,16 +318,10 @@ export default function LearningsPage() {
           </TabsList>
 
           <TabsContent value="words" className="mt-6">
-            <div className="mb-4">
-              <p className="text-sm text-muted-foreground">
-                Words you've clicked on most frequently
-              </p>
-            </div>
-
             {isLoadingEngaged ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20" />
+                  <Skeleton key={i} className="h-20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: '16px' }} />
                 ))}
               </div>
             ) : engagedWords.length > 0 ? (
@@ -335,8 +329,10 @@ export default function LearningsPage() {
                 {engagedWords.map(renderEngagedWord)}
               </div>
             ) : (
-              <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-30" />
+              <div className="text-center py-12 text-white rounded-lg" style={{ border: '2px dotted rgba(255, 255, 255, 0.4)' }}>
+                <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 16px 24px rgba(0, 0, 0, 0.08)' }}>
+                  <TrendingUp className="h-8 w-8" />
+                </div>
                 <p className="font-medium mb-1">No engaged words yet</p>
                 <p className="text-sm">Start clicking on words in songs to see them here!</p>
               </div>
@@ -344,16 +340,10 @@ export default function LearningsPage() {
           </TabsContent>
 
           <TabsContent value="phrases" className="mt-6">
-            <div className="mb-4">
-              <p className="text-sm text-muted-foreground">
-                Phrases you've bookmarked from songs
-              </p>
-            </div>
-
             {isLoadingBookmarks ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24" />
+                  <Skeleton key={i} className="h-24" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: '16px' }} />
                 ))}
               </div>
             ) : bookmarkedLines.length > 0 ? (
@@ -387,8 +377,10 @@ export default function LearningsPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                <Bookmark className="h-12 w-12 mx-auto mb-4 opacity-30" />
+              <div className="text-center py-12 text-white rounded-lg" style={{ border: '2px dotted rgba(255, 255, 255, 0.4)' }}>
+                <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 16px 24px rgba(0, 0, 0, 0.08)' }}>
+                  <Bookmark className="h-8 w-8" />
+                </div>
                 <p className="font-medium mb-1">No saved phrases yet</p>
                 <p className="text-sm">Bookmark lyrics from songs to save them here!</p>
               </div>

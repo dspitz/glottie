@@ -147,7 +147,7 @@ export function VocabularyModal({ word, open, onOpenChange }: VocabularyModalPro
               </h4>
               <div className="space-y-2">
                 {examples.map((example: string, i: number) => (
-                  <div key={i} className="p-3 bg-secondary/50 rounded-lg">
+                  <div key={i} className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}>
                     <p className="text-sm italic">"{example}"</p>
                   </div>
                 ))}
@@ -180,7 +180,8 @@ export function VocabularyModal({ word, open, onOpenChange }: VocabularyModalPro
                   <div
                     key={song.id}
                     onClick={() => handleSongClick(song.id)}
-                    className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg hover:bg-secondary transition-colors cursor-pointer"
+                    className="flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer hover:scale-[1.01]"
+                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', borderRadius: '16px' }}
                   >
                     {song.albumArt && (
                       <img
