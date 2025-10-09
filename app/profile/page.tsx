@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { User, Music, Crown, LogOut, ChevronRight, TrendingUp, Music2, BarChart3, Star, Trophy } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { getLanguageName } from '@/lib/languageUtils'
+import { getLanguageName, getSecondaryColor } from '@/lib/languageUtils'
 
 const SpotifyIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="currentColor">
@@ -147,13 +147,13 @@ export default function ProfilePage() {
             />
           </div>
           <div className="text-center">
-            <div className="text-[28px] font-semibold">{session.user?.name || 'User'}</div>
-            <div className="text-sm text-muted-foreground">{session.user?.email}</div>
+            <div className="text-[32px]" style={{ color: getSecondaryColor(language), fontWeight: 500 }}>{session.user?.name || 'User'}</div>
+            <div className="text-sm text-black/70">{session.user?.email}</div>
           </div>
         </div>
 
         {/* Stats Card */}
-        <Card className="mb-4">
+        <Card className="mb-4 border-0" style={{ borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
           <CardHeader className="px-5 pt-8 pb-4">
             <div className="flex flex-col items-center gap-2">
               <Image
@@ -164,11 +164,11 @@ export default function ProfilePage() {
                 className="h-[138px] w-[138px]"
               />
               <div className="text-center">
-                <span className="font-medium text-sm">
+                <span className="font-medium text-sm text-black">
                   {statsLoading ? `${languageName} Level 1 - Beginner` : `${languageName} Level ${stats?.userLevel || 1} - ${stats?.userLevelName || 'Beginner'}`}
                 </span>
                 {stats?.userLevel === 1 && (
-                  <p className="text-sm text-black/60 mt-1 px-8">
+                  <p className="text-sm text-black/70 mt-1 px-8">
                     Listen to 5 {languageName.toLowerCase()} songs, and pass the post-song quizzes to advance to level 2
                   </p>
                 )}
@@ -177,35 +177,35 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="pt-6">
             {statsLoading ? (
-              <div className="text-center py-6 text-muted-foreground text-sm">
+              <div className="text-center py-6 text-black/70 text-sm">
                 Loading stats...
               </div>
             ) : stats ? (
               <>
-                <hr className="mb-6 border-border" />
+                <hr className="mb-6" style={{ borderColor: 'rgba(255, 255, 255, 0.20)' }} />
                 <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <div className="text-[28px] font-semibold">{stats.songsCompleted || 0}/5</div>
-                  <p className="text-xs text-muted-foreground">Songs</p>
+                  <div className="text-[28px] font-semibold text-black">{stats.songsCompleted || 0}/5</div>
+                  <p className="text-xs text-black/70">Songs</p>
                 </div>
 
                 <div className="text-center">
-                  <div className="text-[28px] font-semibold">
+                  <div className="text-[28px] font-semibold text-black">
                     {(stats.averageSongLevel || 1.0).toFixed(1)}
                   </div>
-                  <p className="text-xs text-muted-foreground">Difficulty</p>
+                  <p className="text-xs text-black/70">Difficulty</p>
                 </div>
 
                 <div className="text-center">
-                  <div className="text-[28px] font-semibold">
+                  <div className="text-[28px] font-semibold text-black">
                     {stats.averageGrade ?? 0}%
                   </div>
-                  <p className="text-xs text-muted-foreground">Grade</p>
+                  <p className="text-xs text-black/70">Grade</p>
                 </div>
               </div>
               </>
             ) : (
-              <div className="text-center py-6 text-muted-foreground text-sm">
+              <div className="text-center py-6 text-black/70 text-sm">
                 Unable to load stats
               </div>
             )}
@@ -213,14 +213,16 @@ export default function ProfilePage() {
         </Card>
 
         {/* Sign Out */}
-        <Card>
+        <Card className="border-0" style={{ borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
           <CardContent className="p-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <SpotifyIcon className="h-9 w-9 text-[#1DB954]" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white">
+                  <SpotifyIcon style={{ width: '36px', height: '36px' }} className="text-[#1DB954]" />
+                </div>
                 <div>
-                  <span className="font-medium text-sm">Spotify Premium</span>
-                  <p className="text-xs text-muted-foreground">Connected account</p>
+                  <span className="font-medium text-sm text-black">Spotify Premium</span>
+                  <p className="text-xs text-black/70">Connected account</p>
                 </div>
               </div>
               <Button

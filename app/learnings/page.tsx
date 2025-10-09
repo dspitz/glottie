@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, Bookmark, BookOpen } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -258,68 +259,35 @@ export default function LearningsPage() {
   }
 
   const renderEngagedWord = (engaged: EngagedWord) => {
-    // Determine part of speech
-    let partOfSpeech = 'other'
     const vocab = engaged.vocabulary
-
-    if (vocab) {
-      partOfSpeech = vocab.partOfSpeech
-    } else if (engaged.definition) {
-      try {
-        const def = JSON.parse(engaged.definition)
-        if (def.pos) {
-          const posLower = def.pos.toLowerCase()
-          if (posLower.includes('noun')) partOfSpeech = 'noun'
-          else if (posLower.includes('verb')) partOfSpeech = 'verb'
-          else if (posLower.includes('adj')) partOfSpeech = 'adjective'
-          else if (posLower.includes('adv')) partOfSpeech = 'adverb'
-        }
-      } catch (e) {
-        // Keep default
-      }
-    }
-
-    const partOfSpeechColors = {
-      noun: 'bg-blue-100 text-blue-800',
-      verb: 'bg-green-100 text-green-800',
-      adjective: 'bg-purple-100 text-purple-800',
-      adverb: 'bg-orange-100 text-orange-800',
-      other: 'bg-gray-100 text-gray-800'
-    }
-
-    const partOfSpeechLabels = {
-      noun: 'Noun',
-      verb: 'Verb',
-      adjective: 'Adj',
-      adverb: 'Adv',
-      other: 'Other'
-    }
-
     const translation = vocab?.translation || engaged.translation
 
     return (
       <div
         key={engaged.word}
-        className="p-3 border-2 border-border bg-card hover:shadow-md transition-all hover:scale-[1.01] cursor-pointer flex items-center justify-between"
-        style={{ borderRadius: '24px', gap: '16px' }}
+        className="hover:shadow-md transition-all hover:scale-[1.01] cursor-pointer"
+        style={{
+          borderRadius: '16px',
+          padding: '20px',
+          backgroundColor: 'rgba(255, 255, 255, 0.12)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+        }}
         onClick={() => handleEngagedWordClick(engaged)}
       >
-        <div className="flex items-center flex-1 min-w-0" style={{ gap: '16px' }}>
-          <div className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-1.5 rounded-full shadow-sm shrink-0">
-            {engaged.clickCount}×
-          </div>
+        <div className="flex items-start justify-between gap-3 mb-2">
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-foreground truncate">{engaged.word}</h3>
-            {translation ? (
-              <p className="text-sm text-muted-foreground truncate" style={{ marginTop: '8px' }}>{translation}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground" style={{ marginTop: '8px' }}>Click to see definition</p>
+            {translation && (
+              <p className="text-sm text-muted-foreground truncate mt-1">{translation}</p>
             )}
           </div>
+          <div
+            className="text-xs font-bold px-2.5 py-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: getSecondaryColor(language), color: 'white' }}
+          >
+            {engaged.clickCount}×
+          </div>
         </div>
-        <span className={`px-2 py-0.5 rounded text-xs shrink-0 ${partOfSpeechColors[partOfSpeech as keyof typeof partOfSpeechColors]}`}>
-          {partOfSpeechLabels[partOfSpeech as keyof typeof partOfSpeechLabels]}
-        </span>
       </div>
     )
   }
@@ -327,7 +295,16 @@ export default function LearningsPage() {
   return (
     <div className="container mx-auto px-6 pb-20">
       <div className="max-w-2xl mx-auto pt-8 pb-6">
-        <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Learnings</h1>
+        <div className="flex flex-col items-center">
+          <h1 className="text-center" style={{ fontSize: '18px', lineHeight: '24px', fontWeight: 500, color: getSecondaryColor(language), marginBottom: '24px' }}>Learnings</h1>
+          <Image
+            src="/images/brain_no_bg.png"
+            alt="Brain"
+            width={202}
+            height={202}
+            className="h-[202px] w-[202px] mb-8"
+          />
+        </div>
         <Tabs defaultValue="words" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="words" className="flex items-center gap-2">
@@ -384,8 +361,13 @@ export default function LearningsPage() {
                 {bookmarkedLines.map((bookmark) => (
                   <div
                     key={bookmark.id}
-                    className="p-3 border-2 border-border bg-card hover:shadow-md transition-all hover:scale-[1.01]"
-                    style={{ borderRadius: '24px' }}
+                    className="hover:shadow-md transition-all hover:scale-[1.01]"
+                    style={{
+                      borderRadius: '16px',
+                      padding: '20px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+                    }}
                   >
                     <div className="flex items-start justify-between mb-2" style={{ gap: '16px' }}>
                       <div className="flex-1 min-w-0">

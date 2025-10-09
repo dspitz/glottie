@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { BookOpen, MessageCircle, Library } from 'lucide-react'
 import { BasicsCard } from '@/components/basics/BasicsCard'
@@ -58,7 +59,16 @@ export default function BasicsPage() {
   return (
     <div className="container mx-auto px-6 pb-20">
       <div className="max-w-2xl mx-auto pt-8 pb-6">
-        <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Basics</h1>
+        <div className="flex flex-col items-center">
+          <h1 className="text-center" style={{ fontSize: '18px', lineHeight: '24px', fontWeight: 500, color: getSecondaryColor(language), marginBottom: '24px' }}>Basics</h1>
+          <Image
+            src="/images/cap_no_bg.png"
+            alt="Cap"
+            width={202}
+            height={202}
+            className="h-[202px] w-[202px] mb-8"
+          />
+        </div>
         <Tabs defaultValue="tenses" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="tenses" className="flex items-center gap-2">
