@@ -55,7 +55,7 @@ export function LevelCard({ level, songs, language = 'es', className }: LevelCar
   return (
     <Link
       href={`/levels/${level}`}
-      className="block group"
+      className="block group h-full"
       onMouseEnter={(e) => {
         const leftCovers = e.currentTarget.querySelectorAll('.album-cover-left')
         const rightCovers = e.currentTarget.querySelectorAll('.album-cover-right')
@@ -86,7 +86,7 @@ export function LevelCard({ level, songs, language = 'es', className }: LevelCar
       }}
     >
       <Card className={cn('h-full cursor-pointer @container border-0 relative rounded-[24px]', className)} style={{ backgroundColor: 'rgba(0, 0, 0, 0.08)', color: 'black' }}>
-        <CardContent className="pt-0 pb-8 px-8">
+        <CardContent className="pt-0 pb-8 px-8 h-full flex flex-col">
           <div className="space-y-6 flex flex-col items-center">
             {/* Fanned stack of album art - container for scaling */}
             {featuredSongs.length > 0 && (

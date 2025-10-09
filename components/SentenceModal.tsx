@@ -124,9 +124,9 @@ export function SentenceModal({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onNavigatePrevious, onNavigateNext, onClose, currentLineIndex, totalLines])
 
-  // Apply background color when modal opens
+  // Apply background color and width constraints when modal opens
   useEffect(() => {
-    if (isOpen && backgroundColor && typeof window !== 'undefined') {
+    if (isOpen && typeof window !== 'undefined') {
       // Create or update style element for modal background
       let styleEl = document.getElementById('modal-bg-style') as HTMLStyleElement
       if (!styleEl) {
@@ -134,17 +134,30 @@ export function SentenceModal({
         styleEl.id = 'modal-bg-style'
         document.head.appendChild(styleEl)
       }
-      
+
       styleEl.textContent = `
+        ${backgroundColor ? `
         [data-state="open"] {
           background-color: ${backgroundColor} !important;
         }
-        
+
         .modal-overlay {
           background-color: ${backgroundColor}80 !important;
         }
+        ` : ''}
+
+        /* Force width constraint on translation modal */
+        [data-radix-dialog-content] {
+          max-width: 672px !important;
+        }
+
+        @media (max-width: 672px) {
+          [data-radix-dialog-content] {
+            max-width: 100vw !important;
+          }
+        }
       `
-      
+
       return () => {
         styleEl?.remove()
       }
@@ -153,7 +166,13 @@ export function SentenceModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-black/90 border-white/20 text-white h-[67vh] flex flex-col overflow-hidden">
+      <DialogContent
+        className="bg-black/90 border-white/20 text-white h-[67vh] flex flex-col overflow-hidden"
+        style={{
+          width: '100vw',
+          maxWidth: '672px'
+        }}
+      >
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center justify-center text-white">

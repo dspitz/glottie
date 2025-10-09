@@ -150,6 +150,7 @@ function LevelPageContent() {
 
   return (
     <div className="px-6 py-8">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h2 className="mb-4 text-center whitespace-pre-line" style={{ fontSize: '40px', lineHeight: '44px', color: getSecondaryColor(language) }}>
@@ -255,6 +256,7 @@ function LevelPageContent() {
 
       {/* Bottom Navigation */}
       <div className="flex items-center justify-between gap-4 mt-12 pt-8 border-t">
+
         {/* Previous Level or Home */}
         {level === 1 ? (
           <Link href="/">
@@ -283,6 +285,7 @@ function LevelPageContent() {
         ) : (
           <div /> // Empty div to maintain spacing when there's no next level
         )}
+      </div>
       </div>
     </div>
   )

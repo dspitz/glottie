@@ -106,7 +106,7 @@ export default function HomePage() {
           opacity: 0;
         }
       `}</style>
-      <div className="container pb-8 relative" key={animationKey}>
+      <div className="pb-8 relative px-20" style={{ maxWidth: '1150px', margin: '0 auto' }} key={animationKey}>
       {/* Hero Section */}
       <div className="text-center" style={{ marginBottom: '-24px' }}>
         <h1 className="text-[44px] leading-[52px] font-medium tracking-tight cascade-item-offset" style={{ animationDelay: '0ms', color: getFloodComplementaryColor(language) }}>
@@ -127,14 +127,35 @@ export default function HomePage() {
 
       {/* Levels Grid */}
       <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <style>{`
+          .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1.5rem;
+          }
+          @media (min-width: 768px) {
+            .levels-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+          @media (min-width: 1024px) {
+            .levels-grid {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          }
+          .levels-grid > * {
+            height: 100%;
+            min-height: 0;
+          }
+        `}</style>
+        <div className="levels-grid">
           {Array.from({ length: 5 }, (_, i) => i + 1).map((level) => {
             const levelSongs = levels[level.toString()] || []
             console.log(`🎵 Rendering Level ${level} card with ${levelSongs.length} songs`, levelSongs)
             return (
               <div
                 key={level}
-                className="cascade-item"
+                className="cascade-item h-full"
                 style={{
                   animationDelay: `${200 + (level - 1) * 2}ms`,
                   backdropFilter: 'blur(20px)',

@@ -7,26 +7,34 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow access to login page and API routes
-  if (
-    request.nextUrl.pathname === '/login' ||
-    request.nextUrl.pathname.startsWith('/api') ||
-    request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/favicon')
-  ) {
+  // Check if user has already authenticated with HTTP Basic Auth
+  const basicAuth = request.headers.get('authorization')
+
+  if (basicAuth) {
+    const authValue = basicAuth.split(' ')[1]
+    const [user, pwd] = atob(authValue).split(':')
+
+    // Check credentials from environment variables
+    const validUser = process.env.SITE_USERNAME || 'admin'
+    const validPassword = process.env.SITE_PASSWORD
+
+    if (validPassword && user === validUser && pwd === validPassword) {
+      return NextResponse.next()
+    }
+  }
+
+  // Only enforce password protection if SITE_PASSWORD is set
+  if (!process.env.SITE_PASSWORD) {
     return NextResponse.next()
   }
 
-  // Check for auth cookie
-  const token = request.cookies.get('auth-token')
-
-  if (token?.value === 'authenticated') {
-    return NextResponse.next()
-  }
-
-  // Redirect to login if not authenticated
-  const loginUrl = new URL('/login', request.url)
-  return NextResponse.redirect(loginUrl)
+  // Request authentication with browser popup
+  return new NextResponse('Authentication required', {
+    status: 401,
+    headers: {
+      'WWW-Authenticate': 'Basic realm="Secure Area"',
+    },
+  })
 }
 
 // Configure which routes to protect

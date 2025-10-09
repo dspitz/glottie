@@ -90,6 +90,17 @@ export function TranslationBottomSheet({
   const [isRepeatingLine, setIsRepeatingLine] = useState(false)
   // Removed looping functionality
   const lineMonitorRef = useRef<NodeJS.Timeout | null>(null)
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
+
+  // Track window size for responsive positioning
+  useEffect(() => {
+    const updateSize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+    updateSize()
+    window.addEventListener('resize', updateSize)
+    return () => window.removeEventListener('resize', updateSize)
+  }, [])
 
 
   useEffect(() => {
@@ -400,6 +411,7 @@ export function TranslationBottomSheet({
       setTimeout(onClose, 200)
     } else {
       controls.start({
+        x: 0,
         y: 0,
         scaleY: 1,
         scaleX: 1,
@@ -435,24 +447,29 @@ export function TranslationBottomSheet({
             animate={controls}
             initial={clickPosition ? {
               // Start with exact row dimensions
-              y: clickPosition.elementRect.top - (window.innerHeight * 0.9 - clickPosition.elementRect.height) / 2,
-              scaleY: clickPosition.elementRect.height / (window.innerHeight * 0.9), // Scale to match row height
-              scaleX: clickPosition.elementRect.width / window.innerWidth, // Scale to match row width
+              y: clickPosition.elementRect.top - (windowSize.height * 0.9 - clickPosition.elementRect.height) / 2,
+              scaleY: clickPosition.elementRect.height / (windowSize.height * 0.9), // Scale to match row height
+              scaleX: clickPosition.elementRect.width / windowSize.width, // Scale to match row width
               opacity: 0.8,
               borderRadius: '12px'
             } : {
               // Default: slide up from bottom
-              y: '100%'
+              x: 0,
+              y: windowSize.width >= 640 ? 0 : '100%',
+              opacity: windowSize.width >= 640 ? 1 : 0
             }}
             whileInView={clickPosition ? {
               // Grow to full modal size
+              x: 0,
               y: 0,
               scaleY: 1,
               scaleX: 1,
               opacity: 1,
               borderRadius: '24px'
             } : {
-              y: 0
+              x: 0,
+              y: 0,
+              opacity: 1
             }}
             exit={clickPosition ? {
               // Shrink back to exact row dimensions
@@ -470,18 +487,30 @@ export function TranslationBottomSheet({
               stiffness: 600
             }}
             className={cn(
-              "fixed bottom-0 left-0 right-0 z-[61]",
+              "fixed z-[61]",
+              "bottom-0",
               "bg-white/50",
-              "rounded-t-3xl border-t border-gray-200/50",
-              "h-[90vh]",
+              "rounded-t-3xl border-t",
+              "border-gray-200/50",
               "overflow-hidden flex flex-col",
               isDragging && "select-none"
             )}
             style={{
               backdropFilter: 'blur(96px)',
-              transformOrigin: clickPosition ?
-                'center center' :
-                'center bottom'
+              transformOrigin: 'center center',
+              left: windowSize.width >= 640 ? '50%' : '0',
+              right: windowSize.width >= 640 ? 'auto' : '0',
+              top: windowSize.width >= 640 ? '50%' : 'auto',
+              bottom: windowSize.width >= 640 ? 'auto' : '0',
+              width: windowSize.width >= 640 ? '672px' : '100%',
+              height: windowSize.width >= 640 ? 'min(800px, 90vh)' : '90vh',
+              marginLeft: windowSize.width >= 640 ? '-336px' : '0',
+              marginTop: windowSize.width >= 640 ? (
+                windowSize.height * 0.9 > 800 ? '-400px' : `${-(windowSize.height * 0.9 / 2)}px`
+              ) : '0',
+              borderRadius: windowSize.width >= 640 ? '24px' : '24px 24px 0 0',
+              border: windowSize.width >= 640 ? '1px solid rgba(229, 231, 235, 0.5)' : undefined,
+              borderTop: windowSize.width < 640 ? '1px solid rgba(229, 231, 235, 0.5)' : undefined
             }}
           >
             {/* Drag Handle */}
