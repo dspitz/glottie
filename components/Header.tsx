@@ -12,6 +12,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -20,7 +21,7 @@ import { getLanguageName, getFloodColor, getFloodComplementaryColor } from '@/li
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
-  const { language } = useLanguage()
+  const { language, setLanguage } = useLanguage()
   const languageName = getLanguageName(language)
   const isHomepage = pathname === '/'
   const isLevelPage = pathname.startsWith('/levels/')
@@ -85,35 +86,81 @@ export function Header() {
           )}
         </div>
 
-        {/* Center content - Level Dropdown on level pages - truly centered */}
+        {/* Center content - Combined Language & Level Selector on level pages */}
         <div className="flex-1 flex justify-center">
-          {isLevelPage && currentLevel && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="font-medium hover:bg-transparent text-white">
-                  {languageName} {currentLevel}
-                  <ChevronDown className="ml-1 h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center">
-                {[1, 2, 3, 4, 5].map((lvl) => (
-                  <DropdownMenuItem
-                    key={lvl}
-                    onClick={() => router.push(`/levels/${lvl}`)}
-                    className={lvl === currentLevel ? 'bg-accent' : ''}
+          {isLevelPage && currentLevel ? (
+            <div className="inline-flex items-center bg-background/80 backdrop-blur-sm rounded-full border border-white/20">
+              {/* Language Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="font-medium hover:bg-white/10 text-black rounded-l-full rounded-r-none h-10 px-4 border-r border-black/[0.08] gap-2"
                   >
-                    {languageName} {lvl}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                    <span className="text-base">{language === 'es' ? '🇪🇸' : '🇫🇷'}</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[240px]">
+                  {[
+                    { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+                    { code: 'fr', name: 'French', flag: '🇫🇷' }
+                  ].map((lang, index) => (
+                    <div key={lang.code}>
+                      <DropdownMenuItem
+                        onClick={() => setLanguage(lang.code)}
+                        className={`gap-3 px-6 py-4 text-lg cursor-pointer text-black ${lang.code === language ? 'bg-accent' : ''}`}
+                      >
+                        <span className="text-2xl">{lang.flag}</span>
+                        <span className="text-lg font-medium">{lang.name}</span>
+                        {lang.code === language && <span className="ml-auto text-xl">✓</span>}
+                      </DropdownMenuItem>
+                      {index < 1 && (
+                        <DropdownMenuSeparator className="bg-black/[0.08]" />
+                      )}
+                    </div>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Level Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="font-medium hover:bg-white/10 text-black rounded-r-full rounded-l-none h-10 px-4 gap-2"
+                  >
+                    {languageName} {currentLevel}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[240px]">
+                  {[1, 2, 3, 4, 5].map((lvl, index) => (
+                    <div key={lvl}>
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/levels/${lvl}`)}
+                        className={`gap-3 px-6 py-4 text-lg cursor-pointer text-black ${lvl === currentLevel ? 'bg-accent' : ''}`}
+                      >
+                        <span className="text-lg font-medium">{languageName} {lvl}</span>
+                        {lvl === currentLevel && <span className="ml-auto text-xl">✓</span>}
+                      </DropdownMenuItem>
+                      {index < 4 && (
+                        <DropdownMenuSeparator className="bg-black/[0.08]" />
+                      )}
+                    </div>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null}
         </div>
 
-        {/* Right side - Language Selector */}
-        <div className="absolute right-6 flex items-center gap-3">
-          <LanguageSelector />
-        </div>
+        {/* Right side - Language Selector (only on non-level pages) */}
+        {!isLevelPage && (
+          <div className="absolute right-6 flex items-center gap-3">
+            <LanguageSelector />
+          </div>
+        )}
       </div>
     </header>
   )

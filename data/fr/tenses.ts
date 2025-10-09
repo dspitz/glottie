@@ -23,7 +23,7 @@ export interface Tense {
     french: string
     english: string
   }
-  whenToUse: string[]
+  whenToUse: Array<string | { rule: string; example: string }>
   regularPatterns: {
     er: VerbConjugation
     ir: VerbConjugation
@@ -49,10 +49,10 @@ export const tenses: Tense[] = [
       english: 'I speak French'
     },
     whenToUse: [
-      'Actions happening right now',
-      'Habitual or repeated actions',
-      'General truths or facts',
-      'Planned future actions (near future)'
+      { rule: 'Actions happening right now', example: 'Je parle français maintenant' },
+      { rule: 'Habitual or repeated actions', example: 'Je vais au café tous les jours' },
+      { rule: 'General truths or facts', example: 'Le soleil se lève à l\'est' },
+      { rule: 'Planned future actions (near future)', example: 'Le train part à 15h' }
     ],
     regularPatterns: {
       er: {
@@ -149,9 +149,9 @@ export const tenses: Tense[] = [
       english: 'I spoke French'
     },
     whenToUse: [
-      'Completed actions in the past',
-      'Actions with a clear beginning and end',
-      'Series of completed actions'
+      { rule: 'Completed actions in the past', example: 'J\'ai fini mes devoirs hier' },
+      { rule: 'Actions with a clear beginning and end', example: 'Elle a mangé à midi' },
+      { rule: 'Series of completed actions', example: 'J\'ai ouvert la porte et j\'ai dit bonjour' }
     ],
     regularPatterns: {
       er: {
@@ -223,10 +223,10 @@ export const tenses: Tense[] = [
       english: 'I was speaking French / I used to speak French'
     },
     whenToUse: [
-      'Ongoing actions in the past',
-      'Habitual actions in the past',
-      'Descriptions in the past',
-      'Background information'
+      { rule: 'Ongoing actions in the past', example: 'Je regardais la télé quand il est arrivé' },
+      { rule: 'Habitual actions in the past', example: 'Quand j\'étais jeune, je jouais au football' },
+      { rule: 'Descriptions in the past', example: 'Il faisait beau ce jour-là' },
+      { rule: 'Background information', example: 'La maison était grande et belle' }
     ],
     regularPatterns: {
       er: {
@@ -298,10 +298,10 @@ export const tenses: Tense[] = [
       english: 'I will speak tomorrow'
     },
     whenToUse: [
-      'Actions that will occur in the future',
-      'Predictions and suppositions',
-      'Formal promises',
-      'Commands or instructions for the future'
+      { rule: 'Actions that will occur in the future', example: 'Je parlerai avec lui demain' },
+      { rule: 'Predictions and suppositions', example: 'Il fera beau demain' },
+      { rule: 'Formal promises', example: 'Je vous appellerai sans faute' },
+      { rule: 'Commands or instructions for the future', example: 'Vous ferez vos devoirs ce soir' }
     ],
     regularPatterns: {
       er: {
@@ -410,11 +410,11 @@ export const tenses: Tense[] = [
       english: 'I would speak with him'
     },
     whenToUse: [
-      'Hypothetical situations',
-      'Polite requests or suggestions',
-      'Expressing desires politely',
-      'Softening statements',
-      'Future from a past perspective'
+      { rule: 'Hypothetical situations', example: 'Si j\'avais de l\'argent, je voyagerais' },
+      { rule: 'Polite requests or suggestions', example: 'Pourriez-vous m\'aider?' },
+      { rule: 'Expressing desires politely', example: 'Je voudrais un café' },
+      { rule: 'Softening statements', example: 'Je dirais que c\'est une bonne idée' },
+      { rule: 'Future from a past perspective', example: 'Il a dit qu\'il viendrait' }
     ],
     regularPatterns: {
       er: {
@@ -523,11 +523,11 @@ export const tenses: Tense[] = [
       english: 'I must speak / It\'s necessary that I speak'
     },
     whenToUse: [
-      'After expressions of necessity (il faut que)',
-      'After expressions of doubt or uncertainty',
-      'After expressions of emotion',
-      'After expressions of desire or will',
-      'After certain conjunctions (bien que, pour que, etc.)'
+      { rule: 'After expressions of necessity (il faut que)', example: 'Il faut que tu viennes' },
+      { rule: 'After expressions of doubt or uncertainty', example: 'Je doute qu\'il soit là' },
+      { rule: 'After expressions of emotion', example: 'Je suis content que tu sois là' },
+      { rule: 'After expressions of desire or will', example: 'Je veux que tu réussisses' },
+      { rule: 'After certain conjunctions (bien que, pour que, etc.)', example: 'Bien qu\'il pleuve, je sors' }
     ],
     regularPatterns: {
       er: {
@@ -636,10 +636,10 @@ export const tenses: Tense[] = [
       english: 'I had already spoken'
     },
     whenToUse: [
-      'Actions completed before another past action',
-      'Background information in past narratives',
-      'Expressing regret about the past',
-      'In reported speech for past perfect'
+      { rule: 'Actions completed before another past action', example: 'J\'avais déjà mangé quand il est arrivé' },
+      { rule: 'Background information in past narratives', example: 'Elle avait vécu à Paris avant' },
+      { rule: 'Expressing regret about the past', example: 'Si j\'avais su, je serais venu' },
+      { rule: 'In reported speech for past perfect', example: 'Il a dit qu\'il avait fini' }
     ],
     regularPatterns: {
       er: {
@@ -736,10 +736,10 @@ export const tenses: Tense[] = [
       english: 'I will have finished tomorrow'
     },
     whenToUse: [
-      'Actions that will be completed before a future time',
-      'Expressing supposition about the past',
-      'After conjunctions of time (quand, lorsque, dès que)',
-      'Probability or assumption'
+      { rule: 'Actions that will be completed before a future time', example: 'J\'aurai fini avant midi' },
+      { rule: 'Expressing supposition about the past', example: 'Il aura oublié ses clés' },
+      { rule: 'After conjunctions of time (quand, lorsque, dès que)', example: 'Quand tu arriveras, j\'aurai déjà mangé' },
+      { rule: 'Probability or assumption', example: 'Elle aura manqué le train' }
     ],
     regularPatterns: {
       er: {
@@ -836,10 +836,10 @@ export const tenses: Tense[] = [
       english: 'He spoke at length'
     },
     whenToUse: [
-      'Formal writing and literature',
-      'Historical narratives',
-      'Fairy tales and stories',
-      'Completed actions in formal contexts'
+      { rule: 'Formal writing and literature', example: 'Le roi parla à son peuple' },
+      { rule: 'Historical narratives', example: 'Napoléon conquit l\'Europe' },
+      { rule: 'Fairy tales and stories', example: 'Il était une fois un prince qui vécut longtemps' },
+      { rule: 'Completed actions in formal contexts', example: 'Elle finit son discours et sortit' }
     ],
     regularPatterns: {
       er: {
@@ -948,10 +948,10 @@ export const tenses: Tense[] = [
       english: 'It was necessary that I speak'
     },
     whenToUse: [
-      'Formal or literary writing',
-      'After past expressions requiring subjunctive',
-      'Historical or classical texts',
-      'Formal correspondence (rare)'
+      { rule: 'Formal or literary writing', example: 'Il fallait que je parlasse avec lui' },
+      { rule: 'After past expressions requiring subjunctive', example: 'Je doutais qu\'elle vînt' },
+      { rule: 'Historical or classical texts', example: 'Bien qu\'il fût tard, ils continuèrent' },
+      { rule: 'Formal correspondence (rare)', example: 'Je souhaitais qu\'il réussît' }
     ],
     regularPatterns: {
       er: {

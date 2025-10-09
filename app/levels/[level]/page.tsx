@@ -18,9 +18,10 @@ import {
 import { fetchLevels } from '@/lib/client'
 import { getLevelDescription } from '@/lib/utils'
 import { getLevelTags } from '@/lib/levelTags'
-import { Loader2, AlertCircle, ArrowLeft, ChevronDown } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowLeft, ChevronDown, BookOpen } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { getLanguageName, getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
+import { TenseModal } from '@/components/TenseModal'
 
 function LevelPageContent() {
   const params = useParams()
@@ -33,6 +34,7 @@ function LevelPageContent() {
   // Modal state
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isTenseModalOpen, setIsTenseModalOpen] = useState(false)
 
   // Set background color based on language
   useEffect(() => {
@@ -150,9 +152,23 @@ function LevelPageContent() {
     <div className="px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="mb-8 text-center whitespace-pre-line" style={{ fontSize: '2rem', lineHeight: '2.2rem', color: getSecondaryColor(language) }}>
+          <h2 className="mb-4 text-center whitespace-pre-line" style={{ fontSize: '40px', lineHeight: '44px', color: getSecondaryColor(language) }}>
             {getLevelDescription(level)}
           </h2>
+
+          {/* Level 1: Present Tense Button */}
+          {level === 1 && (
+            <div className="flex justify-center mt-6">
+              <Button
+                size="sm"
+                className="gap-2 rounded-xl border-0 px-4 py-3 h-auto bg-black/[0.08] hover:bg-black/[0.12] text-white"
+                onClick={() => setIsTenseModalOpen(true)}
+              >
+                <BookOpen className="h-4 w-4" />
+                Learn Present Tense
+              </Button>
+            </div>
+          )}
       </div>
 
       {/* Songs List */}
@@ -200,6 +216,13 @@ function LevelPageContent() {
         level={level}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+      />
+
+      {/* Tense Modal */}
+      <TenseModal
+        tenseId="present"
+        isOpen={isTenseModalOpen}
+        onClose={() => setIsTenseModalOpen(false)}
       />
 
       {/* Bottom Navigation */}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Volume2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 export default function PhraseCategoryPage() {
   const params = useParams()
@@ -30,90 +31,99 @@ export default function PhraseCategoryPage() {
     loadCategory()
   }, [language, params.id])
 
+  // Set background color
+  useEffect(() => {
+    document.body.style.backgroundColor = getSecondaryColor(language)
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
+
   if (loading) {
     return (
-      <div className="container mx-auto px-4 pb-20 py-6">
-        <div className="text-center py-12">Loading...</div>
+      <div className="container mx-auto px-8 pb-20">
+        <div className="py-8">
+          <div className="text-white text-center">Loading...</div>
+        </div>
       </div>
     )
   }
 
   if (!category) {
     return (
-      <div className="container mx-auto px-4 pb-20 py-6">
-        <p>Category not found</p>
+      <div className="container mx-auto px-8 pb-20">
+        <div className="py-8">
+          <div className="text-white text-center">Category not found</div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 pb-20">
-      <div className="py-6">
+    <div className="container mx-auto px-8 pb-20">
+      <div className="py-8">
         {/* Back Button */}
-        <Button
-          variant="ghost"
-          className="mb-4 -ml-2"
-          onClick={() => router.push('/vocab')}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Basics
-        </Button>
+        <div className="mb-6">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full"
+            onClick={() => router.push('/vocab')}
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span className="sr-only">Back to Basics</span>
+          </Button>
+        </div>
 
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">{category.icon}</span>
-            <div>
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-3xl font-bold">{category.name}</h1>
-                <span className="text-xl text-muted-foreground">{category.nameSpanish}</span>
-              </div>
-              <p className="text-muted-foreground mt-1">{category.description}</p>
-            </div>
-          </div>
+        <div className="mb-8 text-center">
+          <p className="text-[16px] leading-[22px] mb-2" style={{ color: getFloodColor(language) }}>
+            {category.nameSpanish || category.nameFrench}
+          </p>
+          <p className="text-[40px] leading-[44px] font-light mb-8 text-white">{category.name}</p>
         </div>
 
         {/* Phrases List */}
         <div className="space-y-3">
-          {category.phrases.map((phrase, i) => (
+          {category.phrases.map((phrase: any, i: number) => (
             <div
               key={i}
-              className="p-4 rounded-lg border hover:shadow-md transition-all"
+              className="p-4 rounded-lg bg-white/[0.12] border border-white/20"
             >
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold mb-1">{phrase.spanish}</h3>
-                  <p className="text-muted-foreground">{phrase.english}</p>
+                  <h3 className="text-lg font-medium mb-1 text-white">{phrase.english}</h3>
+                  <p className="text-sm text-white/60 italic">{phrase.spanish || phrase.french}</p>
                 </div>
                 {phrase.pronunciation && (
                   <button
-                    className="shrink-0 p-2 rounded-full hover:bg-muted transition-colors"
+                    className="shrink-0 p-2 rounded-full hover:bg-white/10 transition-colors"
                     onClick={() => {
                       if ('speechSynthesis' in window) {
-                        const utterance = new SpeechSynthesisUtterance(phrase.spanish)
-                        utterance.lang = 'es-ES'
+                        const utterance = new SpeechSynthesisUtterance(phrase.spanish || phrase.french)
+                        utterance.lang = language === 'fr' ? 'fr-FR' : 'es-ES'
                         speechSynthesis.speak(utterance)
                       }
                     }}
                     aria-label="Pronounce phrase"
                   >
-                    <Volume2 className="h-4 w-4" />
+                    <Volume2 className="h-4 w-4 text-white" />
                   </button>
                 )}
               </div>
 
               {phrase.pronunciation && (
                 <div className="mb-2">
-                  <span className="text-xs text-muted-foreground">Pronunciation: </span>
-                  <span className="text-sm font-mono text-muted-foreground">
+                  <span className="text-xs text-white/60">Pronunciation: </span>
+                  <span className="text-sm font-mono text-white/60">
                     {phrase.pronunciation}
                   </span>
                 </div>
               )}
 
               {phrase.usage && (
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-sm text-muted-foreground italic">{phrase.usage}</p>
+                <div className="mt-2 pt-2 border-t border-white/20">
+                  <p className="text-sm text-white/60 italic">{phrase.usage}</p>
                 </div>
               )}
             </div>

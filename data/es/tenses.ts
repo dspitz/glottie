@@ -49,15 +49,15 @@ export const tenses: Tense[] = [
       english: 'I speak Spanish'
     },
     whenToUse: [
-      'Current actions or states',
-      'Habitual or repeated actions',
-      'General truths',
-      'Scheduled future events'
+      { rule: 'Current actions or states', example: 'Estudio español ahora' },
+      { rule: 'Habitual or repeated actions', example: 'Voy al gimnasio todos los días' },
+      { rule: 'General truths', example: 'El sol sale por el este' },
+      { rule: 'Scheduled future events', example: 'El tren sale a las 3pm' }
     ],
     regularPatterns: {
-      ar: { yo: '-o', tú: '-as', él: '-a', nosotros: '-amos', vosotros: '-áis', ellos: '-an' },
-      er: { yo: '-o', tú: '-es', él: '-e', nosotros: '-emos', vosotros: '-éis', ellos: '-en' },
-      ir: { yo: '-o', tú: '-es', él: '-e', nosotros: '-imos', vosotros: '-ís', ellos: '-en' }
+      ar: { yo: 'o', tú: 'as', él: 'a', nosotros: 'amos', vosotros: 'áis', ellos: 'an' },
+      er: { yo: 'o', tú: 'es', él: 'e', nosotros: 'emos', vosotros: 'éis', ellos: 'en' },
+      ir: { yo: 'o', tú: 'es', él: 'e', nosotros: 'imos', vosotros: 'ís', ellos: 'en' }
     },
     regularExamples: [
       {

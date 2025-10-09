@@ -326,7 +326,7 @@ export default function LearningsPage() {
 
   return (
     <div className="container mx-auto px-6 pb-20">
-      <div className="pt-8 pb-6">
+      <div className="max-w-2xl mx-auto pt-8 pb-6">
         <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Learnings</h1>
         <Tabs defaultValue="words" className="w-full">
           <TabsList className="grid w-full grid-cols-2">

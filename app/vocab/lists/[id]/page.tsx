@@ -6,19 +6,20 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
 const partOfSpeechColors: Record<string, string> = {
-  noun: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  verb: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  adjective: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  adverb: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-  pronoun: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
-  preposition: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  conjunction: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
-  article: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  determiner: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
-  number: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  other: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+  noun: 'bg-blue-100 text-blue-800',
+  verb: 'bg-green-100 text-green-800',
+  adjective: 'bg-purple-100 text-purple-800',
+  adverb: 'bg-orange-100 text-orange-800',
+  pronoun: 'bg-pink-100 text-pink-800',
+  preposition: 'bg-yellow-100 text-yellow-800',
+  conjunction: 'bg-cyan-100 text-cyan-800',
+  article: 'bg-indigo-100 text-indigo-800',
+  determiner: 'bg-teal-100 text-teal-800',
+  number: 'bg-red-100 text-red-800',
+  other: 'bg-gray-100 text-gray-800'
 }
 
 export default function VocabListPage() {
@@ -45,60 +46,69 @@ export default function VocabListPage() {
     loadList()
   }, [language, params.id])
 
+  // Set background color
+  useEffect(() => {
+    document.body.style.backgroundColor = getSecondaryColor(language)
+    return () => {
+      document.body.style.backgroundColor = ''
+    }
+  }, [language])
+
   if (loading) {
     return (
-      <div className="container mx-auto px-4 pb-20 py-6">
-        <div className="text-center py-12">Loading...</div>
+      <div className="container mx-auto px-8 pb-20">
+        <div className="py-8">
+          <div className="text-white text-center">Loading...</div>
+        </div>
       </div>
     )
   }
 
   if (!list) {
     return (
-      <div className="container mx-auto px-4 pb-20 py-6">
-        <p>List not found</p>
+      <div className="container mx-auto px-8 pb-20">
+        <div className="py-8">
+          <div className="text-white text-center">List not found</div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 pb-20">
-      <div className="py-6">
+    <div className="container mx-auto px-8 pb-20">
+      <div className="py-8">
         {/* Back Button */}
-        <Button
-          variant="ghost"
-          className="mb-4 -ml-2"
-          onClick={() => router.push('/vocab')}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Basics
-        </Button>
+        <div className="mb-6">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-full"
+            onClick={() => router.push('/vocab')}
+          >
+            <ArrowLeft className="h-5 w-5" />
+            <span className="sr-only">Back to Basics</span>
+          </Button>
+        </div>
 
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">{list.icon}</span>
-            <div>
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-3xl font-bold">{list.name}</h1>
-                <span className="text-xl text-muted-foreground">{list.nameSpanish}</span>
-              </div>
-              <p className="text-muted-foreground mt-1">{list.description}</p>
-            </div>
-          </div>
+        <div className="mb-8 text-center">
+          <p className="text-[16px] leading-[22px] mb-2" style={{ color: getFloodColor(language) }}>
+            {list.nameSpanish || list.nameFrench}
+          </p>
+          <p className="text-[40px] leading-[44px] font-light mb-8 text-white">{list.name}</p>
         </div>
 
         {/* Words Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {list.words.map((word, i) => (
+          {list.words.map((word: any, i: number) => (
             <div
               key={i}
-              className="p-3 rounded-lg border hover:shadow-md transition-all"
+              className="p-3 rounded-lg bg-white/[0.12] border border-white/20"
             >
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-lg truncate">{word.spanish}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{word.english}</p>
+                  <h3 className="font-medium text-lg truncate text-white">{word.english}</h3>
+                  <p className="text-sm text-white/60 truncate italic">{word.spanish || word.french}</p>
                 </div>
                 {word.partOfSpeech && (
                   <Badge
@@ -112,7 +122,7 @@ export default function VocabListPage() {
                 )}
               </div>
               {word.pronunciation && (
-                <p className="text-xs text-muted-foreground font-mono mt-1">
+                <p className="text-xs text-white/60 font-mono mt-1">
                   {word.pronunciation}
                 </p>
               )}

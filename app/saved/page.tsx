@@ -13,7 +13,7 @@ import { SharedTransitionProvider } from '@/contexts/SharedTransitionContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Bookmark, Music2, LogIn, Trash2, Quote } from 'lucide-react'
+import { Bookmark, Music2, LogIn, Quote } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 
@@ -86,7 +86,7 @@ function SavedPageContent() {
 
   return (
     <div className="container px-6 py-8 pb-24">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div>
           <h1 className="text-center" style={{ fontSize: '44px', lineHeight: '52px', fontWeight: 500, color: getSecondaryColor(language), marginTop: '32px', marginBottom: '32px' }}>Saved</h1>
@@ -153,7 +153,6 @@ function SavedPageContent() {
                         delay: index * 0.05,
                         ease: [0.4, 0, 0.2, 1]
                       }}
-                      className="relative group"
                     >
                       <SongListItem
                         id={song.id}
@@ -170,36 +169,9 @@ function SavedPageContent() {
                         genres={song.genres}
                         onClick={() => openSongModal(song.id)}
                       />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          e.preventDefault()
-                          toggleSave(song)
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
                     </motion.div>
                   ))}
                 </div>
-                {!session && (
-                  <div className="mt-8 text-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to clear all saved songs?')) {
-                          clearSavedSongs()
-                        }
-                      }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Clear All Saved Songs
-                    </Button>
-                  </div>
-                )}
               </>
             )}
           </TabsContent>

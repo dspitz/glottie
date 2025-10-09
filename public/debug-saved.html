@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Saved Songs</title>
+</head>
+<body>
+    <h1>Saved Songs Debug Tool</h1>
+    <button onclick="showAllSaved()">Show All Saved Songs</button>
+    <button onclick="clearAll()">Clear All Saved Songs</button>
+    <pre id="output"></pre>
+
+    <script>
+        function showAllSaved() {
+            const output = document.getElementById('output');
+            let result = '';
+
+            // Check both language-specific keys
+            const languages = ['es', 'fr'];
+            languages.forEach(lang => {
+                const key = `savedSongs_${lang}`;
+                const saved = localStorage.getItem(key);
+
+                result += `\n=== ${lang.toUpperCase()} Saved Songs (${key}) ===\n`;
+                if (!saved) {
+                    result += 'None\n';
+                } else {
+                    try {
+                        const songs = JSON.parse(saved);
+                        result += `Count: ${songs.length}\n`;
+                        songs.forEach((s, i) => {
+                            result += `${i + 1}. ${s.title} by ${s.artist} (ID: ${s.id})\n`;
+                        });
+                    } catch (e) {
+                        result += 'Error parsing: ' + e.message + '\n';
+                    }
+                }
+            });
+
+            // Check old key
+            const oldSaved = localStorage.getItem('savedSongs');
+            result += `\n=== OLD savedSongs key ===\n`;
+            if (!oldSaved) {
+                result += 'None\n';
+            } else {
+                try {
+                    const songs = JSON.parse(oldSaved);
+                    result += `Count: ${songs.length}\n`;
+                } catch (e) {
+                    result += 'Error: ' + e.message + '\n';
+                }
+            }
+
+            output.textContent = result;
+        }
+
+        function clearAll() {
+            if (confirm('Clear ALL saved songs for all languages?')) {
+                localStorage.removeItem('savedSongs_es');
+                localStorage.removeItem('savedSongs_fr');
+                localStorage.removeItem('savedSongs');
+                document.getElementById('output').textContent = 'All saved songs cleared';
+            }
+        }
+
+        // Auto-show on load
+        showAllSaved();
+    </script>
+</body>
+</html>

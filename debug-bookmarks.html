@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Bookmarks</title>
+</head>
+<body>
+    <h1>Bookmark Debug Tool</h1>
+    <button onclick="showBookmarks()">Show localStorage Bookmarks</button>
+    <button onclick="clearBookmarks()">Clear All Bookmarks</button>
+    <pre id="output"></pre>
+
+    <script>
+        function showBookmarks() {
+            const saved = localStorage.getItem('bookmarkedLines');
+            const output = document.getElementById('output');
+
+            if (!saved) {
+                output.textContent = 'No bookmarks found in localStorage';
+                return;
+            }
+
+            try {
+                const bookmarks = JSON.parse(saved);
+                output.textContent = JSON.stringify(bookmarks, null, 2);
+
+                console.log('Total bookmarks:', bookmarks.length);
+                bookmarks.forEach((b, i) => {
+                    console.log(`Bookmark ${i}:`, {
+                        id: b.id,
+                        songId: b.songId,
+                        songLanguage: b.songLanguage || 'NOT SET',
+                        songTitle: b.songTitle || 'NOT SET',
+                        lineText: b.lineText?.substring(0, 50)
+                    });
+                });
+            } catch (e) {
+                output.textContent = 'Error parsing bookmarks: ' + e.message;
+            }
+        }
+
+        function clearBookmarks() {
+            if (confirm('Clear all bookmarks?')) {
+                localStorage.removeItem('bookmarkedLines');
+                document.getElementById('output').textContent = 'Bookmarks cleared';
+            }
+        }
+    </script>
+</body>
+</html>
