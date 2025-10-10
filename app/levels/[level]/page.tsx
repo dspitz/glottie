@@ -170,8 +170,8 @@ function LevelPageContent() {
             {getLevelDescription(level)}
           </h2>
 
-          {/* Level 1: Present Tense Button */}
-          {level === 1 && (
+          {/* Level 2: Present Tense Button */}
+          {level === 2 && (
             <div className="flex justify-center mt-6">
               <Button
                 size="sm"
@@ -184,8 +184,8 @@ function LevelPageContent() {
             </div>
           )}
 
-          {/* Level 2: Past Tense Button */}
-          {level === 2 && (
+          {/* Level 3: Past Tense Button */}
+          {level === 3 && (
             <div className="flex justify-center mt-6">
               <Button
                 size="sm"
@@ -198,8 +198,8 @@ function LevelPageContent() {
             </div>
           )}
 
-          {/* Level 3: Future Tense Button */}
-          {level === 3 && (
+          {/* Level 4: Future Tense Button */}
+          {level === 4 && (
             <div className="flex justify-center mt-6">
               <Button
                 size="sm"
@@ -262,7 +262,7 @@ function LevelPageContent() {
 
       {/* Tense Modal */}
       <TenseModal
-        tenseId={level === 1 ? "present" : level === 2 ? "preterite" : "future"}
+        tenseId={level === 2 ? "present" : level === 3 ? "preterite" : "future"}
         isOpen={isTenseModalOpen}
         onClose={() => setIsTenseModalOpen(false)}
       />
@@ -288,7 +288,7 @@ function LevelPageContent() {
         )}
 
         {/* Next Level */}
-        {level < 5 ? (
+        {level < 6 ? (
           <Link href={`/levels/${level + 1}`}>
             <Button variant="outline" size="sm">
               {languageName} {level + 1}

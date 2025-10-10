@@ -142,23 +142,22 @@ export function TenseModal({ tenseId, isOpen, onClose }: TenseModalProps) {
           transform: isAnimating ? 'translateY(0)' : 'translateY(100%)'
         }}
       >
-      <div className="container mx-auto px-8 pb-20">
-        <div className="py-8">
-          {/* Close Button */}
-          <div className="mb-6">
+      <div className="container mx-auto px-6 pb-20">
+        <div className="max-w-2xl mx-auto">
+          <div className="py-8">
+            {/* Close Button */}
             <Button
               variant="outline"
               size="icon"
-              className="rounded-full"
+              className="rounded-full fixed top-6 left-6 z-50"
               onClick={handleClose}
             >
               <X className="h-5 w-5" />
               <span className="sr-only">Close</span>
             </Button>
-          </div>
 
-          {/* Header */}
-          <div className="mb-8 text-center">
+            {/* Header */}
+            <div className="mb-8 text-center mt-16">
             <p className="text-[16px] leading-[22px] mb-2" style={{ color: getFloodColor(language) }}>
               {tense.nameSpanish || tense.nameFrench}
             </p>
@@ -394,6 +393,7 @@ export function TenseModal({ tenseId, isOpen, onClose }: TenseModalProps) {
                 })}
               </div>
             </section>
+          </div>
           </div>
         </div>
       </div>

@@ -11,32 +11,34 @@ export function formatDifficultyScore(score: number): string {
 
 export function getLevelColor(level: number): string {
   const colors = {
-    1: 'bg-green-100 text-green-800 border-green-200',
-    2: 'bg-green-200 text-green-900 border-green-300',
-    3: 'bg-lime-200 text-lime-900 border-lime-300',
-    4: 'bg-yellow-200 text-yellow-900 border-yellow-300',
-    5: 'bg-orange-200 text-orange-900 border-orange-300',
-    6: 'bg-orange-300 text-orange-900 border-orange-400',
-    7: 'bg-red-200 text-red-900 border-red-300',
-    8: 'bg-red-300 text-red-900 border-red-400',
-    9: 'bg-purple-200 text-purple-900 border-purple-300',
-    10: 'bg-purple-300 text-purple-900 border-purple-400',
+    1: 'bg-sky-100 text-sky-800 border-sky-200',
+    2: 'bg-green-100 text-green-800 border-green-200',
+    3: 'bg-green-200 text-green-900 border-green-300',
+    4: 'bg-lime-200 text-lime-900 border-lime-300',
+    5: 'bg-yellow-200 text-yellow-900 border-yellow-300',
+    6: 'bg-orange-200 text-orange-900 border-orange-300',
+    7: 'bg-orange-300 text-orange-900 border-orange-400',
+    8: 'bg-red-200 text-red-900 border-red-300',
+    9: 'bg-red-300 text-red-900 border-red-400',
+    10: 'bg-purple-200 text-purple-900 border-purple-300',
+    11: 'bg-purple-300 text-purple-900 border-purple-400',
   }
   return colors[level as keyof typeof colors] || colors[5]
 }
 
 export function getLevelDescription(level: number): string {
   const descriptions = {
-    1: 'Simple vocabulary\nand present tense',
-    2: 'Basic past tense\nand common phrases',
-    3: 'Simple future tense\nand descriptions',
-    4: 'Mixed tenses\nand more vocabulary',
-    5: 'Complex sentences\nand some idioms',
-    6: 'Advanced tenses\nand expressions',
-    7: 'Subjunctive\nand complex grammar',
-    8: 'Sophisticated vocabulary\nand expressions',
-    9: 'Literary language\nand complex idioms',
-    10: 'Native-level complexity\nand nuanced expressions',
+    1: 'Kids songs\nwith simple words',
+    2: 'Simple vocabulary\nand present tense',
+    3: 'Basic past tense\nand common phrases',
+    4: 'Simple future tense\nand descriptions',
+    5: 'Mixed tenses\nand more vocabulary',
+    6: 'Complex sentences\nand some idioms',
+    7: 'Advanced tenses\nand expressions',
+    8: 'Subjunctive\nand complex grammar',
+    9: 'Sophisticated vocabulary\nand expressions',
+    10: 'Literary language\nand complex idioms',
+    11: 'Native-level complexity\nand nuanced expressions',
   }
   return descriptions[level as keyof typeof descriptions] || 'Unknown level'
 }

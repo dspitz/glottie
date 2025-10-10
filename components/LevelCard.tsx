@@ -185,7 +185,7 @@ export function LevelCard({ level, songs, language = 'es', className }: LevelCar
             {/* Level title and subtitle */}
             <div className="text-center space-y-1">
               <h2 className="text-sm font-normal" style={{ color: getSecondaryColor(language) }}>{languageNames[language] || 'Spanish'} {level}</h2>
-              <p className="text-[30px] leading-[36px] font-light text-black/[0.85]">
+              <p className="text-[30px] leading-[36px] font-light text-black/[0.85] mb-10">
                 {getLevelDescription(level)}
               </p>
             </div>

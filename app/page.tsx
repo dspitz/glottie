@@ -8,7 +8,7 @@ import { fetchLevels } from '@/lib/client'
 import { Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { getLanguageName, getFloodColor, getFloodComplementaryColor } from '@/lib/languageUtils'
+import { getLanguageName, getFloodColor, getFloodComplementaryColor, getSecondaryColor } from '@/lib/languageUtils'
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -132,7 +132,7 @@ export default function HomePage() {
       {/* Levels Grid */}
       <div className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 [&>*]:h-full [&>*]:min-h-0">
-          {Array.from({ length: 5 }, (_, i) => i + 1).map((level) => {
+          {Array.from({ length: 6 }, (_, i) => i + 1).map((level) => {
             const levelSongs = levels[level.toString()] || []
             console.log(`🎵 Rendering Level ${level} card with ${levelSongs.length} songs`, levelSongs)
             return (
@@ -165,7 +165,8 @@ export default function HomePage() {
       {/* Getting Started Guide */}
       <motion.div
         key={`guide-${animationKey}`}
-        className="bg-muted/50 rounded-lg p-8"
+        className="rounded-lg p-8"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.08)' }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{
@@ -174,35 +175,44 @@ export default function HomePage() {
           ease: [0.4, 0, 0.2, 1]
         }}
       >
-        <h3 className="text-xl font-semibold mb-4 text-center">How to Use diddydum</h3>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="flex justify-center">
+          <Image
+            src="/images/music_mark.png"
+            alt="Music Note"
+            width={144}
+            height={144}
+            className="h-[144px] w-[144px] mix-blend-multiply"
+          />
+        </div>
+        <h3 className="text-[30px] leading-[36px] font-light mb-4 text-center text-black/[0.85]">How it works</h3>
+        <div className="grid md:grid-cols-3 gap-6 mt-12">
           <div className="text-center">
-            <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg" style={{ backgroundColor: getSecondaryColor(language, 0.08), color: getSecondaryColor(language) }}>
               1
             </div>
-            <h4 className="font-medium mb-2">Choose Your Level</h4>
-            <p className="text-sm text-muted-foreground">
-              Start with {languageName} 1 for beginners or pick a level that matches your {languageName.toLowerCase()} proficiency
+            <h4 className="font-medium mb-2 text-black">Find a Song to Sing</h4>
+            <p className="text-sm text-black/60">
+              Choose from songs matched to your level, from beginner-friendly to advanced
             </p>
           </div>
 
           <div className="text-center">
-            <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg" style={{ backgroundColor: getSecondaryColor(language, 0.08), color: getSecondaryColor(language) }}>
               2
             </div>
-            <h4 className="font-medium mb-2">Learn Through Songs</h4>
-            <p className="text-sm text-muted-foreground">
-              Click on sentences to see translations and select words for definitions and conjugations
+            <h4 className="font-medium mb-2 text-black">Practice Line by Line</h4>
+            <p className="text-sm text-black/60">
+              See translations, word definitions, and verb conjugations as you follow along
             </p>
           </div>
 
           <div className="text-center">
-            <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-lg" style={{ backgroundColor: getSecondaryColor(language, 0.08), color: getSecondaryColor(language) }}>
               3
             </div>
-            <h4 className="font-medium mb-2">Listen & Practice</h4>
-            <p className="text-sm text-muted-foreground">
-              Use the Spotify integration to listen to songs while following along with the lyrics
+            <h4 className="font-medium mb-2 text-black">Learn While You La La La</h4>
+            <p className="text-sm text-black/60">
+              Listen on Spotify and sing along to make {languageName.toLowerCase()} stick in your memory
             </p>
           </div>
         </div>
