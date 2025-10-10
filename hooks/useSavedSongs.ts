@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -64,9 +64,8 @@ export function useSavedSongs() {
     }
   }, [language])
 
-  // For now, we're only using localStorage
-  // This query is disabled but kept for future authentication implementation
-  const { data: dbSavedSongs = [], isLoading } = useQuery({
+  // Fetch from database for authenticated users
+  const { data: dbSavedSongs = [], isLoading, isFetching } = useQuery({
     queryKey: ['savedSongs'],
     queryFn: async () => {
       const response = await fetch('/api/saved')
@@ -75,11 +74,44 @@ export function useSavedSongs() {
       }
       return response.json() as Promise<SavedSong[]>
     },
-    enabled: false // Disabled until auth is implemented
+    enabled: true,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes (renamed from cacheTime in React Query v5)
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnMount: false, // Don't refetch on component remount if data exists
   })
 
-  // Use localStorage for all users
-  const savedSongs = localSavedSongs
+  // Merge localStorage and database songs, removing duplicates and filtering by language
+  const savedSongs = React.useMemo(() => {
+    // Filter database songs by current language
+    const filteredDbSongs = dbSavedSongs.filter((song: any) =>
+      !song.language || song.language === language
+    )
+
+    const merged = [...filteredDbSongs]
+
+    // Add localStorage songs that aren't in the database
+    localSavedSongs.forEach(local => {
+      const exists = merged.some(db => db.id === local.id)
+      if (!exists) {
+        merged.push(local)
+      }
+    })
+
+    console.log('💾 Merged saved songs:', {
+      dbCount: filteredDbSongs.length,
+      localCount: localSavedSongs.length,
+      totalCount: merged.length,
+      language
+    })
+
+    // Sort by savedAt (most recent first)
+    return merged.sort((a, b) => {
+      const aTime = a.savedAt ? new Date(a.savedAt).getTime() : 0
+      const bTime = b.savedAt ? new Date(b.savedAt).getTime() : 0
+      return bTime - aTime
+    })
+  }, [dbSavedSongs, localSavedSongs, language])
 
   // Check if a song is saved
   const isSongSaved = (songId: string): boolean => {
@@ -163,9 +195,14 @@ export function useSavedSongs() {
     localStorage.removeItem(storageKey)
   }
 
+  // Only show loading if we have NO data (not even from localStorage)
+  // This prevents blocking the UI when we have localStorage data
+  const showLoading = isLoading && localSavedSongs.length === 0 && dbSavedSongs.length === 0
+
   return {
     savedSongs,
-    isLoading,
+    isLoading: showLoading,
+    isFetching, // Background fetching indicator
     isSongSaved,
     toggleSave,
     clearSavedSongs

@@ -97,19 +97,21 @@ export function LineBookmarkButton({
     setIsLoading(true)
 
     try {
-      // Use localStorage for all users
-      if (isBookmarked) {
-        removeLineFromLocalStorage()
-        setIsBookmarked(false)
-        showToast('Line removed from bookmarks')
-      } else {
+      const newBookmarkedState = !isBookmarked
+
+      // Update localStorage immediately for responsive UI
+      if (newBookmarkedState) {
         saveLineToLocalStorage()
         setIsBookmarked(true)
         showToast('Line bookmarked!')
+      } else {
+        removeLineFromLocalStorage()
+        setIsBookmarked(false)
+        showToast('Line removed from bookmarks')
       }
 
-      // Also call API (without blocking UI)
-      if (isBookmarked) {
+      // Also update database for authenticated users (non-blocking)
+      if (!newBookmarkedState) {
         // DELETE existing bookmark
         const bookmarkedLines = getBookmarkedLinesFromLocalStorage()
         const existing = bookmarkedLines.find(

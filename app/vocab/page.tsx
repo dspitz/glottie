@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { BookOpen, MessageCircle, Library } from 'lucide-react'
 import { BasicsCard } from '@/components/basics/BasicsCard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,6 +16,7 @@ export default function BasicsPage() {
   const [phraseCategories, setPhraseCategories] = useState<any[]>([])
   const [vocabLists, setVocabLists] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showLoading, setShowLoading] = useState(false)
 
   useEffect(() => {
     document.body.style.backgroundColor = getFloodColor(language)
@@ -45,7 +47,19 @@ export default function BasicsPage() {
     loadData()
   }, [language])
 
-  if (loading) {
+  // Delay showing loading indicator by 300ms
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => {
+        setShowLoading(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowLoading(false)
+    }
+  }, [loading])
+
+  if (loading && showLoading) {
     return (
       <div className="container mx-auto px-6 pb-20">
         <div className="py-6">
@@ -87,49 +101,82 @@ export default function BasicsPage() {
 
           <TabsContent value="tenses" className="mt-6">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {tenses.map((tense) => (
-                <Link key={tense.id} href={`/vocab/tenses/${tense.id}`}>
-                  <BasicsCard
-                    icon="📝"
-                    title={tense.name}
-                    description={tense.briefUsage}
-                    examplePhrase={tense.examplePhrase}
-                    onClick={() => {}}
-                    language={language}
-                  />
-                </Link>
+              {tenses.map((tense, index) => (
+                <motion.div
+                  key={tense.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    ease: [0.4, 0, 0.2, 1]
+                  }}
+                >
+                  <Link href={`/vocab/tenses/${tense.id}`}>
+                    <BasicsCard
+                      icon="📝"
+                      title={tense.name}
+                      description={tense.briefUsage}
+                      examplePhrase={tense.examplePhrase}
+                      onClick={() => {}}
+                      language={language}
+                    />
+                  </Link>
+                </motion.div>
               ))}
             </div>
           </TabsContent>
 
           <TabsContent value="phrases" className="mt-6">
             <div className="grid grid-cols-2 gap-3">
-              {phraseCategories.map((category) => (
-                <Link key={category.id} href={`/vocab/phrases/${category.id}`}>
-                  <BasicsCard
-                    icon={category.icon}
-                    title={category.name}
-                    description={category.description}
-                    onClick={() => {}}
-                    variant="grid"
-                  />
-                </Link>
+              {phraseCategories.map((category, index) => (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    ease: [0.4, 0, 0.2, 1]
+                  }}
+                >
+                  <Link href={`/vocab/phrases/${category.id}`}>
+                    <BasicsCard
+                      icon={category.icon}
+                      title={category.name}
+                      description={category.description}
+                      onClick={() => {}}
+                      variant="grid"
+                    />
+                  </Link>
+                </motion.div>
               ))}
             </div>
           </TabsContent>
 
           <TabsContent value="vocab" className="mt-6">
             <div className="grid grid-cols-2 gap-3">
-              {vocabLists.map((list) => (
-                <Link key={list.id} href={`/vocab/lists/${list.id}`}>
-                  <BasicsCard
-                    icon={list.icon}
-                    title={list.name}
-                    description={list.description}
-                    onClick={() => {}}
-                    variant="grid"
-                  />
-                </Link>
+              {vocabLists.map((list, index) => (
+                <motion.div
+                  key={list.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    ease: [0.4, 0, 0.2, 1]
+                  }}
+                >
+                  <Link href={`/vocab/lists/${list.id}`}>
+                    <BasicsCard
+                      icon={list.icon}
+                      title={list.name}
+                      description={list.description}
+                      onClick={() => {}}
+                      variant="grid"
+                    />
+                  </Link>
+                </motion.div>
               ))}
             </div>
           </TabsContent>

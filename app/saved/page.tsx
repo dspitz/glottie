@@ -18,9 +18,10 @@ import { getFloodColor, getSecondaryColor } from '@/lib/languageUtils'
 function SavedPageContent() {
   const { data: session } = useSession()
   const { language } = useLanguage()
-  const { savedSongs, isLoading, toggleSave, clearSavedSongs } = useSavedSongs()
+  const { savedSongs, isLoading, isFetching, toggleSave, clearSavedSongs } = useSavedSongs()
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [showShimmer, setShowShimmer] = useState(false)
 
   useEffect(() => {
     document.body.style.backgroundColor = getFloodColor(language)
@@ -28,6 +29,18 @@ function SavedPageContent() {
       document.body.style.backgroundColor = ''
     }
   }, [language])
+
+  // Delay showing shimmer state by 300ms
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setShowShimmer(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowShimmer(false)
+    }
+  }, [isLoading])
 
   // Debug logging
   useEffect(() => {
@@ -49,17 +62,61 @@ function SavedPageContent() {
     setSelectedSongId(null)
   }
 
-  if (isLoading) {
+  // Shimmer card component - matches SongListItem exactly
+  const ShimmerCard = () => (
+    <Card className="border-0" style={{ borderRadius: '24px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
+      <CardContent className="flex items-center p-3" style={{ gap: '16px' }}>
+        {/* Album art placeholder - 88x88 to match SongListItem */}
+        <div
+          className="bg-muted/20 rounded-lg flex-shrink-0 animate-pulse"
+          style={{ width: '88px', height: '88px' }}
+        />
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 space-y-2">
+          {/* Title */}
+          <div className="h-5 bg-muted/30 animate-pulse rounded w-3/4" />
+          {/* Artist */}
+          <div className="h-4 bg-muted/30 animate-pulse rounded w-1/2" style={{ marginTop: '8px' }} />
+          {/* Genre and word count */}
+          <div className="flex items-center gap-1 mt-1">
+            <div className="h-3 bg-muted/30 animate-pulse rounded w-20" />
+            <span className="text-black/50">•</span>
+            <div className="h-3 bg-muted/30 animate-pulse rounded w-16" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (isLoading && showShimmer) {
     return (
-      <div className="container py-8">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <div className="animate-pulse">Loading saved songs...</div>
+      <div className="container px-6 py-8 pb-24">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col items-center">
+            <h1 className="text-center" style={{ fontSize: '18px', lineHeight: '24px', fontWeight: 500, color: getSecondaryColor(language), marginBottom: '24px' }}>Saved</h1>
+            <Image
+              src={language === 'es' ? '/images/bookmark_no_bg_spanish.png' : '/images/bookmark_no_bg_french.png'}
+              alt="Bookmark"
+              width={202}
+              height={202}
+              className="h-[202px] w-[202px] mb-8"
+            />
+          </div>
+
+          {/* Shimmer Cards */}
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <ShimmerCard key={i} />
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
-  if (savedSongs.length === 0) {
+  if (savedSongs.length === 0 && !isFetching && !isLoading) {
     return (
       <div className="container py-8">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -95,23 +152,6 @@ function SavedPageContent() {
             className="h-[202px] w-[202px] mb-8"
           />
         </div>
-
-        {/* Sign in prompt for unauthenticated users */}
-        {!session && (
-          <Card className="mb-6 border-orange-200 bg-orange-50">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <LogIn className="h-5 w-5 text-orange-600 mt-0.5" />
-                <div>
-                  <p className="font-medium text-orange-900">Sign in to sync your saved songs</p>
-                  <p className="text-sm text-orange-700 mt-1">
-                    Your saved songs are currently stored locally. Sign in to sync them across devices.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Songs List */}
         <div className="space-y-4">

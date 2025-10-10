@@ -35,6 +35,7 @@ function LevelPageContent() {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isTenseModalOpen, setIsTenseModalOpen] = useState(false)
+  const [showLoading, setShowLoading] = useState(false)
 
   // Set background color based on language
   useEffect(() => {
@@ -49,6 +50,18 @@ function LevelPageContent() {
     queryKey: ['levels', language],
     queryFn: () => fetchLevels(language),
   })
+
+  // Delay showing loading indicator by 300ms
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setShowLoading(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowLoading(false)
+    }
+  }, [isLoading])
 
   // Handle URL synchronization for direct song links
   useEffect(() => {
@@ -99,7 +112,7 @@ function LevelPageContent() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [isModalOpen])
 
-  if (isLoading) {
+  if (isLoading && showLoading) {
     return (
       <div className="container py-8">
         <div className="flex items-center justify-center py-12">

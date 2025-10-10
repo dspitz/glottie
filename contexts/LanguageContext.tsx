@@ -19,24 +19,43 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   ]
 
   useEffect(() => {
-    // Load from localStorage on mount
+    // Load from localStorage first (instant)
     const saved = localStorage.getItem('preferredLanguage')
     if (saved) {
       setLanguageState(saved)
     }
+
+    // Then try to fetch from backend for authenticated users
+    fetch('/api/user/preferences')
+      .then(res => {
+        if (res.ok) return res.json()
+        throw new Error('Not authenticated')
+      })
+      .then(data => {
+        if (data.preferredLanguage) {
+          // Backend preference overrides localStorage
+          setLanguageState(data.preferredLanguage)
+          localStorage.setItem('preferredLanguage', data.preferredLanguage)
+        }
+      })
+      .catch(() => {
+        // Not authenticated or error - use localStorage only
+      })
   }, [])
 
   const setLanguage = (lang: string) => {
     setLanguageState(lang)
     localStorage.setItem('preferredLanguage', lang)
 
-    // Optionally: sync to backend for authenticated users
-    // This could be done with a separate mutation or API call
-    // fetch('/api/user/preferences', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ preferredLanguage: lang })
-    // }).catch(err => console.error('Failed to sync language preference:', err))
+    // Sync to backend for authenticated users (non-blocking)
+    fetch('/api/user/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferredLanguage: lang })
+    }).catch(err => {
+      // Silent fail for unauthenticated users - they use localStorage only
+      console.debug('Language preference not synced to backend:', err.message)
+    })
   }
 
   return (

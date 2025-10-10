@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import { LevelCard } from '@/components/LevelCard'
 import { fetchLevels } from '@/lib/client'
 import { Loader2, AlertCircle } from 'lucide-react'
@@ -13,6 +14,7 @@ export default function HomePage() {
   const { language } = useLanguage()
   const languageName = getLanguageName(language)
   const [animationKey, setAnimationKey] = useState(0)
+  const [showLoading, setShowLoading] = useState(false)
 
   const { data: levelsData, isLoading, error } = useQuery({
     queryKey: ['levels', language],
@@ -43,7 +45,19 @@ export default function HomePage() {
     }
   }, [language])
 
-  if (isLoading) {
+  // Delay showing loading indicator by 300ms
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setShowLoading(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowLoading(false)
+    }
+  }, [isLoading])
+
+  if (isLoading && showLoading) {
     return (
       <div className="container py-8">
         <div className="flex items-center justify-center py-12">
@@ -76,43 +90,33 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: getFloodColor(language) }}>
-      <style jsx>{`
-        @keyframes cascadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes cascadeInOffset {
-          from {
-            opacity: 0;
-            transform: translateY(64px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(44px);
-          }
-        }
-        .cascade-item {
-          animation: cascadeIn 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          opacity: 0;
-        }
-        .cascade-item-offset {
-          animation: cascadeInOffset 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-          opacity: 0;
-        }
-      `}</style>
-      <div className="pb-8 relative px-20" style={{ maxWidth: '1150px', margin: '0 auto' }} key={animationKey}>
+      <div className="pb-8 relative px-6 md:px-20" style={{ maxWidth: '1150px', margin: '0 auto' }} key={animationKey}>
       {/* Hero Section */}
       <div className="text-center" style={{ marginBottom: '-24px' }}>
-        <h1 className="text-[44px] leading-[52px] font-medium tracking-tight cascade-item-offset" style={{ animationDelay: '0ms', color: getFloodComplementaryColor(language) }}>
+        <motion.h1
+          key={`title-${animationKey}`}
+          className="text-[44px] leading-[52px] font-medium tracking-tight"
+          style={{ color: getFloodComplementaryColor(language), transform: 'translateY(44px)' }}
+          initial={{ opacity: 0, y: 64 }}
+          animate={{ opacity: 1, y: 44 }}
+          transition={{
+            duration: 0.4,
+            delay: 0,
+            ease: [0.25, 0.46, 0.45, 0.94]
+          }}
+        >
           Learn Languages<br />Through Music
-        </h1>
-        <div className="cascade-item" style={{ animationDelay: '100ms' }}>
+        </motion.h1>
+        <motion.div
+          key={`mascot-${animationKey}`}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.4,
+            delay: 0.1,
+            ease: [0.25, 0.46, 0.45, 0.94]
+          }}
+        >
           <Image
             src={language === 'fr' ? '/images/Mascot_French.png' : '/images/Mascot_Spanish.png'}
             alt={`${languageName} Music Mascot`}
@@ -121,45 +125,30 @@ export default function HomePage() {
             className="mx-auto"
             priority
           />
-        </div>
+        </motion.div>
 
       </div>
 
       {/* Levels Grid */}
       <div className="mb-8">
-        <style>{`
-          .levels-grid {
-            display: grid;
-            grid-template-columns: repeat(1, 1fr);
-            gap: 1.5rem;
-          }
-          @media (min-width: 768px) {
-            .levels-grid {
-              grid-template-columns: repeat(2, 1fr);
-            }
-          }
-          @media (min-width: 1024px) {
-            .levels-grid {
-              grid-template-columns: repeat(3, 1fr);
-            }
-          }
-          .levels-grid > * {
-            height: 100%;
-            min-height: 0;
-          }
-        `}</style>
-        <div className="levels-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 [&>*]:h-full [&>*]:min-h-0">
           {Array.from({ length: 5 }, (_, i) => i + 1).map((level) => {
             const levelSongs = levels[level.toString()] || []
             console.log(`🎵 Rendering Level ${level} card with ${levelSongs.length} songs`, levelSongs)
             return (
-              <div
-                key={level}
-                className="cascade-item h-full"
+              <motion.div
+                key={`level-${level}-${animationKey}`}
+                className="h-full"
                 style={{
-                  animationDelay: `${200 + (level - 1) * 2}ms`,
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)'
+                }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.3,
+                  delay: 0.2 + (level - 1) * 0.05,
+                  ease: [0.4, 0, 0.2, 1]
                 }}
               >
                 <LevelCard
@@ -167,14 +156,24 @@ export default function HomePage() {
                   songs={levelSongs}
                   language={language}
                 />
-              </div>
+              </motion.div>
             )
           })}
         </div>
       </div>
 
       {/* Getting Started Guide */}
-      <div className="bg-muted/50 rounded-lg p-8 cascade-item" style={{ animationDelay: '700ms' }}>
+      <motion.div
+        key={`guide-${animationKey}`}
+        className="bg-muted/50 rounded-lg p-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: 0.3,
+          delay: 0.45,
+          ease: [0.4, 0, 0.2, 1]
+        }}
+      >
         <h3 className="text-xl font-semibold mb-4 text-center">How to Use diddydum</h3>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="text-center">
@@ -207,7 +206,7 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
       </div>
     </div>
   )

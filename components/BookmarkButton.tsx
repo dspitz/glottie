@@ -111,19 +111,21 @@ export function BookmarkButton({
     setIsLoading(true)
 
     try {
-      // Use localStorage for all users
-      if (isSaved) {
-        removeSongFromLocalStorage()
-        setIsSaved(false)
-        showToast('Song removed from saved')
-      } else {
+      const newSavedState = !isSaved
+
+      // Update localStorage immediately for responsive UI
+      if (newSavedState) {
         saveSongToLocalStorage()
         setIsSaved(true)
         showToast('Song saved!')
+      } else {
+        removeSongFromLocalStorage()
+        setIsSaved(false)
+        showToast('Song removed from saved')
       }
 
-      // Also call API (without blocking UI)
-      const method = isSaved ? 'DELETE' : 'POST'
+      // Also update database for authenticated users (non-blocking)
+      const method = newSavedState ? 'POST' : 'DELETE'
       fetch(`/api/saved/${songId}`, { method }).catch(console.error)
     } catch (error) {
       console.error('Error toggling save:', error)

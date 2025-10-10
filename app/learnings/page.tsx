@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, Bookmark, BookOpen } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -48,6 +49,8 @@ export default function LearningsPage() {
   const [bookmarkedLines, setBookmarkedLines] = useState<BookmarkedLine[]>([])
   const [isLoadingEngaged, setIsLoadingEngaged] = useState(true)
   const [isLoadingBookmarks, setIsLoadingBookmarks] = useState(true)
+  const [showLoadingEngaged, setShowLoadingEngaged] = useState(false)
+  const [showLoadingBookmarks, setShowLoadingBookmarks] = useState(false)
   const [selectedWord, setSelectedWord] = useState<VocabularyWord | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -57,6 +60,29 @@ export default function LearningsPage() {
       document.body.style.backgroundColor = ''
     }
   }, [language])
+
+  // Delay showing loading indicators by 300ms
+  useEffect(() => {
+    if (isLoadingEngaged) {
+      const timer = setTimeout(() => {
+        setShowLoadingEngaged(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowLoadingEngaged(false)
+    }
+  }, [isLoadingEngaged])
+
+  useEffect(() => {
+    if (isLoadingBookmarks) {
+      const timer = setTimeout(() => {
+        setShowLoadingBookmarks(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowLoadingBookmarks(false)
+    }
+  }, [isLoadingBookmarks])
 
   // Load most engaged words
   useEffect(() => {
@@ -258,37 +284,47 @@ export default function LearningsPage() {
     setModalOpen(true)
   }
 
-  const renderEngagedWord = (engaged: EngagedWord) => {
+  const renderEngagedWord = (engaged: EngagedWord, index: number) => {
     const vocab = engaged.vocabulary
     const translation = vocab?.translation || engaged.translation
 
     return (
-      <div
+      <motion.div
         key={engaged.word}
-        className="hover:shadow-md transition-all hover:scale-[1.01] cursor-pointer"
-        style={{
-          borderRadius: '16px',
-          padding: '20px',
-          backgroundColor: 'rgba(255, 255, 255, 0.12)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: 0.3,
+          delay: index * 0.05,
+          ease: [0.4, 0, 0.2, 1]
         }}
-        onClick={() => handleEngagedWordClick(engaged)}
       >
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-foreground truncate">{engaged.word}</h3>
-            {translation && (
-              <p className="text-sm text-muted-foreground truncate mt-1">{translation}</p>
-            )}
-          </div>
-          <div
-            className="text-xs font-bold px-2.5 py-1.5 rounded-full shrink-0"
-            style={{ backgroundColor: getSecondaryColor(language), color: 'white' }}
-          >
-            {engaged.clickCount}×
+        <div
+          className="hover:shadow-md transition-all hover:scale-[1.01] cursor-pointer"
+          style={{
+            borderRadius: '16px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+          }}
+          onClick={() => handleEngagedWordClick(engaged)}
+        >
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-foreground truncate">{engaged.word}</h3>
+              {translation && (
+                <p className="text-sm text-muted-foreground truncate mt-1">{translation}</p>
+              )}
+            </div>
+            <div
+              className="text-xs font-bold px-2.5 py-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: getSecondaryColor(language), color: 'white' }}
+            >
+              {engaged.clickCount}×
+            </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     )
   }
 
@@ -318,7 +354,7 @@ export default function LearningsPage() {
           </TabsList>
 
           <TabsContent value="words" className="mt-6">
-            {isLoadingEngaged ? (
+            {isLoadingEngaged && showLoadingEngaged ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="h-20" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: '16px' }} />
@@ -326,9 +362,9 @@ export default function LearningsPage() {
               </div>
             ) : engagedWords.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {engagedWords.map(renderEngagedWord)}
+                {engagedWords.map((word, index) => renderEngagedWord(word, index))}
               </div>
-            ) : (
+            ) : !isLoadingEngaged ? (
               <div className="text-center py-12 text-white rounded-lg" style={{ border: '2px dotted rgba(255, 255, 255, 0.4)' }}>
                 <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 16px 24px rgba(0, 0, 0, 0.08)' }}>
                   <TrendingUp className="h-8 w-8" />
@@ -336,11 +372,11 @@ export default function LearningsPage() {
                 <p className="font-medium mb-1">No engaged words yet</p>
                 <p className="text-sm">Start clicking on words in songs to see them here!</p>
               </div>
-            )}
+            ) : null}
           </TabsContent>
 
           <TabsContent value="phrases" className="mt-6">
-            {isLoadingBookmarks ? (
+            {isLoadingBookmarks && showLoadingBookmarks ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="h-24" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', borderRadius: '16px' }} />
@@ -348,35 +384,45 @@ export default function LearningsPage() {
               </div>
             ) : bookmarkedLines.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {bookmarkedLines.map((bookmark) => (
-                  <div
+                {bookmarkedLines.map((bookmark, index) => (
+                  <motion.div
                     key={bookmark.id}
-                    className="hover:shadow-md transition-all hover:scale-[1.01]"
-                    style={{
-                      borderRadius: '16px',
-                      padding: '20px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: index * 0.05,
+                      ease: [0.4, 0, 0.2, 1]
                     }}
                   >
-                    <div className="flex items-start justify-between mb-2" style={{ gap: '16px' }}>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground mb-1">{bookmark.lineText}</p>
-                        {bookmark.lineTranslation && (
-                          <p className="text-sm text-muted-foreground italic" style={{ marginTop: '8px' }}>{bookmark.lineTranslation}</p>
-                        )}
+                    <div
+                      className="hover:shadow-md transition-all hover:scale-[1.01]"
+                      style={{
+                        borderRadius: '16px',
+                        padding: '20px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+                      }}
+                    >
+                      <div className="flex items-start justify-between mb-2" style={{ gap: '16px' }}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground mb-1">{bookmark.lineText}</p>
+                          {bookmark.lineTranslation && (
+                            <p className="text-sm text-muted-foreground italic" style={{ marginTop: '8px' }}>{bookmark.lineTranslation}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center text-xs text-muted-foreground" style={{ gap: '8px' }}>
+                        <BookOpen className="h-3 w-3" />
+                        <span>{bookmark.songTitle}</span>
+                        <span>•</span>
+                        <span>{bookmark.songArtist}</span>
                       </div>
                     </div>
-                    <div className="flex items-center text-xs text-muted-foreground" style={{ gap: '8px' }}>
-                      <BookOpen className="h-3 w-3" />
-                      <span>{bookmark.songTitle}</span>
-                      <span>•</span>
-                      <span>{bookmark.songArtist}</span>
-                    </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            ) : (
+            ) : !isLoadingBookmarks ? (
               <div className="text-center py-12 text-white rounded-lg" style={{ border: '2px dotted rgba(255, 255, 255, 0.4)' }}>
                 <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 16px 24px rgba(0, 0, 0, 0.08)' }}>
                   <Bookmark className="h-8 w-8" />
@@ -384,7 +430,7 @@ export default function LearningsPage() {
                 <p className="font-medium mb-1">No saved phrases yet</p>
                 <p className="text-sm">Bookmark lyrics from songs to save them here!</p>
               </div>
-            )}
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

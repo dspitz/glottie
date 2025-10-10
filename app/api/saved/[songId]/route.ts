@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-
-// Simplified version using a temporary in-memory store
-// In production, this would be stored in the database with proper authentication
-const savedSongs = new Set<string>()
 
 // Check if a song is saved
 export async function GET(
@@ -11,9 +9,33 @@ export async function GET(
   { params }: { params: { songId: string } }
 ) {
   try {
-    // For now, always return false since we're using localStorage on the client
-    // This endpoint is kept for future authentication implementation
-    return NextResponse.json({ saved: false })
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      // Return false for unauthenticated users (they use localStorage)
+      return NextResponse.json({ saved: false })
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ saved: false })
+    }
+
+    // Check if song is saved in database
+    const savedSong = await prisma.savedSong.findUnique({
+      where: {
+        userId_songId: {
+          userId: user.id,
+          songId: params.songId
+        }
+      }
+    })
+
+    return NextResponse.json({ saved: !!savedSong })
   } catch (error) {
     // console.error('Error checking saved song:', error)
     return NextResponse.json(
@@ -29,6 +51,23 @@ export async function POST(
   { params }: { params: { songId: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      // Return success but don't save to database
+      // Unauthenticated users will use localStorage
+      return NextResponse.json({ success: true })
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ success: true })
+    }
+
     // Check if song exists
     const song = await prisma.song.findUnique({
       where: { id: params.songId }
@@ -41,14 +80,26 @@ export async function POST(
       )
     }
 
-    // Add to saved songs (in production, this would be saved to database)
-    savedSongs.add(params.songId)
+    // Create saved song (upsert to handle duplicates)
+    const savedSong = await prisma.savedSong.upsert({
+      where: {
+        userId_songId: {
+          userId: user.id,
+          songId: params.songId
+        }
+      },
+      update: {},
+      create: {
+        userId: user.id,
+        songId: params.songId
+      }
+    })
 
     return NextResponse.json({
       success: true,
       savedSong: {
-        songId: params.songId,
-        createdAt: new Date().toISOString()
+        songId: savedSong.songId,
+        createdAt: savedSong.createdAt.toISOString()
       }
     })
   } catch (error) {
@@ -66,8 +117,30 @@ export async function DELETE(
   { params }: { params: { songId: string } }
 ) {
   try {
-    // Remove from saved songs
-    savedSongs.delete(params.songId)
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      // Return success but don't delete from database
+      // Unauthenticated users will use localStorage
+      return NextResponse.json({ success: true })
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ success: true })
+    }
+
+    // Delete saved song
+    await prisma.savedSong.deleteMany({
+      where: {
+        userId: user.id,
+        songId: params.songId
+      }
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

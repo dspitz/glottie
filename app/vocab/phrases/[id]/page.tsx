@@ -41,8 +41,8 @@ export default function PhraseCategoryPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-8 pb-20">
-        <div className="py-8">
+      <div className="container px-6 py-8 pb-20">
+        <div className="max-w-2xl mx-auto">
           <div className="text-white text-center">Loading...</div>
         </div>
       </div>
@@ -51,8 +51,8 @@ export default function PhraseCategoryPage() {
 
   if (!category) {
     return (
-      <div className="container mx-auto px-8 pb-20">
-        <div className="py-8">
+      <div className="container px-6 py-8 pb-20">
+        <div className="max-w-2xl mx-auto">
           <div className="text-white text-center">Category not found</div>
         </div>
       </div>
@@ -60,23 +60,22 @@ export default function PhraseCategoryPage() {
   }
 
   return (
-    <div className="container mx-auto px-8 pb-20">
-      <div className="py-8">
-        {/* Back Button */}
-        <div className="mb-6">
-          <Button
-            variant="outline"
-            size="icon"
-            className="rounded-full"
-            onClick={() => router.push('/vocab')}
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="sr-only">Back to Basics</span>
-          </Button>
-        </div>
+    <div className="container px-6 py-8 pb-20">
+      {/* Back Button */}
+      <Button
+        variant="outline"
+        size="icon"
+        className="rounded-full fixed top-6 left-6 z-50"
+        onClick={() => router.push('/vocab')}
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="sr-only">Back to Basics</span>
+      </Button>
+
+      <div className="max-w-2xl mx-auto">
 
         {/* Header */}
-        <div className="mb-8 text-center">
+        <div className="mb-8 text-center mt-16">
           <p className="text-[16px] leading-[22px] mb-2" style={{ color: getFloodColor(language) }}>
             {category.nameSpanish || category.nameFrench}
           </p>

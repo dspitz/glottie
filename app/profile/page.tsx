@@ -4,6 +4,7 @@ import React from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,6 +34,7 @@ export default function ProfilePage() {
   const languageName = getLanguageName(language)
   const [stats, setStats] = React.useState<UserStats | null>(null)
   const [statsLoading, setStatsLoading] = React.useState(true)
+  const [showLoading, setShowLoading] = React.useState(false)
   const [uploading, setUploading] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -51,6 +53,18 @@ export default function ProfilePage() {
       router.push('/')
     }
   }, [status, router])
+
+  // Delay showing loading indicator by 300ms
+  React.useEffect(() => {
+    if (status === 'loading') {
+      const timer = setTimeout(() => {
+        setShowLoading(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    } else {
+      setShowLoading(false)
+    }
+  }, [status])
 
   // Fetch user stats for current language
   React.useEffect(() => {
@@ -104,7 +118,7 @@ export default function ProfilePage() {
     }
   }
 
-  if (status === 'loading') {
+  if (status === 'loading' && showLoading) {
     return (
       <div className="container py-8">
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -162,6 +176,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.3,
+            delay: 0,
+            ease: [0.4, 0, 0.2, 1]
+          }}
+        >
         <Card className="mb-4 border-0" style={{ borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
           <CardHeader className="px-5 pt-8 pb-4">
             <div className="flex flex-col items-center gap-2">
@@ -220,8 +243,18 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+        </motion.div>
 
         {/* Sign Out */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: 0.3,
+            delay: 0.05,
+            ease: [0.4, 0, 0.2, 1]
+          }}
+        >
         <Card className="border-0" style={{ borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.12)', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
           <CardContent className="p-5">
             <div className="flex items-center justify-between gap-3">
@@ -244,6 +277,7 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       </div>
     </div>
   )
