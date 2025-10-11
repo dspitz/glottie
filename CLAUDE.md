@@ -146,6 +146,14 @@ Fetches complete song lyrics with:
 - **Synchronized Data**: Exact millisecond timing for karaoke-style display
 - **Structure**: Verse/chorus markers when available
 
+**IMPORTANT: Smart Track Selection**
+Musixmatch often returns multiple versions of the same song (different recordings, remasters, live versions). The hydration system now intelligently prioritizes:
+1. **First Priority**: Tracks with synchronized subtitles (`has_subtitles: 1`)
+2. **Second Priority**: Tracks with regular lyrics (`has_lyrics: 1`)
+3. **Fallback**: First result if no lyrics available
+
+This ensures we get the best possible lyrics data for each song automatically.
+
 #### Step 3: OpenAI Translation
 Processes each line individually:
 - **Line-by-line Translation**: Maintains 1:1 alignment with original
@@ -262,6 +270,18 @@ Translations must maintain 1:1 line correspondence:
    - Cause: Invalid `callback=callback` parameter in API URLs
    - Fix: Remove callback parameter from all Musixmatch API calls
    - Verify: Check lyricsProvider.ts lines 434, 465, 501
+
+7. **Musixmatch Returns Wrong Track Without Lyrics**
+   - **Cause**: Search returns multiple versions, first result doesn't have synchronized lyrics
+   - **Symptoms**: Hydration completes but shows "Has lyrics: No, Has subtitles: No"
+   - **Solution**: The lyricsProvider now automatically prioritizes tracks with `has_subtitles: 1`
+   - **How it works**:
+     - Searches all matching tracks from Musixmatch
+     - First tries to find track with synchronized subtitles
+     - Falls back to track with regular lyrics
+     - Only uses first result if no lyrics available
+   - **Location**: `/packages/adapters/lyricsProvider.ts` (lines 476-516)
+   - **Example**: For "Frère Jacques" by Raffi, search returned track 100710269 (no lyrics) first, but correctly selects track 57737473 (with synced lyrics) instead
 
 ### Testing Songs
 Well-hydrated songs for testing:

@@ -474,7 +474,31 @@ class MusixmatchProvider implements LyricsProvider {
       }
 
       const searchData = await searchResponse.json()
-      const track = searchData.message?.body?.track_list?.[0]?.track
+      const trackList = searchData.message?.body?.track_list || []
+
+      if (trackList.length === 0) {
+        console.log(`❌ Musixmatch: Track not found for "${title}" by ${artist}`)
+        return {
+          lines: [],
+          licensed: false,
+          provider: this.name,
+          isExcerpt: true,
+          error: 'Track not found'
+        }
+      }
+
+      // Prioritize tracks with synchronized subtitles
+      let track = trackList.find((t: any) => t.track.has_subtitles === 1)?.track
+
+      // If no track with subtitles, fall back to track with lyrics
+      if (!track) {
+        track = trackList.find((t: any) => t.track.has_lyrics === 1)?.track
+      }
+
+      // If still no track, take the first result
+      if (!track) {
+        track = trackList[0]?.track
+      }
 
       if (!track) {
         console.log(`❌ Musixmatch: Track not found for "${title}" by ${artist}`)
@@ -489,6 +513,7 @@ class MusixmatchProvider implements LyricsProvider {
 
       console.log(`✅ Musixmatch: Found track ID ${track.track_id} - "${track.track_name}" by ${track.artist_name}`)
       console.log(`   Has lyrics: ${track.has_lyrics === 1 ? 'Yes' : 'No'}, Has subtitles: ${track.has_subtitles === 1 ? 'Yes' : 'No'}`)
+      console.log(`   Selected from ${trackList.length} results (prioritizing tracks with synchronized subtitles)`)
 
       // Try to get synchronized lyrics - try multiple formats
       let synchronizedData: { lines: LyricsLine[], hasWordTiming: boolean, format: 'lrc' | 'estimated' | 'dfxp', duration?: number } | undefined
