@@ -246,3 +246,42 @@ model UserLanguageProgress {
   @@index([userId])
   @@index([language])
 }
+
+model VocabularyEnriched {
+  id              String   @id @default(cuid())
+  word            String   // Original word in source language
+  language        String   // ISO 639-1 code of source language (es, fr, etc.)
+  translations    String   // JSON object: { en: "...", zh: "...", ar: "...", etc. }
+  root            String?  // Base/infinitive form (for verbs)
+  partOfSpeech    String   // noun, verb, adjective, adverb, etc.
+  conjugations    String?  // JSON object: { present: [...], preterite: [...], etc. }
+  synonyms        String?  // JSON array: ["word1", "word2", ...]
+  antonyms        String?  // JSON array: ["word1", "word2", ...]
+  definition      String?  // Brief explanation in English
+  exampleSentence String?  // Natural usage in source language
+  exampleTranslation String? // Translation of example to English
+  usefulnessScore Float?   // 0-1 Zipf-based usefulness score
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([word, language])
+  @@index([language])
+  @@index([partOfSpeech])
+  @@index([usefulnessScore])
+}
+
+model Idiom {
+  id                String   @id @default(cuid())
+  phrase            String   // Original idiom phrase
+  language          String   // ISO 639-1 code (es, fr, etc.)
+  translations      String   // JSON object: { en: "...", zh: "...", etc. }
+  literalTranslation String? // Word-for-word translation
+  meaning           String   // What the idiom actually means
+  examples          String?  // JSON array of example sentences
+  culturalContext   String?  // Cultural background explanation
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([phrase, language])
+  @@index([language])
+}

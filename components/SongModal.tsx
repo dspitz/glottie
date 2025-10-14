@@ -11,6 +11,8 @@ import { SongHeader } from '@/components/SongHeader'
 import { LyricsView } from '@/components/LyricsView'
 import { Button } from '@/components/ui/button'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { KeyVocabSection } from '@/components/KeyVocabSection'
+import { IdiomsSection } from '@/components/IdiomsSection'
 import { fetchLyrics } from '@/lib/client'
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 
@@ -271,6 +273,23 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                 onNext={nextSong ? handleNext : undefined}
                 hideNavigation={isTranslationModalOpen}
               />
+
+              {/* Key Vocabulary Section */}
+              <div className="mb-8">
+                <KeyVocabSection
+                  songId={currentSongId!}
+                  language={lyricsData?.song?.language || lyricsData?.language || 'es'}
+                />
+              </div>
+
+              {/* Idioms & Expressions Section */}
+              <div className="mb-8">
+                <IdiomsSection
+                  songId={currentSongId!}
+                  language={lyricsData?.song?.language || lyricsData?.language || 'es'}
+                  userLanguage="en"
+                />
+              </div>
 
               {/* Language Toggle */}
               <div className="flex justify-center mb-6">
