@@ -229,7 +229,7 @@ export function VocabDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-black/90 border-white/20 text-white">
+      <DialogContent className="max-w-2xl h-[80vh] flex flex-col overflow-hidden bg-black/90 border-white/20 text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 flex-wrap text-white">
             <span className="text-2xl font-bold">{word}</span>
@@ -249,7 +249,7 @@ export function VocabDetailModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
+        <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-4">
           {/* Translation */}
           <div className="rounded-lg bg-white/10 p-4">
             <h4 className="text-sm font-semibold text-white/70 mb-2">
