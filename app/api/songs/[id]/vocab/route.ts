@@ -78,11 +78,11 @@ export async function GET(
       }
     }
 
-    // Detect idioms
+    // Detect idioms (cache by songId for performance)
     let idioms = []
     if (lyrics.length > 0) {
       try {
-        idioms = await getIdiomsForLyrics(lyrics, song.language)
+        idioms = await getIdiomsForLyrics(lyrics, song.language, songId)
       } catch (error) {
         console.error('Error detecting idioms:', error)
         // Continue without idioms
@@ -94,6 +94,8 @@ export async function GET(
       enrichedVocab,
       idioms,
       language: song.language,
+      lyrics,
+      translations,
     })
   } catch (error) {
     console.error('Error extracting vocabulary:', error)

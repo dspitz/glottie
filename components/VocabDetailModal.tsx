@@ -28,6 +28,8 @@ interface VocabDetailModalProps {
     'present-perfect'?: string[]
     pluperfect?: string[]
   }
+  lyricLineInSong?: string
+  lyricLineTranslation?: string
 }
 
 export function VocabDetailModal({
@@ -43,6 +45,8 @@ export function VocabDetailModal({
   exampleTranslation,
   synonyms,
   conjugations,
+  lyricLineInSong,
+  lyricLineTranslation,
 }: VocabDetailModalProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const isVerb = partOfSpeech.toLowerCase() === 'verb'
@@ -225,20 +229,20 @@ export function VocabDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-black/90 border-white/20 text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 flex-wrap">
+          <DialogTitle className="flex items-center gap-3 flex-wrap text-white">
             <span className="text-2xl font-bold">{word}</span>
             {isVerb && root && (
-              <span className="text-lg text-muted-foreground">
+              <span className="text-lg text-white/70">
                 ({root})
               </span>
             )}
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/20">
               {partOfSpeech.toLowerCase()}
             </Badge>
             {count > 1 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
                 appears {count}× in song
               </Badge>
             )}
@@ -247,18 +251,35 @@ export function VocabDetailModal({
 
         <div className="space-y-6 pt-4">
           {/* Translation */}
-          <div>
-            <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+          <div className="rounded-lg bg-white/10 p-4">
+            <h4 className="text-sm font-semibold text-white/70 mb-2">
               Translation
             </h4>
-            <p className="text-lg">{translation}</p>
+            <p className="text-lg text-white">{translation}</p>
           </div>
+
+          {/* Lyric Line from Song */}
+          {lyricLineInSong && (
+            <div>
+              <h4 className="text-sm font-semibold text-white/70 mb-2">
+                As Used in This Song
+              </h4>
+              <div className="space-y-2 p-4 rounded-lg border border-white/20 bg-white/5">
+                <p className="text-base italic text-white">"{lyricLineInSong}"</p>
+                {lyricLineTranslation && (
+                  <p className="text-sm text-white/70">
+                    {lyricLineTranslation}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Example Sentence */}
           {exampleSentence && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-muted-foreground">
+                <h4 className="text-sm font-semibold text-white/70">
                   Usage in a Sentence
                 </h4>
                 <Button
@@ -266,7 +287,7 @@ export function VocabDetailModal({
                   size="sm"
                   onClick={speakSentence}
                   disabled={isPlaying}
-                  className="h-8 gap-2"
+                  className="h-8 gap-2 text-white hover:bg-white/20 hover:text-white"
                 >
                   {isPlaying ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -276,10 +297,10 @@ export function VocabDetailModal({
                   <span className="text-xs">Listen</span>
                 </Button>
               </div>
-              <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                <p className="text-base italic">"{exampleSentence}"</p>
+              <div className="space-y-2 p-4 rounded-lg border border-white/20 bg-white/5">
+                <p className="text-base italic text-white">"{exampleSentence}"</p>
                 {exampleTranslation && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-white/70">
                     {exampleTranslation}
                   </p>
                 )}
@@ -290,12 +311,12 @@ export function VocabDetailModal({
           {/* Synonyms (for nouns/adjectives) */}
           {isNounOrAdjective && synonyms && synonyms.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-muted-foreground mb-2">
+              <h4 className="text-sm font-semibold text-white/70 mb-2">
                 Synonyms
               </h4>
               <div className="flex flex-wrap gap-2">
                 {synonyms.map((synonym, index) => (
-                  <Badge key={index} variant="outline" className="text-sm">
+                  <Badge key={index} variant="outline" className="text-sm bg-white/10 text-white border-white/20">
                     {synonym}
                   </Badge>
                 ))}
@@ -306,7 +327,7 @@ export function VocabDetailModal({
           {/* Conjugations (for verbs) */}
           {isVerb && conjugations && availableTenses.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-muted-foreground mb-3">
+              <h4 className="text-sm font-semibold text-white/70 mb-3">
                 Conjugations
               </h4>
 
@@ -318,8 +339,8 @@ export function VocabDetailModal({
                     onClick={() => setSelectedTense(tense)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       selectedTense === tense
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                        ? 'bg-white/30 text-white border border-white/30'
+                        : 'bg-white/10 hover:bg-white/20 text-white/70 border border-white/20'
                     }`}
                   >
                     {tenseInfo[tense]?.label || tense}
@@ -329,21 +350,21 @@ export function VocabDetailModal({
 
               {/* Tense Description */}
               {tenseInfo[selectedTense] && (
-                <p className="text-sm text-muted-foreground mb-3 italic">
+                <p className="text-sm text-white/70 mb-3 italic">
                   {tenseInfo[selectedTense].description}
                 </p>
               )}
 
               {/* Single Tense Table */}
               <div className="overflow-x-auto">
-                <div className="p-4 rounded-lg bg-muted/30 border">
+                <div className="p-4 rounded-lg bg-white/10 border border-white/20">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-3 font-medium text-muted-foreground text-sm">
+                      <tr className="border-b border-white/20">
+                        <th className="text-left py-2 px-3 font-medium text-white/70 text-sm">
                           Pronoun
                         </th>
-                        <th className="text-left py-2 px-3 font-medium text-muted-foreground text-sm">
+                        <th className="text-left py-2 px-3 font-medium text-white/70 text-sm">
                           {tenseInfo[selectedTense]?.label || selectedTense}
                         </th>
                       </tr>
@@ -352,20 +373,20 @@ export function VocabDetailModal({
                       {pronouns.map((pronoun, i) => {
                         const conjugation = conjugations[selectedTense as keyof typeof conjugations]?.[i]
                         return (
-                          <tr key={i} className="border-b last:border-0">
-                            <td className="py-2 px-3 text-muted-foreground text-sm font-light">
+                          <tr key={i} className="border-b border-white/20 last:border-0">
+                            <td className="py-2 px-3 text-white/70 text-sm font-light">
                               {pronoun}
                             </td>
                             <td className="py-2 px-3">
                               {conjugation && conjugation !== '-' ? (
                                 <button
                                   onClick={() => speakConjugation(conjugation)}
-                                  className="font-normal text-base hover:text-primary transition-colors cursor-pointer"
+                                  className="font-normal text-base text-white hover:text-white/80 transition-colors cursor-pointer"
                                 >
                                   {conjugation}
                                 </button>
                               ) : (
-                                <span className="font-normal text-base text-muted-foreground">-</span>
+                                <span className="font-normal text-base text-white/50">-</span>
                               )}
                             </td>
                           </tr>
