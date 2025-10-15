@@ -322,8 +322,8 @@ export function LyricsView({
       console.log('📖 [LyricsView] Vocab modal closed', event.detail)
 
       if (audioControls) {
-        // Restore saved playback position
-        await audioControls.restorePlaybackPosition()
+        // Reset playhead to beginning
+        await audioControls.seekSilent(0)
       }
     }
 

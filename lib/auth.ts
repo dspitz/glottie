@@ -10,6 +10,7 @@ const SPOTIFY_SCOPES = [
   'user-read-private',           // Required for user country/premium status
   'user-read-playback-state',    // Read current playback state
   'user-modify-playback-state',  // Control playback (play/pause/skip)
+  'user-read-currently-playing', // Read currently playing track
 ].join(' ')
 
 export const authOptions: NextAuthOptions = {
