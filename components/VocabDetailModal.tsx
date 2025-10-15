@@ -412,7 +412,11 @@ export function VocabDetailModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/20 z-[60]"
+            className="fixed inset-0 bg-black/20 z-[60] m-0 p-0"
+            style={{
+              width: '100vw',
+              height: '100vh',
+            }}
           />
 
           {/* Bottom Sheet */}
