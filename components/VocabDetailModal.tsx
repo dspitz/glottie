@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Volume2, Loader2, Play, X } from 'lucide-react'
+import { Volume2, Loader2, Play, X, ChevronDown } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 interface VocabDetailModalProps {
@@ -200,7 +200,7 @@ export function VocabDetailModal({
     key => conjugations[key as keyof typeof conjugations]?.length ?? 0 > 0
   ) : []
 
-  const [selectedTense, setSelectedTense] = useState<string>(availableTenses[0] || 'present')
+  const [expandedTenses, setExpandedTenses] = useState<Set<string>>(new Set([availableTenses[0] || 'present']))
 
   // Language-specific conjugation labels
   const pronouns = language === 'fr'
@@ -635,78 +635,122 @@ export function VocabDetailModal({
 
               {/* Conjugations (for verbs) */}
               {isVerb && conjugations && availableTenses.length > 0 && (
-                <div>
-                  {/* Tense Selector Pills */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {availableTenses.map((tense) => (
-                      <button
-                        key={tense}
-                        onClick={() => setSelectedTense(tense)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          selectedTense === tense
-                            ? 'bg-gray-900 text-white'
-                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                        }`}
-                      >
-                        {tenseInfo[tense]?.label || tense}
-                      </button>
-                    ))}
-                  </div>
+                <div className="space-y-2">
+                  {availableTenses.map((tense) => {
+                    const isExpanded = expandedTenses.has(tense)
 
-                  {/* Tense Description */}
-                  {tenseInfo[selectedTense] && (
-                    <p className="text-sm text-gray-600 mb-3 italic">
-                      {tenseInfo[selectedTense].description}
-                    </p>
-                  )}
+                    return (
+                      <div key={tense}>
+                        {/* Collapsible Header */}
+                        <button
+                          onClick={() => {
+                            const newExpanded = new Set(expandedTenses)
+                            if (isExpanded) {
+                              newExpanded.delete(tense)
+                            } else {
+                              newExpanded.add(tense)
+                            }
+                            setExpandedTenses(newExpanded)
+                          }}
+                          className="w-full flex items-center justify-between rounded-lg transition-colors"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                            boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                            padding: '16px 24px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '18px',
+                              lineHeight: '24px',
+                              fontWeight: 500,
+                              color: 'rgba(0, 0, 0, 0.90)',
+                            }}
+                          >
+                            {tenseInfo[tense]?.label || tense}
+                          </span>
+                          <ChevronDown
+                            className="transition-transform duration-200"
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              color: 'rgba(0, 0, 0, 0.60)',
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            }}
+                          />
+                        </button>
 
-                  {/* Single Tense Table */}
-                  <div className="overflow-x-auto">
-                    <div
-                      className="p-4 rounded-lg"
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
-                      }}
-                    >
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-300">
-                            <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
-                              Pronoun
-                            </th>
-                            <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
-                              {tenseInfo[selectedTense]?.label || selectedTense}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pronouns.map((pronoun, i) => {
-                            const conjugation = conjugations[selectedTense as keyof typeof conjugations]?.[i]
-                            return (
-                              <tr key={i} className="border-b border-gray-200 last:border-0">
-                                <td className="py-2 px-3 text-gray-700 text-sm font-light">
-                                  {pronoun}
-                                </td>
-                                <td className="py-2 px-3">
-                                  {conjugation && conjugation !== '-' ? (
-                                    <button
-                                      onClick={() => speakConjugation(conjugation)}
-                                      className="font-normal text-base text-gray-900 hover:text-gray-700 transition-colors cursor-pointer"
-                                    >
-                                      {conjugation}
-                                    </button>
-                                  ) : (
-                                    <span className="font-normal text-base text-gray-400">-</span>
-                                  )}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                        {/* Collapsible Content */}
+                        <AnimatePresence initial={false}>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              style={{ overflow: 'hidden' }}
+                            >
+                              <div className="pt-2">
+                                {/* Tense Description */}
+                                {tenseInfo[tense]?.description && (
+                                  <p className="text-sm text-gray-600 mb-3 italic px-1">
+                                    {tenseInfo[tense].description}
+                                  </p>
+                                )}
+
+                                {/* Conjugation Table */}
+                                <div
+                                  className="rounded-lg"
+                                  style={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                                    boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                                    padding: '24px',
+                                  }}
+                                >
+                                  <table className="w-full">
+                                    <thead>
+                                      <tr className="border-b border-gray-300">
+                                        <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
+                                          Pronoun
+                                        </th>
+                                        <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
+                                          Conjugation
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {pronouns.map((pronoun, i) => {
+                                        const conjugation = conjugations[tense as keyof typeof conjugations]?.[i]
+                                        return (
+                                          <tr key={i} className="border-b border-gray-200 last:border-0">
+                                            <td className="py-2 px-3 text-gray-700 text-sm font-light">
+                                              {pronoun}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                              {conjugation && conjugation !== '-' ? (
+                                                <button
+                                                  onClick={() => speakConjugation(conjugation)}
+                                                  className="font-normal text-base text-gray-900 hover:text-gray-700 transition-colors cursor-pointer"
+                                                >
+                                                  {conjugation}
+                                                </button>
+                                              ) : (
+                                                <span className="font-normal text-base text-gray-400">-</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </motion.div>
