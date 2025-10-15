@@ -469,7 +469,7 @@ export function VocabDetailModal({
 
             {/* Header */}
             <motion.div
-              className="px-3 pb-3 mb-6 flex items-center justify-between relative"
+              className="px-3 pb-3 flex items-center justify-between relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
@@ -487,14 +487,6 @@ export function VocabDetailModal({
                 >
                   <X className="h-5 w-5" />
                 </Button>
-              </div>
-              <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 flex-wrap justify-center">
-                <span className="text-2xl font-bold text-gray-900">{word}</span>
-                {isVerb && root && (
-                  <span className="text-lg text-gray-600">
-                    ({root})
-                  </span>
-                )}
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-900">
@@ -515,21 +507,51 @@ export function VocabDetailModal({
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
             >
-              {/* Translation Bubble */}
+              {/* Word & Translation Bubble */}
               <div>
                 <div
-                  className="p-4 rounded-lg"
+                  className="p-4 rounded-lg text-center"
                   style={{
-                    fontSize: '24px',
-                    lineHeight: '32px',
-                    fontWeight: 400,
-                    color: 'rgba(0, 0, 0, 0.90)',
                     backgroundColor: 'rgba(255, 255, 255, 0.06)',
                     boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
-                    minHeight: '80px'
                   }}
                 >
-                  <p>{translation}</p>
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        style={{
+                          fontSize: '28px',
+                          lineHeight: '36px',
+                          fontWeight: 400,
+                          color: '#000',
+                        }}
+                      >
+                        {word}
+                      </span>
+                      {isVerb && root && (
+                        <span
+                          style={{
+                            fontSize: '20px',
+                            lineHeight: '28px',
+                            fontWeight: 400,
+                            color: 'rgba(0, 0, 0, 0.60)',
+                          }}
+                        >
+                          ({root})
+                        </span>
+                      )}
+                    </div>
+                    <p
+                      style={{
+                        fontSize: '24px',
+                        lineHeight: '32px',
+                        fontWeight: 400,
+                        color: 'rgba(0, 0, 0, 0.80)',
+                      }}
+                    >
+                      {translation}
+                    </p>
+                  </div>
                 </div>
               </div>
 
