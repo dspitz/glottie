@@ -518,8 +518,8 @@ export function VocabDetailModal({
                 <div className="flex flex-col items-center gap-2">
                   <span
                     style={{
-                      fontSize: '44px',
-                      lineHeight: '52px',
+                      fontSize: '32px',
+                      lineHeight: '40px',
                       fontWeight: 400,
                       color: '#000',
                       textTransform: 'capitalize',
@@ -529,8 +529,8 @@ export function VocabDetailModal({
                   </span>
                   <p
                     style={{
-                      fontSize: '24px',
-                      lineHeight: '32px',
+                      fontSize: '20px',
+                      lineHeight: '28px',
                       fontWeight: 400,
                       color: 'rgba(0, 0, 0, 0.80)',
                     }}
@@ -669,8 +669,8 @@ export function VocabDetailModal({
                         >
                           <span
                             style={{
-                              fontSize: '18px',
-                              lineHeight: '24px',
+                              fontSize: '20px',
+                              lineHeight: '28px',
                               fontWeight: 500,
                               color: 'rgba(0, 0, 0, 0.90)',
                             }}
