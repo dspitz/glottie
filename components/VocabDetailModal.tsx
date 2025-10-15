@@ -278,27 +278,26 @@ export function VocabDetailModal({
           {/* Example Sentence */}
           {exampleSentence && (
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-white/70">
-                  Usage in a Sentence
-                </h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={speakSentence}
-                  disabled={isPlaying}
-                  className="h-8 gap-2 text-white hover:bg-white/20 hover:text-white"
-                >
-                  {isPlaying ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Volume2 className="h-4 w-4" />
-                  )}
-                  <span className="text-xs">Listen</span>
-                </Button>
-              </div>
+              <h4 className="text-sm font-semibold text-white/70 mb-2">
+                Usage in a Sentence
+              </h4>
               <div className="space-y-2 p-4 rounded-lg border border-white/20 bg-white/5">
-                <p className="text-base italic text-white">"{exampleSentence}"</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-base italic text-white flex-1">"{exampleSentence}"</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={speakSentence}
+                    disabled={isPlaying}
+                    className="h-8 w-8 p-0 flex-shrink-0 text-white hover:bg-white/20 hover:text-white"
+                  >
+                    {isPlaying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Volume2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 {exampleTranslation && (
                   <p className="text-sm text-white/70">
                     {exampleTranslation}
