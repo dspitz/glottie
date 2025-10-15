@@ -516,7 +516,7 @@ export function VocabDetailModal({
                       lineHeight: '52px',
                       fontWeight: 400,
                       color: '#000',
-                      textTransform: 'uppercase',
+                      textTransform: 'capitalize',
                     }}
                   >
                     {isVerb && root ? root : word}
@@ -541,7 +541,7 @@ export function VocabDetailModal({
                     As Used in This Song
                   </h4>
                   <div
-                    className="p-4 rounded-lg"
+                    className="rounded-lg"
                     style={{
                       fontSize: '20px',
                       lineHeight: '28px',
@@ -549,10 +549,11 @@ export function VocabDetailModal({
                       color: 'rgba(0, 0, 0, 0.90)',
                       backgroundColor: 'rgba(255, 255, 255, 0.06)',
                       boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                      padding: '24px',
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <p className="italic flex-1">"{lyricLineInSong}"</p>
+                      <p className="italic flex-1">{lyricLineInSong}</p>
                       {lyricLineIndex !== undefined && songId && (
                         <Button
                           variant="ghost"
@@ -586,7 +587,7 @@ export function VocabDetailModal({
                     Usage in a Sentence
                   </h4>
                   <div
-                    className="p-4 rounded-lg"
+                    className="rounded-lg"
                     style={{
                       fontSize: '20px',
                       lineHeight: '28px',
@@ -594,10 +595,11 @@ export function VocabDetailModal({
                       color: 'rgba(0, 0, 0, 0.90)',
                       backgroundColor: 'rgba(255, 255, 255, 0.06)',
                       boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                      padding: '24px',
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <p className="italic flex-1">"{exampleSentence}"</p>
+                      <p className="italic flex-1">{exampleSentence}</p>
                       <Button
                         variant="ghost"
                         size="sm"
