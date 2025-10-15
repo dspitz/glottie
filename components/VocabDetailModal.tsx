@@ -512,10 +512,11 @@ export function VocabDetailModal({
                 <div className="flex flex-col items-center gap-2">
                   <span
                     style={{
-                      fontSize: '28px',
-                      lineHeight: '36px',
+                      fontSize: '44px',
+                      lineHeight: '52px',
                       fontWeight: 400,
                       color: '#000',
+                      textTransform: 'uppercase',
                     }}
                   >
                     {isVerb && root ? root : word}
