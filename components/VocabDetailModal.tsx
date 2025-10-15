@@ -545,8 +545,9 @@ export function VocabDetailModal({
                       fontSize: '20px',
                       lineHeight: '28px',
                       fontWeight: 400,
-                      color: 'rgba(0, 0, 0, 0.80)',
-                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                      color: 'rgba(0, 0, 0, 0.90)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -589,8 +590,9 @@ export function VocabDetailModal({
                       fontSize: '20px',
                       lineHeight: '28px',
                       fontWeight: 400,
-                      color: 'rgba(0, 0, 0, 0.80)',
-                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                      color: 'rgba(0, 0, 0, 0.90)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -670,7 +672,8 @@ export function VocabDetailModal({
                     <div
                       className="p-4 rounded-lg"
                       style={{
-                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                        boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
                       }}
                     >
                       <table className="w-full">
