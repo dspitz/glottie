@@ -1,0 +1,83 @@
+🚀 Starting vocabulary enrichment for all song words...
+
+Found 122 songs with lyrics
+
+⚠️  Skipping La Bamba - parse error
+⚠️  Skipping Rayando el Sol - parse error
+⚠️  Skipping Robarte un Beso - parse error
+⚠️  Skipping No Me Doy por Vencido - parse error
+⚠️  Skipping Tabaco y Chanel - parse error
+⚠️  Skipping Llorar - parse error
+⚠️  Skipping Canción del Mariachi - parse error
+⚠️  Skipping Te Quiero - parse error
+⚠️  Skipping Se Preparó - parse error
+⚠️  Skipping A Dios le Pido - parse error
+⚠️  Skipping La Bicicleta - parse error
+⚠️  Skipping Nada Valgo Sin Tu Amor - parse error
+⚠️  Skipping Fruta Fresca - parse error
+⚠️  Skipping Te Mando Flores - parse error
+⚠️  Skipping Lamento Boliviano - parse error
+⚠️  Skipping Vuelves - parse error
+⚠️  Skipping El Talismán - parse error
+⚠️  Skipping Eres - parse error
+⚠️  Skipping Clavado en un Bar - parse error
+⚠️  Skipping Y Hubo Alguien - parse error
+⚠️  Skipping En el Muelle de San Blas - parse error
+⚠️  Skipping Guitarra - parse error
+⚠️  Skipping De Música Ligera - parse error
+⚠️  Skipping La Lola - parse error
+⚠️  Skipping Andar Conmigo - parse error
+⚠️  Skipping Caminar de Tu Mano - parse error
+⚠️  Skipping Persiana Americana - parse error
+⚠️  Skipping Vivir Sin Aire - parse error
+⚠️  Skipping Tu Amor Me Hace Bien - parse error
+⚠️  Skipping Deja Que Te Bese - parse error
+⚠️  Skipping Mariposa Traicionera - parse error
+⚠️  Skipping Girasoles - parse error
+⚠️  Skipping Ella y Yo - parse error
+⚠️  Skipping Quiero Dormir Cansado - parse error
+⚠️  Skipping Amor Eterno - parse error
+⚠️  Skipping Latinoamérica - parse error
+⚠️  Skipping Historia de un Amor - parse error
+⚠️  Skipping Mediterráneo - parse error
+⚠️  Skipping El Problema - parse error
+⚠️  Skipping La Incondicional - parse error
+⚠️  Skipping Por Amarte Así - parse error
+⚠️  Skipping Es Por Ti - parse error
+⚠️  Skipping A Quien Quiera Escuchar - parse error
+⚠️  Skipping Te Conozco - parse error
+⚠️  Skipping La Negra Tomasa - parse error
+⚠️  Skipping Y, ¿Si Fuera Ella? - parse error
+⚠️  Skipping Se Me Olvidó Otra Vez - parse error
+⚠️  Skipping Malamente - parse error
+⚠️  Skipping Aute Cuture - parse error
+⚠️  Skipping Yo Voy - parse error
+⚠️  Skipping Gasolina - parse error
+⚠️  Skipping Ginza - parse error
+⚠️  Skipping Dákiti - parse error
+⚠️  Skipping TKN - parse error
+⚠️  Skipping Farsante - parse error
+📊 Unique words extracted:
+  Spanish: 1342
+  French: 1288
+  Total: 2630
+
+✅ Already enriched:
+  Spanish: 32
+  French: 71
+
+🆕 Need to enrich:
+  Spanish: 1311
+  French: 1228
+  Total: 2539
+
+💰 Cost estimate: $152.34
+⏱️  Estimated time: ~13 minutes
+
+🔄 Starting enrichment...
+
+📚 Processing Spanish words...
+
+  Batch 1/132: voy, a, reír, bailar, mi...
+  ✅ Enriched 10 Spanish words
+  Batch 2/132: llega, lluvia, para, limpiar, las...

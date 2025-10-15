@@ -150,7 +150,7 @@ Example format:
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-3.5-turbo-0125',
       messages: [
         {
           role: 'system',
@@ -163,7 +163,7 @@ Example format:
       ],
       temperature: 0.3,
       response_format: { type: 'json_object' },
-      max_tokens: 4096, // Max for gpt-4-turbo-preview
+      max_tokens: 4096,
     })
 
     const content = response.choices[0].message.content
