@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Volume2, Loader2, Play } from 'lucide-react'
+import { Volume2, Loader2, Play, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 interface VocabDetailModalProps {
@@ -57,6 +57,22 @@ export function VocabDetailModal({
   const [isPlayingLine, setIsPlayingLine] = useState(false)
   const isVerb = partOfSpeech.toLowerCase() === 'verb'
   const isNounOrAdjective = ['noun', 'adjective'].includes(partOfSpeech.toLowerCase())
+
+  // Animation state for bottom sheet
+  const controls = useAnimation()
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
+
+  // Track window size for responsive positioning
+  useEffect(() => {
+    const updateSize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+    updateSize()
+    window.addEventListener('resize', updateSize)
+    return () => window.removeEventListener('resize', updateSize)
+  }, [])
 
   // Fetch song data to get synchronized lyrics
   const { data: lyricsData } = useQuery({
@@ -364,196 +380,343 @@ export function VocabDetailModal({
     onClose()
   }
 
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const shouldClose = info.velocity.y > 20 || (info.velocity.y >= 0 && info.offset.y > 100)
+
+    if (shouldClose) {
+      controls.start({
+        y: '100%',
+        transition: { type: 'spring', damping: 40, stiffness: 600 }
+      })
+      setTimeout(() => {
+        const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
+        window.dispatchEvent(event)
+        onClose()
+      }, 200)
+    } else {
+      controls.start({
+        y: 0,
+        transition: { type: 'spring', damping: 40, stiffness: 600 }
+      })
+    }
+    setIsDragging(false)
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl h-[80vh] flex flex-col overflow-hidden bg-black/90 border-white/20 text-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 flex-wrap text-white">
-            <span className="text-2xl font-bold">{word}</span>
-            {isVerb && root && (
-              <span className="text-lg text-white/70">
-                ({root})
-              </span>
-            )}
-            <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/20">
-              {partOfSpeech.toLowerCase()}
-            </Badge>
-            {count > 1 && (
-              <Badge variant="outline" className="text-xs bg-white/10 text-white border-white/20">
-                appears {count}× in song
-              </Badge>
-            )}
-          </DialogTitle>
-        </DialogHeader>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => {
+              const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
+              window.dispatchEvent(event)
+              onClose()
+            }}
+            className="fixed inset-0 bg-black/20 z-[60]"
+          />
 
-        <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-4">
-          {/* Translation */}
-          <div className="rounded-lg bg-white/10 p-4">
-            <h4 className="text-sm font-semibold text-white/70 mb-2">
-              Translation
-            </h4>
-            <p className="text-lg text-white">{translation}</p>
-          </div>
+          {/* Bottom Sheet */}
+          <motion.div
+            ref={sheetRef}
+            drag="y"
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0, bottom: 0.2 }}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={handleDragEnd}
+            animate={controls}
+            initial={{
+              x: 0,
+              y: windowSize.width >= 640 ? 0 : '100%',
+              opacity: windowSize.width >= 640 ? 1 : 0
+            }}
+            whileInView={{
+              x: 0,
+              y: 0,
+              opacity: 1
+            }}
+            exit={{ y: '100%' }}
+            transition={{
+              type: 'spring',
+              damping: 40,
+              stiffness: 600
+            }}
+            className={`fixed z-[61] bottom-0 bg-white/50 rounded-t-3xl border-t border-gray-200/50 overflow-hidden flex flex-col ${isDragging ? 'select-none' : ''}`}
+            style={{
+              backdropFilter: 'blur(96px)',
+              left: windowSize.width >= 640 ? '50%' : '0',
+              right: windowSize.width >= 640 ? 'auto' : '0',
+              top: windowSize.width >= 640 ? '50%' : 'auto',
+              bottom: windowSize.width >= 640 ? 'auto' : '0',
+              width: windowSize.width >= 640 ? '672px' : '100%',
+              height: windowSize.width >= 640 ? 'min(800px, 90vh)' : '90vh',
+              marginLeft: windowSize.width >= 640 ? '-336px' : '0',
+              marginTop: windowSize.width >= 640 ? (
+                windowSize.height * 0.9 > 800 ? '-400px' : `${-(windowSize.height * 0.9 / 2)}px`
+              ) : '0',
+              borderRadius: windowSize.width >= 640 ? '24px' : '24px 24px 0 0',
+              border: windowSize.width >= 640 ? '1px solid rgba(229, 231, 235, 0.5)' : undefined,
+              borderTop: windowSize.width < 640 ? '1px solid rgba(229, 231, 235, 0.5)' : undefined
+            }}
+          >
+            {/* Drag Handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-12 h-1 rounded-full bg-gray-400" />
+            </div>
 
-          {/* Lyric Line from Song */}
-          {lyricLineInSong && (
-            <div>
-              <h4 className="text-sm font-semibold text-white/70 mb-2">
-                As Used in This Song
-              </h4>
-              <div className="space-y-2 p-4 rounded-lg border border-white/20 bg-white/5">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-base italic text-white flex-1">"{lyricLineInSong}"</p>
-                  {lyricLineIndex !== undefined && songId && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={playLineInSong}
-                      disabled={isPlayingLine}
-                      className="h-8 w-8 p-0 flex-shrink-0 text-white hover:bg-white/20 hover:text-white"
-                      title="Play this line from the song"
-                    >
-                      {isPlayingLine ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-                {lyricLineTranslation && (
-                  <p className="text-sm text-white/70">
-                    {lyricLineTranslation}
-                  </p>
+            {/* Header */}
+            <motion.div
+              className="px-3 pb-3 mb-6 flex items-center justify-between relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+              exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
+              <div className="bg-background/80 backdrop-blur-sm rounded-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
+                    window.dispatchEvent(event)
+                    onClose()
+                  }}
+                  className="h-9 w-9 rounded-full"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 flex-wrap justify-center">
+                <span className="text-2xl font-bold text-gray-900">{word}</span>
+                {isVerb && root && (
+                  <span className="text-lg text-gray-600">
+                    ({root})
+                  </span>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Example Sentence */}
-          {exampleSentence && (
-            <div>
-              <h4 className="text-sm font-semibold text-white/70 mb-2">
-                Usage in a Sentence
-              </h4>
-              <div className="space-y-2 p-4 rounded-lg border border-white/20 bg-white/5">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-base italic text-white flex-1">"{exampleSentence}"</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={speakSentence}
-                    disabled={isPlaying}
-                    className="h-8 w-8 p-0 flex-shrink-0 text-white hover:bg-white/20 hover:text-white"
-                  >
-                    {isPlaying ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Volume2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                {exampleTranslation && (
-                  <p className="text-sm text-white/70">
-                    {exampleTranslation}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Synonyms (for nouns/adjectives) */}
-          {isNounOrAdjective && synonyms && synonyms.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-white/70 mb-2">
-                Synonyms
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {synonyms.map((synonym, index) => (
-                  <Badge key={index} variant="outline" className="text-sm bg-white/10 text-white border-white/20">
-                    {synonym}
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-900">
+                  {partOfSpeech.toLowerCase()}
+                </Badge>
+                {count > 1 && (
+                  <Badge variant="outline" className="text-xs bg-gray-100 text-gray-700 border-gray-300">
+                    ×{count}
                   </Badge>
-                ))}
+                )}
               </div>
-            </div>
-          )}
+            </motion.div>
 
-          {/* Conjugations (for verbs) */}
-          {isVerb && conjugations && availableTenses.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold text-white/70 mb-3">
-                Conjugations
-              </h4>
+            {/* Content */}
+            <motion.div
+              className="px-3 pb-4 space-y-4 overflow-y-auto flex-1"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+              exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
+            >
+              {/* Translation Bubble */}
+              <div>
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    fontSize: '24px',
+                    lineHeight: '32px',
+                    fontWeight: 400,
+                    color: 'rgba(0, 0, 0, 0.90)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                    minHeight: '80px'
+                  }}
+                >
+                  <p>{translation}</p>
+                </div>
+              </div>
 
-              {/* Tense Selector Pills */}
-              <div className="flex flex-wrap gap-2 mb-3">
-                {availableTenses.map((tense) => (
-                  <button
-                    key={tense}
-                    onClick={() => setSelectedTense(tense)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      selectedTense === tense
-                        ? 'bg-white/30 text-white border border-white/30'
-                        : 'bg-white/10 hover:bg-white/20 text-white/70 border border-white/20'
-                    }`}
+              {/* Lyric Line from Song */}
+              {lyricLineInSong && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    As Used in This Song
+                  </h4>
+                  <div
+                    className="p-4 rounded-lg"
+                    style={{
+                      fontSize: '20px',
+                      lineHeight: '28px',
+                      fontWeight: 400,
+                      color: 'rgba(0, 0, 0, 0.80)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                    }}
                   >
-                    {tenseInfo[tense]?.label || tense}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tense Description */}
-              {tenseInfo[selectedTense] && (
-                <p className="text-sm text-white/70 mb-3 italic">
-                  {tenseInfo[selectedTense].description}
-                </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="italic flex-1">"{lyricLineInSong}"</p>
+                      {lyricLineIndex !== undefined && songId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={playLineInSong}
+                          disabled={isPlayingLine}
+                          className="h-8 w-8 p-0 flex-shrink-0 text-gray-700 hover:bg-gray-200"
+                          title="Play this line from the song"
+                        >
+                          {isPlayingLine ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    {lyricLineTranslation && (
+                      <p className="text-base mt-2 opacity-70">
+                        {lyricLineTranslation}
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
 
-              {/* Single Tense Table */}
-              <div className="overflow-x-auto">
-                <div className="p-4 rounded-lg bg-white/10 border border-white/20">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/20">
-                        <th className="text-left py-2 px-3 font-medium text-white/70 text-sm">
-                          Pronoun
-                        </th>
-                        <th className="text-left py-2 px-3 font-medium text-white/70 text-sm">
-                          {tenseInfo[selectedTense]?.label || selectedTense}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pronouns.map((pronoun, i) => {
-                        const conjugation = conjugations[selectedTense as keyof typeof conjugations]?.[i]
-                        return (
-                          <tr key={i} className="border-b border-white/20 last:border-0">
-                            <td className="py-2 px-3 text-white/70 text-sm font-light">
-                              {pronoun}
-                            </td>
-                            <td className="py-2 px-3">
-                              {conjugation && conjugation !== '-' ? (
-                                <button
-                                  onClick={() => speakConjugation(conjugation)}
-                                  className="font-normal text-base text-white hover:text-white/80 transition-colors cursor-pointer"
-                                >
-                                  {conjugation}
-                                </button>
-                              ) : (
-                                <span className="font-normal text-base text-white/50">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+              {/* Example Sentence */}
+              {exampleSentence && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Usage in a Sentence
+                  </h4>
+                  <div
+                    className="p-4 rounded-lg"
+                    style={{
+                      fontSize: '20px',
+                      lineHeight: '28px',
+                      fontWeight: 400,
+                      color: 'rgba(0, 0, 0, 0.80)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="italic flex-1">"{exampleSentence}"</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={speakSentence}
+                        disabled={isPlaying}
+                        className="h-8 w-8 p-0 flex-shrink-0 text-gray-700 hover:bg-gray-200"
+                      >
+                        {isPlaying ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    {exampleTranslation && (
+                      <p className="text-base mt-2 opacity-70">
+                        {exampleTranslation}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+              )}
+
+              {/* Synonyms (for nouns/adjectives) */}
+              {isNounOrAdjective && synonyms && synonyms.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Synonyms
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {synonyms.map((synonym, index) => (
+                      <Badge key={index} className="text-sm bg-gray-200 text-gray-900 border-gray-300">
+                        {synonym}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Conjugations (for verbs) */}
+              {isVerb && conjugations && availableTenses.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
+                    Conjugations
+                  </h4>
+
+                  {/* Tense Selector Pills */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {availableTenses.map((tense) => (
+                      <button
+                        key={tense}
+                        onClick={() => setSelectedTense(tense)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          selectedTense === tense
+                            ? 'bg-gray-900 text-white'
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                        }`}
+                      >
+                        {tenseInfo[tense]?.label || tense}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tense Description */}
+                  {tenseInfo[selectedTense] && (
+                    <p className="text-sm text-gray-600 mb-3 italic">
+                      {tenseInfo[selectedTense].description}
+                    </p>
+                  )}
+
+                  {/* Single Tense Table */}
+                  <div className="overflow-x-auto">
+                    <div
+                      className="p-4 rounded-lg"
+                      style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                      }}
+                    >
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-300">
+                            <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
+                              Pronoun
+                            </th>
+                            <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
+                              {tenseInfo[selectedTense]?.label || selectedTense}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pronouns.map((pronoun, i) => {
+                            const conjugation = conjugations[selectedTense as keyof typeof conjugations]?.[i]
+                            return (
+                              <tr key={i} className="border-b border-gray-200 last:border-0">
+                                <td className="py-2 px-3 text-gray-700 text-sm font-light">
+                                  {pronoun}
+                                </td>
+                                <td className="py-2 px-3">
+                                  {conjugation && conjugation !== '-' ? (
+                                    <button
+                                      onClick={() => speakConjugation(conjugation)}
+                                      className="font-normal text-base text-gray-900 hover:text-gray-700 transition-colors cursor-pointer"
+                                    >
+                                      {conjugation}
+                                    </button>
+                                  ) : (
+                                    <span className="font-normal text-base text-gray-400">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   )
 }
