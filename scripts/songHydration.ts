@@ -21,6 +21,7 @@
 import { prisma } from '../lib/prisma'
 import { getLyricsByTrack } from '../packages/adapters/lyricsProvider'
 import { translate, batchTranslate, generateSongSummary } from '../packages/adapters/translate'
+import { extractAndEnrichVocabulary, VocabEnrichmentStats } from '../lib/vocabularyAutoEnrich'
 import sharp from 'sharp'
 
 // Types
@@ -28,6 +29,7 @@ interface HydrationOptions {
   force?: boolean
   dryRun?: boolean
   verbose?: boolean
+  skipVocab?: boolean
 }
 
 interface HydrationStats {
@@ -35,6 +37,7 @@ interface HydrationStats {
   colorExtracted: boolean
   lyricsFetched: boolean
   translationCreated: boolean
+  vocabularyEnriched?: VocabEnrichmentStats
   errors: string[]
 }
 
@@ -632,6 +635,23 @@ async function hydrateSong(songId: string, options: HydrationOptions = {}): Prom
             console.log('  ⚠️ Could not generate song summary')
           }
         }
+      }
+    }
+
+    // Step 5: Enrich vocabulary (optional, enabled by default)
+    if (!options.skipVocab && !options.dryRun && song.lyricsRaw) {
+      console.log('\n🔤 Enriching vocabulary...')
+
+      try {
+        const vocabStats = await extractAndEnrichVocabulary(songId, song.language)
+        stats.vocabularyEnriched = vocabStats
+
+        if (vocabStats.errors.length > 0) {
+          vocabStats.errors.forEach(err => console.error(`  ⚠️  ${err}`))
+        }
+      } catch (error) {
+        console.error('  ⚠️  Vocabulary enrichment failed:', error)
+        stats.errors.push(`Vocabulary enrichment: ${error}`)
       }
     }
 

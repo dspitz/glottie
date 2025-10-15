@@ -47,6 +47,7 @@ export function KeyVocabSection({
   const [selectedBasic, setSelectedBasic] = useState<VocabWord | null>(null)
   const [selectedLyricLine, setSelectedLyricLine] = useState<string | null>(null)
   const [selectedTranslation, setSelectedTranslation] = useState<string | null>(null)
+  const [selectedLineIndex, setSelectedLineIndex] = useState<number | null>(null)
 
   // Fetch with full enrichment to get proper translations
   const { data, isLoading, error } = useQuery({
@@ -78,7 +79,7 @@ export function KeyVocabSection({
   const translations: string[] = data.translations || []
 
   // Helper function to find which lyric line contains a word
-  const findLyricLineWithWord = (word: string): { lyricLine: string; translation: string } | null => {
+  const findLyricLineWithWord = (word: string): { lyricLine: string; translation: string; lineIndex: number } | null => {
     const normalizedWord = word.toLowerCase().replace(/[¿?¡!.,;:"""''«»\(\)\[\]]/g, '')
 
     for (let i = 0; i < lyrics.length; i++) {
@@ -90,7 +91,8 @@ export function KeyVocabSection({
       if (wordRegex.test(normalizedLine)) {
         return {
           lyricLine: line,
-          translation: translations[i] || ''
+          translation: translations[i] || '',
+          lineIndex: i
         }
       }
     }
@@ -199,6 +201,7 @@ export function KeyVocabSection({
     setSelectedBasic(basic)
     setSelectedLyricLine(lyricContext?.lyricLine || null)
     setSelectedTranslation(lyricContext?.translation || null)
+    setSelectedLineIndex(lyricContext?.lineIndex ?? null)
   }
 
   // Capitalize first letter of word
@@ -278,6 +281,7 @@ export function KeyVocabSection({
             setSelectedBasic(null)
             setSelectedLyricLine(null)
             setSelectedTranslation(null)
+            setSelectedLineIndex(null)
           }}
           word={selectedBasic.word}
           translation={selectedWord.translations[userLanguage]}
@@ -291,6 +295,8 @@ export function KeyVocabSection({
           conjugations={selectedWord.conjugations}
           lyricLineInSong={selectedLyricLine || undefined}
           lyricLineTranslation={selectedTranslation || undefined}
+          lyricLineIndex={selectedLineIndex ?? undefined}
+          songId={songId}
         />
       )}
 

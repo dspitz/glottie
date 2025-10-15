@@ -272,6 +272,7 @@ model VocabularyEnriched {
 
 model Idiom {
   id                String   @id @default(cuid())
+  songId            String?  // Optional: link to specific song
   phrase            String   // Original idiom phrase
   language          String   // ISO 639-1 code (es, fr, etc.)
   translations      String   // JSON object: { en: "...", zh: "...", etc. }
@@ -284,4 +285,5 @@ model Idiom {
 
   @@unique([phrase, language])
   @@index([language])
+  @@index([songId])
 }

@@ -270,6 +270,26 @@ export function LyricsView({
     })
   }, [])
 
+  // Listen for vocab modal requesting to play a specific line
+  useEffect(() => {
+    const handleVocabPlayLine = (event: CustomEvent) => {
+      const { startTime, endTime } = event.detail
+
+      if (audioControls?.playLine) {
+        console.log('Playing line from vocab modal:', { startTime, endTime })
+        audioControls.playLine(startTime, endTime)
+      } else {
+        console.warn('Audio controls not ready for vocab playLine')
+      }
+    }
+
+    window.addEventListener('vocab-play-line', handleVocabPlayLine as EventListener)
+
+    return () => {
+      window.removeEventListener('vocab-play-line', handleVocabPlayLine as EventListener)
+    }
+  }, [audioControls])
+
   return (
     <div className={`transition-all duration-300 ${hasEverPlayed ? 'pb-32' : 'pb-6'}`}>
       {/* Enhanced Audio Player */}

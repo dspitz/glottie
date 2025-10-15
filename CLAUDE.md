@@ -84,6 +84,24 @@ DATABASE_URL="file:./dev.db" OPENAI_API_KEY="$OPENAI_API_KEY" TRANSLATOR=openai 
 DATABASE_URL="file:./dev.db" TRANSLATOR=openai OPENAI_API_KEY="$OPENAI_API_KEY" npx tsx scripts/translateSingleSong.ts [songId]
 ```
 
+### Vocabulary Enrichment
+```bash
+# Enrich all words from existing songs (one-time setup - ~$120-155 for 2,600 words)
+# Creates multi-language translations (12 languages) + conjugations for every word
+DATABASE_URL="file:./dev.db" OPENAI_API_KEY="$OPENAI_API_KEY" npx tsx scripts/enrichAllSongWords.ts
+
+# Pre-load top 200 common verbs with conjugations (optional - improves cache coverage)
+DATABASE_URL="file:./dev.db" OPENAI_API_KEY="$OPENAI_API_KEY" npx tsx scripts/preloadCommonVerbs.ts
+
+# Clear vocabulary cache (use if updating enrichment structure)
+DATABASE_URL="file:./dev.db" npx tsx scripts/clearVocabCache.ts
+
+# Count unique words in song database
+DATABASE_URL="file:./dev.db" npx tsx scripts/countUniqueWords.ts
+```
+
+**Note:** Song hydration now automatically enriches new vocabulary! Words from new songs are automatically cached with 12-language translations and conjugations.
+
 ## Architecture Overview
 
 ### Tech Stack

@@ -23,7 +23,8 @@ const openai = new OpenAI({
 })
 
 // Target languages for translations (expandable)
-const TARGET_LANGUAGES = ['en', 'zh', 'ar', 'fr', 'de', 'ja', 'ko', 'pt', 'ru', 'hi']
+// Includes major world languages + Romance languages for cross-learning
+const TARGET_LANGUAGES = ['en', 'es', 'fr', 'it', 'pt', 'de', 'zh', 'ja', 'ko', 'ar', 'ru', 'hi']
 
 interface EnrichedWord {
   word: string
@@ -73,12 +74,13 @@ export async function enrichVocabularyBatch(
     en: 'English',
     es: 'Spanish',
     fr: 'French',
-    zh: 'Chinese (Simplified)',
-    ar: 'Arabic',
+    it: 'Italian',
+    pt: 'Portuguese',
     de: 'German',
+    zh: 'Chinese (Simplified)',
     ja: 'Japanese',
     ko: 'Korean',
-    pt: 'Portuguese',
+    ar: 'Arabic',
     ru: 'Russian',
     hi: 'Hindi',
   }
@@ -95,16 +97,18 @@ Words: ${words.join(', ')}
 For each word, return JSON with:
 - word: the original word (preserve case)
 - translations: object with keys {${targetLangList}}
+  * IMPORTANT: For verbs, translate as infinitive with "to" (e.g., "to say", "to go")
+  * For conjugated verbs, still provide the infinitive translation
 - root: base/infinitive form (for verbs), null otherwise
 - partOfSpeech: "noun", "verb", "adjective", "adverb", "pronoun", "preposition", "conjunction", or "interjection"
-- conjugations: if verb, MUST include these 4 core tenses as arrays of 6 forms [je/yo, tu, il/él, nous/nosotros, vous/vosotros, ils/ellos]:
+- conjugations: if verb, MUST include these 6 tenses as arrays of 6 forms [je/yo, tu, il/él, nous/nosotros, vous/vosotros, ils/ellos]:
   * present: present tense (REQUIRED)
   * preterite: past tense - Spanish: pretérito, French: passé composé (REQUIRED)
   * imperfect: imperfect past (REQUIRED)
   * future: simple future (REQUIRED)
-  OPTIONALLY include these advanced tenses if time allows:
-  * conditional: conditional mood (optional)
-  * subjunctive: present subjunctive (optional)
+  * conditional: conditional mood (REQUIRED)
+  * subjunctive: present subjunctive (REQUIRED)
+  OPTIONALLY include these if time allows:
   * present-perfect: present perfect (optional)
   * pluperfect: pluperfect/past perfect (optional)
   Otherwise null.
@@ -129,6 +133,18 @@ Example format:
     "definition": "A deep affection or romantic feeling for someone or something.",
     "exampleSentence": "El amor es eterno",
     "exampleTranslation": "Love is eternal"
+  },
+  {
+    "word": "dit",
+    "translations": {"en": "to say", "zh": "说", ...},
+    "root": "dire",
+    "partOfSpeech": "verb",
+    "conjugations": {...},
+    "synonyms": ["parler", "déclarer"],
+    "antonyms": [],
+    "definition": "To express something in words.",
+    "exampleSentence": "Il a dit la vérité",
+    "exampleTranslation": "He told the truth"
   }
 ]`
 
@@ -147,13 +163,34 @@ Example format:
       ],
       temperature: 0.3,
       response_format: { type: 'json_object' },
+      max_tokens: 4096, // Max for gpt-4-turbo-preview
     })
 
     const content = response.choices[0].message.content
     if (!content) throw new Error('No response from GPT')
 
-    // Parse the response - GPT will wrap in an object due to json_object mode
-    let parsed = JSON.parse(content)
+    let parsed: any
+    try {
+      // Parse the response - GPT will wrap in an object due to json_object mode
+      parsed = JSON.parse(content)
+    } catch (parseError) {
+      // If JSON parsing fails, try to clean the content
+      console.warn('Initial JSON parse failed, attempting to clean response...')
+
+      // Try to fix common issues
+      let cleaned = content
+        .replace(/\n/g, ' ')  // Remove newlines
+        .replace(/\r/g, '')   // Remove carriage returns
+        .trim()
+
+      // Try parsing again
+      try {
+        parsed = JSON.parse(cleaned)
+      } catch (secondError) {
+        console.error('Failed to parse GPT response after cleaning:', content.substring(0, 500))
+        throw new Error(`JSON parsing failed: ${parseError}`)
+      }
+    }
 
     // Handle if GPT wrapped the array in an object
     if (!Array.isArray(parsed)) {
@@ -170,12 +207,18 @@ Example format:
         const values = Object.values(parsed)
         if (values.length > 0 && Array.isArray(values[0])) {
           parsed = values[0]
+        } else {
+          // If single word object, wrap in array
+          if (parsed.word && parsed.translations) {
+            console.warn('GPT returned single word object, wrapping in array')
+            parsed = [parsed]
+          }
         }
       }
     }
 
     if (!Array.isArray(parsed)) {
-      console.error('GPT response structure:', JSON.stringify(parsed, null, 2))
+      console.error('GPT response structure:', JSON.stringify(parsed, null, 2).substring(0, 500))
       throw new Error('GPT response is not an array')
     }
 
@@ -386,18 +429,38 @@ export async function getEnrichedVocabulary(
  */
 export async function getIdiomsForLyrics(
   lyrics: string[],
-  language: string = 'es'
+  language: string = 'es',
+  songId?: string
 ): Promise<Idiom[]> {
-  // Create a hash of the lyrics to check cache
-  const lyricsText = lyrics.join('\n')
-  const lyricsHash = Buffer.from(lyricsText).toString('base64').slice(0, 50)
+  // If songId provided, check cache first
+  if (songId) {
+    const cached = await prisma.idiom.findMany({
+      where: {
+        songId,
+        language,
+      },
+    })
 
-  // For now, detect fresh each time (caching by full lyrics text is complex)
-  // In production, you might cache by song ID instead
+    if (cached.length > 0) {
+      console.log(`✅ Found ${cached.length} cached idioms for song ${songId}`)
+      return cached.map(c => ({
+        phrase: c.phrase,
+        language: c.language,
+        translations: JSON.parse(c.translations),
+        literalTranslation: c.literalTranslation || undefined,
+        meaning: c.meaning,
+        examples: c.examples ? JSON.parse(c.examples) : undefined,
+        culturalContext: c.culturalContext || undefined,
+      }))
+    }
+  }
+
+  // Not in cache, detect fresh with GPT-4
+  console.log(`🔍 Detecting idioms for song ${songId || 'unknown'} with GPT-4...`)
   const idioms = await detectIdioms(lyrics, language)
 
   // Cache the idioms (use upsert for SQLite compatibility)
-  if (idioms.length > 0) {
+  if (idioms.length > 0 && songId) {
     for (const i of idioms) {
       await prisma.idiom.upsert({
         where: {
@@ -406,8 +469,11 @@ export async function getIdiomsForLyrics(
             language: i.language,
           },
         },
-        update: {},
+        update: {
+          songId, // Update songId if phrase already exists
+        },
         create: {
+          songId,
           phrase: i.phrase,
           language: i.language,
           translations: JSON.stringify(i.translations),
@@ -418,6 +484,7 @@ export async function getIdiomsForLyrics(
         },
       })
     }
+    console.log(`✅ Cached ${idioms.length} idioms for song ${songId}`)
   }
 
   return idioms

@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Volume2, Loader2 } from 'lucide-react'
+import { Volume2, Loader2, Play } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 interface VocabDetailModalProps {
   isOpen: boolean
@@ -30,6 +31,8 @@ interface VocabDetailModalProps {
   }
   lyricLineInSong?: string
   lyricLineTranslation?: string
+  lyricLineIndex?: number
+  songId?: string
 }
 
 export function VocabDetailModal({
@@ -47,10 +50,72 @@ export function VocabDetailModal({
   conjugations,
   lyricLineInSong,
   lyricLineTranslation,
+  lyricLineIndex,
+  songId,
 }: VocabDetailModalProps) {
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isPlayingLine, setIsPlayingLine] = useState(false)
   const isVerb = partOfSpeech.toLowerCase() === 'verb'
   const isNounOrAdjective = ['noun', 'adjective'].includes(partOfSpeech.toLowerCase())
+
+  // Fetch song data to get synchronized lyrics
+  const { data: songData } = useQuery({
+    queryKey: ['song-lyrics', songId],
+    queryFn: async () => {
+      if (!songId) return null
+      const response = await fetch(`/api/lyrics/${songId}`)
+      if (!response.ok) return null
+      const data = await response.json()
+      return data.song
+    },
+    enabled: !!songId && lyricLineIndex !== undefined
+  })
+
+  // Parse synchronized lyrics to get timing data
+  const getLineTiming = (): { startTime: number; endTime: number } | null => {
+    if (!songData?.lyricsRaw || lyricLineIndex === undefined) return null
+
+    try {
+      const lyricsData = JSON.parse(songData.lyricsRaw)
+      const synchronizedLines = lyricsData.synchronized?.lines
+
+      if (synchronizedLines && synchronizedLines[lyricLineIndex]) {
+        return {
+          startTime: synchronizedLines[lyricLineIndex].time,
+          endTime: synchronizedLines[lyricLineIndex + 1]?.time || synchronizedLines[lyricLineIndex].time + 3000
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse synchronized lyrics:', error)
+    }
+
+    return null
+  }
+
+  const playLineInSong = () => {
+    const timing = getLineTiming()
+    if (!timing) {
+      console.warn('No timing data available for this line')
+      return
+    }
+
+    // Emit a custom event that the song page can listen to
+    // This will trigger the audio player to play this specific line
+    const event = new CustomEvent('vocab-play-line', {
+      detail: {
+        startTime: timing.startTime,
+        endTime: timing.endTime,
+        songId
+      }
+    })
+    window.dispatchEvent(event)
+    setIsPlayingLine(true)
+
+    // Reset playing state after the line duration
+    setTimeout(() => {
+      setIsPlayingLine(false)
+    }, timing.endTime - timing.startTime)
+  }
 
   // Get available tenses from conjugations
   const availableTenses = conjugations ? Object.keys(conjugations).filter(
@@ -265,7 +330,25 @@ export function VocabDetailModal({
                 As Used in This Song
               </h4>
               <div className="space-y-2 p-4 rounded-lg border border-white/20 bg-white/5">
-                <p className="text-base italic text-white">"{lyricLineInSong}"</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-base italic text-white flex-1">"{lyricLineInSong}"</p>
+                  {lyricLineIndex !== undefined && songId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={playLineInSong}
+                      disabled={isPlayingLine}
+                      className="h-8 w-8 p-0 flex-shrink-0 text-white hover:bg-white/20 hover:text-white"
+                      title="Play this line from the song"
+                    >
+                      {isPlayingLine ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
                 {lyricLineTranslation && (
                   <p className="text-sm text-white/70">
                     {lyricLineTranslation}

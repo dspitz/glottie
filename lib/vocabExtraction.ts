@@ -214,8 +214,23 @@ export async function extractVocabulary(
     }
   })
 
-  // Sort by score (descending) and return top N
-  return vocabWords
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
+  // Sort by score (descending)
+  const sortedWords = vocabWords.sort((a, b) => b.score - a.score)
+
+  // Ensure at least 3 verbs are included (if available)
+  const verbs = sortedWords.filter(w => w.partOfSpeech === 'VERB')
+  const nonVerbs = sortedWords.filter(w => w.partOfSpeech !== 'VERB')
+
+  const minVerbs = 3
+  const guaranteedVerbs = verbs.slice(0, Math.min(minVerbs, verbs.length))
+
+  // Calculate remaining slots
+  const remainingSlots = limit - guaranteedVerbs.length
+
+  // Add remaining words (could be more verbs or non-verbs) sorted by score
+  const remainingWords = sortedWords
+    .filter(w => !guaranteedVerbs.includes(w))
+    .slice(0, remainingSlots)
+
+  return [...guaranteedVerbs, ...remainingWords]
 }
