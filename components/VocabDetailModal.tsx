@@ -550,7 +550,7 @@ export function VocabDetailModal({
                       lineHeight: '28px',
                       fontWeight: 400,
                       color: 'rgba(0, 0, 0, 0.90)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
                       padding: '24px',
                     }}
                   >
@@ -592,7 +592,7 @@ export function VocabDetailModal({
                       lineHeight: '28px',
                       fontWeight: 400,
                       color: 'rgba(0, 0, 0, 0.90)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
                       padding: '24px',
                     }}
                   >
@@ -648,7 +648,7 @@ export function VocabDetailModal({
                         key={tense}
                         className="rounded-lg"
                         style={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.12)',
                         }}
                       >
                         {/* Collapsible Header */}
