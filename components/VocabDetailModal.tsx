@@ -507,51 +507,29 @@ export function VocabDetailModal({
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
             >
-              {/* Word & Translation Bubble */}
-              <div>
-                <div
-                  className="p-4 rounded-lg text-center"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                    boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
-                  }}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        style={{
-                          fontSize: '28px',
-                          lineHeight: '36px',
-                          fontWeight: 400,
-                          color: '#000',
-                        }}
-                      >
-                        {word}
-                      </span>
-                      {isVerb && root && (
-                        <span
-                          style={{
-                            fontSize: '20px',
-                            lineHeight: '28px',
-                            fontWeight: 400,
-                            color: 'rgba(0, 0, 0, 0.60)',
-                          }}
-                        >
-                          ({root})
-                        </span>
-                      )}
-                    </div>
-                    <p
-                      style={{
-                        fontSize: '24px',
-                        lineHeight: '32px',
-                        fontWeight: 400,
-                        color: 'rgba(0, 0, 0, 0.80)',
-                      }}
-                    >
-                      {translation}
-                    </p>
-                  </div>
+              {/* Word & Translation - No Background */}
+              <div className="text-center py-2">
+                <div className="flex flex-col items-center gap-2">
+                  <span
+                    style={{
+                      fontSize: '28px',
+                      lineHeight: '36px',
+                      fontWeight: 400,
+                      color: '#000',
+                    }}
+                  >
+                    {isVerb && root ? root : word}
+                  </span>
+                  <p
+                    style={{
+                      fontSize: '24px',
+                      lineHeight: '32px',
+                      fontWeight: 400,
+                      color: 'rgba(0, 0, 0, 0.80)',
+                    }}
+                  >
+                    {isVerb ? `to ${translation.toLowerCase()}` : translation}
+                  </p>
                 </div>
               </div>
 
