@@ -414,8 +414,14 @@ export function VocabDetailModal({
             onClick={onClose}
             className="fixed inset-0 bg-black/20 z-[60] m-0 p-0"
             style={{
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               width: '100vw',
               height: '100vh',
+              margin: 0,
+              padding: 0,
             }}
           />
 
