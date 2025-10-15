@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Volume2, Loader2, Play, X, ChevronDown } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { AudioWaveform } from './AudioWaveform'
 
 interface VocabDetailModalProps {
   isOpen: boolean
@@ -544,7 +545,7 @@ export function VocabDetailModal({
               {lyricLineInSong && (
                 <div>
                   <div
-                    className="rounded-lg"
+                    className="rounded-lg relative overflow-hidden"
                     style={{
                       fontSize: '20px',
                       lineHeight: '28px',
@@ -554,7 +555,10 @@ export function VocabDetailModal({
                       padding: '24px',
                     }}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    {/* Subtle waveform background */}
+                    <AudioWaveform isPlaying={isPlayingLine} bars={32} />
+
+                    <div className="flex items-start justify-between gap-3 relative z-10">
                       <p className="italic flex-1">{lyricLineInSong}</p>
                       {lyricLineIndex !== undefined && songId && (
                         <Button
@@ -574,7 +578,7 @@ export function VocabDetailModal({
                       )}
                     </div>
                     {lyricLineTranslation && (
-                      <p className="text-base mt-1 opacity-70">
+                      <p className="text-base mt-1 opacity-70 relative z-10">
                         {lyricLineTranslation}
                       </p>
                     )}
