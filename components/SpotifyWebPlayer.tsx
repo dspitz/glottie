@@ -499,7 +499,7 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
   const setVolume = useCallback(async (volume: number) => {
     const player = playerManager.getPlayer()
     if (!player) return false
-    
+
     try {
       await player.setVolume(volume)
       return true
@@ -509,10 +509,38 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
     }
   }, [playerManager])
 
+  const pause = useCallback(async () => {
+    const player = playerManager.getPlayer()
+    if (!player) return false
+
+    try {
+      await player.pause()
+      return true
+    } catch (error) {
+      console.error('[SpotifyWebPlayer] Error pausing:', error)
+      return false
+    }
+  }, [playerManager])
+
+  const resume = useCallback(async () => {
+    const player = playerManager.getPlayer()
+    if (!player) return false
+
+    try {
+      await player.resume()
+      return true
+    } catch (error) {
+      console.error('[SpotifyWebPlayer] Error resuming:', error)
+      return false
+    }
+  }, [playerManager])
+
   // Expose player methods for parent components
   React.useImperativeHandle(ref, () => ({
     playTrack,
     togglePlayPause,
+    pause,
+    resume,
     seek,
     setVolume,
     isReady,

@@ -43,10 +43,14 @@ export interface AudioPlayerControls {
   pause: () => Promise<void>
   togglePlayPause: () => Promise<void>
   seek: (timeInMs: number) => void
+  seekSilent: (timeInMs: number) => Promise<void> // Seek without playing
   playFromTime: (timeInMs: number) => Promise<boolean>
   playLine: (startTimeMs: number, endTimeMs: number) => Promise<boolean>
   setPlaybackRate: (rate: number) => void
   getState: () => AudioPlayerState
+  preload: () => Promise<boolean> // Preload track without playing
+  savePlaybackPosition: () => void // Save current position
+  restorePlaybackPosition: () => Promise<void> // Restore saved position
 }
 
 export interface AudioPlayerCallbacks {
@@ -96,10 +100,16 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
   const [playbackRate, setPlaybackRate] = useState(1.0)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
-  
+
+  // Saved playback position (for modal open/close)
+  const savedPlaybackPositionRef = useRef<number>(0) // Store last actual playback position
+
+  // Track if we're currently preloading to prevent duplicate preload attempts
+  const isPreloadingRef = useRef<boolean>(false)
+
   // Preview mode refs
   const audioRef = useRef<HTMLAudioElement>(null)
-  
+
   // Spotify mode state
   const [spotifyDeviceId, setSpotifyDeviceId] = useState<string>('')
   const [spotifyPlayerState, setSpotifyPlayerState] = useState<Spotify.PlaybackState | null>(null)
@@ -212,9 +222,71 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         // Force the browser to start loading the audio
         audioRef.current.load()
         // console.log('✅ Preview track preloading initiated')
-      } else if (playbackMode === 'spotify' && track?.spotifyId) {
-        // For Spotify, we'll load on first interaction
-        // console.log('🎵 Spotify track will load on first interaction')
+      } else if (playbackMode === 'spotify' && track?.spotifyId && spotifyPlayerRef.current) {
+        // For Spotify, preload by playing then immediately pausing (with volume muted)
+        const preloadSpotifyTrack = async () => {
+          // Prevent duplicate preload attempts
+          if (isPreloadingRef.current) {
+            console.log('🎵 [Preload] Already preloading, skipping duplicate attempt')
+            return
+          }
+
+          // Only preload if track hasn't been played yet
+          if (hasEverPlayed) {
+            console.log('🎵 [Preload] Track already loaded, skipping preload')
+            return
+          }
+
+          isPreloadingRef.current = true
+
+          try {
+            console.log('🎵 [Preload] Starting Spotify track preload for:', track.title)
+
+            // Step 1: Mute volume completely to prevent audible playback
+            console.log('🔇 [Preload] Muting volume...')
+            const savedVolume = volume
+            const savedMuted = isMuted
+            await spotifyPlayerRef.current.setVolume?.(0)
+
+            // Step 2: Play the track (this loads it into the player)
+            console.log('▶️ [Preload] Calling playTrack...')
+            const trackUri = `spotify:track:${track.spotifyId}`
+            const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
+
+            if (result === true) {
+              console.log('✅ [Preload] PlayTrack succeeded, now pausing...')
+              setHasEverPlayed(true)
+
+              // Step 3: Wait for track to load, then pause (1 second delay)
+              console.log('⏳ [Preload] Waiting 1 second before pausing...')
+              await new Promise(resolve => setTimeout(resolve, 1000))
+
+              console.log('🛑 [Preload] Calling pause now...')
+              const pauseResult = await spotifyPlayerRef.current.pause?.()
+              console.log('🛑 [Preload] Pause result:', pauseResult)
+
+              setIsPlaying(false)
+              console.log('⏸️ [Preload] Paused successfully, isPlaying set to false')
+
+              // Step 4: Restore original volume
+              await spotifyPlayerRef.current.setVolume?.(savedMuted ? 0 : savedVolume)
+              console.log('🔊 [Preload] Volume restored. Track ready for seeking/playback.')
+            } else {
+              console.log('⚠️ [Preload] PlayTrack returned:', result)
+              // Restore volume even if preload failed
+              await spotifyPlayerRef.current.setVolume?.(savedMuted ? 0 : savedVolume)
+            }
+          } catch (error) {
+            console.error('❌ [Preload] Error preloading Spotify track:', error)
+            // Restore volume on error
+            await spotifyPlayerRef.current.setVolume?.(isMuted ? 0 : volume)
+          } finally {
+            // Reset the preloading flag
+            isPreloadingRef.current = false
+          }
+        }
+
+        preloadSpotifyTrack()
       }
     }
 
@@ -490,31 +562,68 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
 
     // For Spotify mode
     if (playbackMode === 'spotify' && spotifyPlayerRef.current && track.spotifyId) {
-      // If track isn't loaded, load it first
-      if (!spotifyPlayerState) {
-        // console.log('🎵 Track not loaded, loading now...')
+      // Check if we need to load the track
+      // Use hasEverPlayed as more reliable indicator than spotifyPlayerState
+      if (!hasEverPlayed || !spotifyPlayerState) {
+        console.log('🎵 Track not loaded yet, loading and seeking to:', timeInMs)
         const trackUri = `spotify:track:${track.spotifyId}`
         const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
         if (result !== true) {
+          console.error('❌ Failed to load track')
           return false
         }
-        // Small delay for track to initialize (only when loading)
-        await new Promise(resolve => setTimeout(resolve, 100))
-        // Track is now loaded and playing, seek to position
-        await spotifyPlayerRef.current.seek?.(timeInMs)
-        // Playback should already be active after playTrack
-        setIsPlaying(true)
-        return true
+
+        // Mark as played
+        setHasEverPlayed(true)
+
+        // Wait for Spotify player to get the current state
+        // This is more reliable than arbitrary delays
+        return new Promise<boolean>((resolve) => {
+          let attempts = 0
+          const maxAttempts = 30 // 30 * 100ms = 3 second timeout
+
+          const checkInterval = setInterval(async () => {
+            attempts++
+
+            // Try to get current state from the Spotify player
+            try {
+              const player = spotifyPlayerRef.current?.player
+              if (player) {
+                const state = await player.getCurrentState()
+                if (state && state.track_window?.current_track) {
+                  console.log('✅ Track loaded (via getCurrentState), seeking to:', timeInMs)
+                  clearInterval(checkInterval)
+
+                  // Now seek to the desired position
+                  await spotifyPlayerRef.current.seek?.(timeInMs)
+                  setIsPlaying(true)
+                  resolve(true)
+                  return
+                }
+              }
+            } catch (error) {
+              console.log('⏳ Waiting for track to load...', attempts)
+            }
+
+            if (attempts >= maxAttempts) {
+              // Timeout - try to seek anyway as fallback
+              console.warn('⚠️ Track load timeout after', attempts * 100, 'ms, seeking anyway to:', timeInMs)
+              clearInterval(checkInterval)
+              await spotifyPlayerRef.current.seek?.(timeInMs)
+              setIsPlaying(true)
+              resolve(true)
+            }
+          }, 100) // Check every 100ms
+        })
       }
 
       // Track is already loaded, just seek immediately
-      // console.log('✅ Track already loaded, seeking immediately')
+      console.log('✅ Track already loaded, seeking to:', timeInMs)
       await spotifyPlayerRef.current.seek?.(timeInMs)
 
       // Ensure playback is active
       if (!isPlaying) {
         await spotifyPlayerRef.current.resume?.()
-        // No delay needed when track is already loaded
         setIsPlaying(true)
       }
 
@@ -522,7 +631,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
     }
 
     return false
-  }, [playbackMode, isPlaying, track, spotifyPlayerState])
+  }, [playbackMode, isPlaying, track, spotifyPlayerState, hasEverPlayed])
 
   // Helper function to get current time directly from source
   const getCurrentTimeDirectly = useCallback(() => {
@@ -542,12 +651,12 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
 
   // Play a single line with automatic pause at end
   const playLine = useCallback(async (startTimeMs: number, endTimeMs: number) => {
-    // console.log('🎵 [playLine] Starting line playback', {
-    //   startTimeMs,
-    //   endTimeMs,
-    //   duration: endTimeMs - startTimeMs,
-    //   durationSec: ((endTimeMs - startTimeMs) / 1000).toFixed(2)
-    // })
+    console.log('🎵 [playLine] Starting line playback', {
+      startTimeMs,
+      endTimeMs,
+      duration: endTimeMs - startTimeMs,
+      durationSec: ((endTimeMs - startTimeMs) / 1000).toFixed(2)
+    })
 
     // Clear any existing line monitoring
     cleanupLineMonitoring()
@@ -558,6 +667,8 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
       console.error('❌ [playLine] Failed to start playback')
       return false
     }
+
+    console.log('✅ [playLine] Playback started, setting up monitoring for end time:', endTimeMs)
 
     // Store the end time
     lineEndTimeRef.current = endTimeMs
@@ -579,27 +690,27 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         currentTimeMs = currentTimeRef.current
       }
 
-      // Log every 10 checks (500ms) for debugging
-      if (checkCount % 10 === 0) {
-        // console.log('🔍 [playLine] Monitor check', {
-        //   checkCount,
-        //   currentTimeMs,
-        //   currentTimeSec: (currentTimeMs / 1000).toFixed(2),
-        //   targetEndMs: lineEndTimeRef.current,
-        //   targetEndSec: lineEndTimeRef.current ? (lineEndTimeRef.current / 1000).toFixed(2) : 'none',
-        //   remaining: lineEndTimeRef.current ? lineEndTimeRef.current - currentTimeMs : 0,
-        //   remainingSec: lineEndTimeRef.current ? ((lineEndTimeRef.current - currentTimeMs) / 1000).toFixed(2) : '0'
-        // })
+      // Log every 5 checks (250ms) for debugging
+      if (checkCount % 5 === 0) {
+        console.log('🔍 [playLine] Monitor check', {
+          checkCount,
+          currentTimeMs,
+          currentTimeSec: (currentTimeMs / 1000).toFixed(2),
+          targetEndMs: lineEndTimeRef.current,
+          targetEndSec: lineEndTimeRef.current ? (lineEndTimeRef.current / 1000).toFixed(2) : 'none',
+          remaining: lineEndTimeRef.current ? lineEndTimeRef.current - currentTimeMs : 0,
+          remainingSec: lineEndTimeRef.current ? ((lineEndTimeRef.current - currentTimeMs) / 1000).toFixed(2) : '0'
+        })
       }
 
       // Check if we've reached or passed the end time
       if (lineEndTimeRef.current && currentTimeMs >= lineEndTimeRef.current) {
-        // console.log('🛑 [playLine] Reached line end, pausing', {
-        //   currentTimeMs,
-        //   endTimeMs: lineEndTimeRef.current,
-        //   overshoot: currentTimeMs - lineEndTimeRef.current,
-        //   overshootMs: currentTimeMs - lineEndTimeRef.current
-        // })
+        console.log('🛑 [playLine] Reached line end, pausing', {
+          currentTimeMs,
+          endTimeMs: lineEndTimeRef.current,
+          overshoot: currentTimeMs - lineEndTimeRef.current,
+          overshootMs: currentTimeMs - lineEndTimeRef.current
+        })
 
         // Clear monitoring FIRST to prevent multiple triggers
         if (lineMonitorIntervalRef.current) {
@@ -642,7 +753,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
   useEffect(() => {
 
     if (onTimeSeek) {
-      const handleSeek = (timeInMs: number) => {
+      const handleSeek = async (timeInMs: number) => {
         if (playbackMode === 'preview' && audioRef.current && duration > 0) {
           const timeInSeconds = Math.min(Math.max(0, timeInMs / 1000), duration)
           audioRef.current.currentTime = timeInSeconds
@@ -650,14 +761,30 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         }
 
         if (playbackMode === 'spotify' && spotifyPlayerRef.current) {
-          spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+          // Check if track is loaded by checking if we have ever played
+          // If not, we need to load it first by calling play(), then seek
+          if (!hasEverPlayed || !spotifyPlayerState) {
+            console.log('🎵 [seek] Track not loaded, loading first before seeking to:', timeInMs)
+            const trackUri = `spotify:track:${track.spotifyId}`
+            const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
+            if (result === true) {
+              setHasEverPlayed(true)
+              // Wait for track to load
+              await new Promise(resolve => setTimeout(resolve, 500))
+              // Now seek
+              spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+            }
+          } else {
+            // Track already loaded, seek directly
+            spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+          }
         }
       }
 
       // Pass both the seek function and playFromTime function
       onTimeSeek(handleSeek, playFromTime)
     }
-  }, [onTimeSeek, playbackMode, duration, playFromTime])
+  }, [onTimeSeek, playbackMode, duration, playFromTime, hasEverPlayed, spotifyPlayerState, track])
 
   // Cleanup line monitoring on unmount or when track changes
   useEffect(() => {
@@ -741,7 +868,7 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
         togglePlayPause: async () => {
           await togglePlayPauseRef.current()
         },
-        seek: (timeInMs: number) => {
+        seek: async (timeInMs: number) => {
           // Clear any line monitoring when manually seeking
           cleanupLineMonitoring()
 
@@ -750,7 +877,23 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             setCurrentTime(timeInMs / 1000)
           }
           if (playbackModeRef.current === 'spotify' && spotifyPlayerRef.current) {
-            spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+            // Check if track is loaded by checking if we have ever played
+            // If not, we need to load it first by calling play(), then seek
+            if (!hasEverPlayed || !spotifyPlayerState) {
+              console.log('🎵 [controls.seek] Track not loaded, loading first before seeking to:', timeInMs)
+              const trackUri = `spotify:track:${track.spotifyId}`
+              const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
+              if (result === true) {
+                setHasEverPlayed(true)
+                // Wait for track to load
+                await new Promise(resolve => setTimeout(resolve, 500))
+                // Now seek
+                spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+              }
+            } else {
+              // Track already loaded, seek directly
+              spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+            }
           }
         },
         playFromTime: async (timeInMs: number) => {
@@ -787,12 +930,110 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             playbackMode: playbackModeRef.current,
             playbackRate: playbackRateRef.current
           }
+        },
+        seekSilent: async (timeInMs: number) => {
+          // Seek to position without playing - used for modal previews
+          console.log('🔇 [seekSilent] Moving playhead to:', timeInMs, 'ms')
+
+          if (playbackModeRef.current === 'preview' && audioRef.current) {
+            audioRef.current.currentTime = timeInMs / 1000
+            setCurrentTime(timeInMs / 1000)
+          }
+
+          if (playbackModeRef.current === 'spotify' && spotifyPlayerRef.current) {
+            // Ensure track is loaded first (silently if needed)
+            if (!hasEverPlayed || !spotifyPlayerState) {
+              console.log('🎵 [seekSilent] Track not loaded, loading silently first')
+
+              // Save current volume and mute to prevent audible playback
+              const savedVolume = volume
+              const savedMuted = isMuted
+              await spotifyPlayerRef.current.setVolume?.(0)
+
+              const trackUri = `spotify:track:${track.spotifyId}`
+              const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
+
+              if (result === true) {
+                setHasEverPlayed(true)
+                // Pause as quickly as possible
+                await new Promise(resolve => setTimeout(resolve, 50))
+                await spotifyPlayerRef.current.pause?.()
+                setIsPlaying(false)
+
+                // Restore volume after pausing
+                await spotifyPlayerRef.current.setVolume?.(savedMuted ? 0 : savedVolume)
+                console.log('✅ [seekSilent] Track loaded silently and paused')
+              } else {
+                // Restore volume even if load failed
+                await spotifyPlayerRef.current.setVolume?.(savedMuted ? 0 : savedVolume)
+              }
+            }
+
+            // Now seek to the position
+            await spotifyPlayerRef.current.seek?.(Math.floor(timeInMs))
+            console.log('✅ [seekSilent] Playhead moved to:', timeInMs, 'ms (paused)')
+          }
+        },
+        preload: async () => {
+          // Preload track without playing
+          console.log('🎬 [preload] Preloading track')
+
+          if (playbackModeRef.current === 'preview' && audioRef.current && track?.previewUrl) {
+            if (!audioRef.current.src || audioRef.current.src !== track.previewUrl) {
+              audioRef.current.src = track.previewUrl
+            }
+            audioRef.current.load()
+            return true
+          }
+
+          if (playbackModeRef.current === 'spotify' && spotifyPlayerRef.current && track?.spotifyId) {
+            if (!hasEverPlayed) {
+              try {
+                console.log('🎵 [preload] Loading Spotify track')
+                const trackUri = `spotify:track:${track.spotifyId}`
+                const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
+
+                if (result === true) {
+                  setHasEverPlayed(true)
+                  await new Promise(resolve => setTimeout(resolve, 300))
+                  await spotifyPlayerRef.current.pause?.()
+                  console.log('✅ [preload] Track preloaded successfully')
+                  return true
+                }
+              } catch (error) {
+                console.error('❌ [preload] Error:', error)
+                return false
+              }
+            }
+            return true // Already preloaded
+          }
+
+          return false
+        },
+        savePlaybackPosition: () => {
+          // Save current position for later restoration
+          const state = controls.getState()
+          savedPlaybackPositionRef.current = state.currentTime
+          console.log('💾 [savePlaybackPosition] Saved position:', savedPlaybackPositionRef.current, 'ms')
+        },
+        restorePlaybackPosition: async () => {
+          // Restore saved position
+          const savedPos = savedPlaybackPositionRef.current
+          console.log('🔄 [restorePlaybackPosition] Restoring position:', savedPos, 'ms')
+
+          if (savedPos === 0) {
+            // If saved position is 0:00, just seek to start silently
+            await controls.seekSilent(0)
+          } else {
+            // Otherwise restore to saved position
+            await controls.seekSilent(savedPos)
+          }
         }
       }
 
       onControlsReady(controls)
     }
-  }, [onControlsReady, playFromTime, playLine]) // Only depend on the callback and playFromTime
+  }, [onControlsReady, playFromTime, playLine, hasEverPlayed, spotifyPlayerState, track]) // Include hasEverPlayed and spotifyPlayerState for seek logic
 
   const handleSeek = (value: number[]) => {
     const newTime = (value[0] / 100) * duration

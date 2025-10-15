@@ -59,48 +59,115 @@ export function VocabDetailModal({
   const isNounOrAdjective = ['noun', 'adjective'].includes(partOfSpeech.toLowerCase())
 
   // Fetch song data to get synchronized lyrics
-  const { data: songData } = useQuery({
+  const { data: lyricsData } = useQuery({
     queryKey: ['song-lyrics', songId],
     queryFn: async () => {
       if (!songId) return null
       const response = await fetch(`/api/lyrics/${songId}`)
       if (!response.ok) return null
-      const data = await response.json()
-      return data.song
+      return response.json()
     },
     enabled: !!songId && lyricLineIndex !== undefined
   })
 
   // Parse synchronized lyrics to get timing data
   const getLineTiming = (): { startTime: number; endTime: number } | null => {
-    if (!songData?.lyricsRaw || lyricLineIndex === undefined) return null
+    if (!lyricsData?.synchronized?.lines || lyricLineIndex === undefined) {
+      console.log('🎵 getLineTiming: Missing data', {
+        hasLyricsData: !!lyricsData,
+        hasSynchronized: !!lyricsData?.synchronized,
+        hasLines: !!lyricsData?.synchronized?.lines,
+        linesLength: lyricsData?.synchronized?.lines?.length,
+        lyricLineIndex
+      })
+      return null
+    }
 
-    try {
-      const lyricsData = JSON.parse(songData.lyricsRaw)
-      const synchronizedLines = lyricsData.synchronized?.lines
+    const synchronizedLines = lyricsData.synchronized.lines
 
-      if (synchronizedLines && synchronizedLines[lyricLineIndex]) {
-        return {
-          startTime: synchronizedLines[lyricLineIndex].time,
-          endTime: synchronizedLines[lyricLineIndex + 1]?.time || synchronizedLines[lyricLineIndex].time + 3000
-        }
+    console.log('🎵 Synchronized data:', {
+      linesLength: synchronizedLines.length,
+      lyricLineIndex,
+      hasLineAtIndex: !!synchronizedLines[lyricLineIndex],
+      firstLine: synchronizedLines[0],
+      targetLine: synchronizedLines[lyricLineIndex]
+    })
+
+    if (synchronizedLines[lyricLineIndex]) {
+      const line = synchronizedLines[lyricLineIndex]
+      const nextLine = synchronizedLines[lyricLineIndex + 1]
+
+      // Handle both 'time' and 'startTime' properties
+      // And handle both seconds and milliseconds
+      const startTime = line.time || line.startTime || 0
+      const startTimeMs = startTime > 1000 ? startTime : startTime * 1000
+
+      const nextTime = nextLine?.time || nextLine?.startTime || 0
+      const endTimeMs = nextLine
+        ? (nextTime > 1000 ? nextTime : nextTime * 1000)
+        : startTimeMs + 3000
+
+      const timing = {
+        startTime: startTimeMs,
+        endTime: endTimeMs
       }
-    } catch (error) {
-      console.error('Failed to parse synchronized lyrics:', error)
+      console.log('🎵 Found timing:', timing)
+      return timing
+    } else {
+      console.log('🎵 No synchronized line at index', lyricLineIndex)
     }
 
     return null
   }
 
-  const playLineInSong = () => {
+  // Handle modal open/close for playhead positioning
+  useEffect(() => {
+    if (isOpen && lyricLineIndex !== undefined) {
+      const timing = getLineTiming()
+      if (timing) {
+        console.log('📖 [VocabModal] Opening - moving playhead to line', lyricLineIndex, 'at', timing.startTime, 'ms')
+
+        // Save current position and move playhead to this line
+        const event = new CustomEvent('vocab-modal-open', {
+          detail: {
+            startTime: timing.startTime,
+            songId
+          }
+        })
+        window.dispatchEvent(event)
+      }
+    } else if (!isOpen) {
+      console.log('📖 [VocabModal] Closing - restoring playhead')
+
+      // Restore saved playback position
+      const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
+      window.dispatchEvent(event)
+    }
+  }, [isOpen, lyricLineIndex, lyricsData, songId])
+
+  const playLineInSong = async () => {
+    console.log('🎵 Play button clicked', {
+      songId,
+      lyricLineIndex,
+      hasLyricsData: !!lyricsData,
+      hasSynchronized: !!lyricsData?.synchronized
+    })
+
     const timing = getLineTiming()
+    console.log('🎵 Timing data:', timing)
+
     if (!timing) {
       console.warn('No timing data available for this line')
       return
     }
 
-    // Emit a custom event that the song page can listen to
-    // This will trigger the audio player to play this specific line
+    // Emit custom event for LyricsView to handle
+    console.log('🎵 Dispatching vocab-play-line event', {
+      startTime: timing.startTime,
+      endTime: timing.endTime,
+      songId
+    })
+
     const event = new CustomEvent('vocab-play-line', {
       detail: {
         startTime: timing.startTime,

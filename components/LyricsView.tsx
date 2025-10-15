@@ -272,14 +272,27 @@ export function LyricsView({
 
   // Listen for vocab modal requesting to play a specific line
   useEffect(() => {
-    const handleVocabPlayLine = (event: CustomEvent) => {
+    const handleVocabPlayLine = async (event: CustomEvent) => {
+      console.log('🎧 [LyricsView] Received vocab-play-line event', event.detail)
+
       const { startTime, endTime } = event.detail
 
-      if (audioControls?.playLine) {
-        console.log('Playing line from vocab modal:', { startTime, endTime })
-        audioControls.playLine(startTime, endTime)
+      if (audioControls) {
+        console.log('🎧 [LyricsView] Playing line from:', startTime, 'to:', endTime, 'ms')
+
+        // Use the playLine method which handles everything (loading, seeking, playing, auto-pause)
+        try {
+          const success = await audioControls.playLine(startTime, endTime)
+          if (success) {
+            console.log('✅ [LyricsView] Line playback completed successfully')
+          } else {
+            console.warn('⚠️ [LyricsView] Line playback failed')
+          }
+        } catch (error) {
+          console.error('❌ [LyricsView] Error playing line:', error)
+        }
       } else {
-        console.warn('Audio controls not ready for vocab playLine')
+        console.warn('⚠️ [LyricsView] Audio controls not ready')
       }
     }
 
@@ -287,6 +300,39 @@ export function LyricsView({
 
     return () => {
       window.removeEventListener('vocab-play-line', handleVocabPlayLine as EventListener)
+    }
+  }, [audioControls])
+
+  // Listen for vocab modal open/close for playhead management
+  useEffect(() => {
+    const handleVocabModalOpen = async (event: CustomEvent) => {
+      console.log('📖 [LyricsView] Vocab modal opened', event.detail)
+      const { startTime } = event.detail
+
+      if (audioControls) {
+        // Save current playback position
+        audioControls.savePlaybackPosition()
+
+        // Move playhead to the word's line (silently, without playing)
+        await audioControls.seekSilent(startTime)
+      }
+    }
+
+    const handleVocabModalClose = async (event: CustomEvent) => {
+      console.log('📖 [LyricsView] Vocab modal closed', event.detail)
+
+      if (audioControls) {
+        // Restore saved playback position
+        await audioControls.restorePlaybackPosition()
+      }
+    }
+
+    window.addEventListener('vocab-modal-open', handleVocabModalOpen as EventListener)
+    window.addEventListener('vocab-modal-close', handleVocabModalClose as EventListener)
+
+    return () => {
+      window.removeEventListener('vocab-modal-open', handleVocabModalOpen as EventListener)
+      window.removeEventListener('vocab-modal-close', handleVocabModalClose as EventListener)
     }
   }, [audioControls])
 
