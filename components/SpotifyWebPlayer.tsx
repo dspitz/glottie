@@ -547,7 +547,10 @@ export const SpotifyWebPlayer = React.forwardRef<any, SpotifyWebPlayerProps>(({
     isActive,
     playerState,
     deviceId: playerManager.getDeviceId(),
-    player: playerManager.getPlayer() // Expose the actual player instance
+    player: playerManager.getPlayer(), // Expose the actual player instance
+    subscribeToStateChanges: (callback: (state: Spotify.PlaybackState | null) => void) => {
+      return playerManager.subscribeToStateChanges(callback)
+    }
   }))
 
   // Debug session status
