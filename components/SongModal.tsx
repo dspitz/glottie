@@ -29,11 +29,17 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
   const [displayLanguage, setDisplayLanguage] = useState<'spanish' | 'english' | 'both'>('spanish')
   const [currentSongId, setCurrentSongId] = useState(songId)
   const [isTranslationModalOpen, setIsTranslationModalOpen] = useState(false)
+  const [isVocabModalOpen, setIsVocabModalOpen] = useState(false)
 
   // Debug translation modal state
   useEffect(() => {
     // console.log('🔍 SongModal: Translation modal state changed:', isTranslationModalOpen)
   }, [isTranslationModalOpen])
+
+  // Debug vocab modal state
+  useEffect(() => {
+    // console.log('🔍 SongModal: Vocab modal state changed:', isVocabModalOpen)
+  }, [isVocabModalOpen])
 
   // Update current song when prop changes
   useEffect(() => {
@@ -151,6 +157,27 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
       document.body.style.overflow = 'unset'
     }
   }, [isOpen, onClose])
+
+  // Listen for vocab modal open/close events
+  useEffect(() => {
+    const handleVocabModalOpen = () => {
+      setIsVocabModalOpen(true)
+    }
+
+    const handleVocabModalClose = () => {
+      setIsVocabModalOpen(false)
+    }
+
+    if (isOpen) {
+      window.addEventListener('vocab-modal-open', handleVocabModalOpen as EventListener)
+      window.addEventListener('vocab-modal-close', handleVocabModalClose as EventListener)
+    }
+
+    return () => {
+      window.removeEventListener('vocab-modal-open', handleVocabModalOpen as EventListener)
+      window.removeEventListener('vocab-modal-close', handleVocabModalClose as EventListener)
+    }
+  }, [isOpen])
 
   if (!songId) return null
 
@@ -271,7 +298,7 @@ export function SongModal({ songId, level, isOpen, onClose, onSongChange }: Song
                 onBackClick={onClose}
                 onPrevious={prevSong ? handlePrevious : undefined}
                 onNext={nextSong ? handleNext : undefined}
-                hideNavigation={isTranslationModalOpen}
+                hideNavigation={isTranslationModalOpen || isVocabModalOpen}
               />
 
               {/* Key Vocabulary Section */}
