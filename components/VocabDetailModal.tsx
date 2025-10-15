@@ -640,7 +640,14 @@ export function VocabDetailModal({
                     const isExpanded = expandedTenses.has(tense)
 
                     return (
-                      <div key={tense}>
+                      <div
+                        key={tense}
+                        className="rounded-lg"
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
+                        }}
+                      >
                         {/* Collapsible Header */}
                         <button
                           onClick={() => {
@@ -652,10 +659,8 @@ export function VocabDetailModal({
                             }
                             setExpandedTenses(newExpanded)
                           }}
-                          className="w-full flex items-center justify-between rounded-lg transition-colors"
+                          className="w-full flex items-center justify-between transition-colors"
                           style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                            boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
                             padding: '16px 24px',
                           }}
                         >
@@ -690,23 +695,16 @@ export function VocabDetailModal({
                               transition={{ duration: 0.2 }}
                               style={{ overflow: 'hidden' }}
                             >
-                              <div className="pt-2">
+                              <div style={{ padding: '0 24px 24px 24px' }}>
                                 {/* Tense Description */}
                                 {tenseInfo[tense]?.description && (
-                                  <p className="text-sm text-gray-600 mb-3 italic px-1">
+                                  <p className="text-sm text-gray-600 mb-3 italic">
                                     {tenseInfo[tense].description}
                                   </p>
                                 )}
 
                                 {/* Conjugation Table */}
-                                <div
-                                  className="rounded-lg"
-                                  style={{
-                                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                                    boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
-                                    padding: '24px',
-                                  }}
-                                >
+                                <div>
                                   <table className="w-full">
                                     <thead>
                                       <tr className="border-b border-gray-300">
