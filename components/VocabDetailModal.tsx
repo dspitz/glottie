@@ -406,19 +406,6 @@ export function VocabDetailModal({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => {
-              const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
-              window.dispatchEvent(event)
-              onClose()
-            }}
-            className="fixed inset-0 bg-black/20 z-[60]"
-          />
-
           {/* Bottom Sheet */}
           <motion.div
             ref={sheetRef}
