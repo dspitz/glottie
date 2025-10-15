@@ -261,8 +261,20 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
               console.log('👂 [Preload] Subscribing to state changes...')
 
               const unsubscribe = await new Promise<() => void>((resolve) => {
+                let callbackFired = false
+
                 const unsub = spotifyPlayerRef.current?.subscribeToStateChanges?.((state) => {
+                  console.log('📊 [Preload] State change:', {
+                    hasState: !!state,
+                    paused: state?.paused,
+                    hasTrack: !!state?.track_window?.current_track,
+                    position: state?.position
+                  })
+
                   if (state && !state.paused && state.track_window?.current_track) {
+                    if (callbackFired) return // Only fire once
+                    callbackFired = true
+
                     console.log('🎵 [Preload] Track is now playing, pausing immediately...')
 
                     // Pause the track
@@ -282,12 +294,14 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
 
                 // Safety timeout in case state change never fires
                 setTimeout(() => {
-                  console.log('⏱️ [Preload] Timeout reached, forcing pause...')
-                  spotifyPlayerRef.current?.pause?.().then(() => {
-                    setIsPlaying(false)
-                    spotifyPlayerRef.current?.setVolume?.(savedMuted ? 0 : savedVolume)
-                  })
-                  resolve(unsub)
+                  if (!callbackFired) {
+                    console.log('⏱️ [Preload] Timeout reached, forcing pause...')
+                    spotifyPlayerRef.current?.pause?.().then(() => {
+                      setIsPlaying(false)
+                      spotifyPlayerRef.current?.setVolume?.(savedMuted ? 0 : savedVolume)
+                    })
+                    resolve(unsub)
+                  }
                 }, 2000) // 2 second safety timeout
               })
 
