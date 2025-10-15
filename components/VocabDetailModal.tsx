@@ -120,7 +120,7 @@ export function VocabDetailModal({
     return null
   }
 
-  // Handle modal open/close for playhead positioning
+  // Handle modal open for playhead positioning
   useEffect(() => {
     if (isOpen && lyricLineIndex !== undefined) {
       const timing = getLineTiming()
@@ -136,13 +136,8 @@ export function VocabDetailModal({
         })
         window.dispatchEvent(event)
       }
-    } else if (!isOpen) {
-      console.log('📖 [VocabModal] Closing - restoring playhead')
-
-      // Restore saved playback position
-      const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
-      window.dispatchEvent(event)
     }
+    // Note: Close event is now handled in handleClose callback
   }, [isOpen, lyricLineIndex, lyricsData, songId])
 
   const playLineInSong = async () => {
@@ -359,8 +354,18 @@ export function VocabDetailModal({
     window.speechSynthesis.speak(utterance)
   }
 
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      // Dispatch close event before calling onClose
+      console.log('📖 [VocabModal] Dialog closing - resetting playhead')
+      const event = new CustomEvent('vocab-modal-close', { detail: { songId } })
+      window.dispatchEvent(event)
+    }
+    onClose()
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl h-[80vh] flex flex-col overflow-hidden bg-black/90 border-white/20 text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 flex-wrap text-white">
