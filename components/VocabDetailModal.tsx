@@ -537,9 +537,6 @@ export function VocabDetailModal({
               {/* Lyric Line from Song */}
               {lyricLineInSong && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    As Used in This Song
-                  </h4>
                   <div
                     className="rounded-lg"
                     style={{
@@ -583,9 +580,6 @@ export function VocabDetailModal({
               {/* Example Sentence */}
               {exampleSentence && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    Usage in a Sentence
-                  </h4>
                   <div
                     className="rounded-lg"
                     style={{
@@ -642,10 +636,6 @@ export function VocabDetailModal({
               {/* Conjugations (for verbs) */}
               {isVerb && conjugations && availableTenses.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">
-                    Conjugations
-                  </h4>
-
                   {/* Tense Selector Pills */}
                   <div className="flex flex-wrap gap-2 mb-3">
                     {availableTenses.map((tense) => (
