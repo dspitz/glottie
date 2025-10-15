@@ -572,7 +572,7 @@ export function VocabDetailModal({
                       )}
                     </div>
                     {lyricLineTranslation && (
-                      <p className="text-base mt-2 opacity-70">
+                      <p className="text-base mt-1 opacity-70">
                         {lyricLineTranslation}
                       </p>
                     )}
@@ -615,7 +615,7 @@ export function VocabDetailModal({
                       </Button>
                     </div>
                     {exampleTranslation && (
-                      <p className="text-base mt-2 opacity-70">
+                      <p className="text-base mt-1 opacity-70">
                         {exampleTranslation}
                       </p>
                     )}
