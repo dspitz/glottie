@@ -446,6 +446,10 @@ export function LyricsView({
           setIsModalOpen(false)
           setClickPosition(undefined) // Clear click position on close
           onTranslationModalChange?.(false)
+          // Pause the song when closing the translation sheet
+          if (audioState.isPlaying) {
+            audioControls?.pause()
+          }
         }}
         sentence={selectedSentence}
         translations={selectedSentenceTranslations}
