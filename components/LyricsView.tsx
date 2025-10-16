@@ -120,7 +120,6 @@ export function LyricsView({
   const [playFromTimeFunction, setPlayFromTimeFunction] = useState<((time: number) => Promise<boolean>) | null>(null)
   const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
-  const [hasAutoOpened, setHasAutoOpened] = useState(false) // Track if we've auto-opened the translation sheet
   const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
   const [clickPosition, setClickPosition] = useState<{ x: number, y: number, elementRect: DOMRect } | undefined>(undefined)
   const [lineLockMode, setLineLockMode] = useState(false) // When true, prevents auto-advancing lines
@@ -171,17 +170,22 @@ export function LyricsView({
   }, [onPlayStateChange])
 
   // Auto-open translation sheet when song starts playing
+  // Use a ref to track previous playing state to detect transitions
+  const prevIsPlayingRef = React.useRef(false)
+
   useEffect(() => {
-    // Only auto-open once when playback starts for the first time
-    // Check: playing, haven't auto-opened yet, have lines, modal not already open
-    if (audioState.isPlaying && !hasAutoOpened && lines.length > 0 && !isModalOpen) {
-      console.log('🎯 Auto-opening translation sheet for first line')
+    // Detect transition from paused to playing (when user taps "Learn Song")
+    const justStartedPlaying = audioState.isPlaying && !prevIsPlayingRef.current
+
+    if (justStartedPlaying && lines.length > 0 && !isModalOpen) {
+      console.log('🎯 Auto-opening translation sheet - playback started')
       // Open the first line's translation
       handleSentenceClick(lines[0], 0)
-      // Mark as opened to prevent re-triggering
-      setHasAutoOpened(true)
     }
-  }, [audioState.isPlaying, hasAutoOpened, lines, isModalOpen, handleSentenceClick])
+
+    // Update the previous state
+    prevIsPlayingRef.current = audioState.isPlaying
+  }, [audioState.isPlaying, lines, isModalOpen, handleSentenceClick])
 
   // Auto-advance modal content when playing
   useEffect(() => {
