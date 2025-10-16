@@ -120,6 +120,7 @@ export function LyricsView({
   const [playFromTimeFunction, setPlayFromTimeFunction] = useState<((time: number) => Promise<boolean>) | null>(null)
   const [playbackRateFunction, setPlaybackRateFunction] = useState<((rate: number) => void) | null>(null)
   const [hasEverPlayed, setHasEverPlayed] = useState(false)
+  const [hasAutoOpened, setHasAutoOpened] = useState(false) // Track if we've auto-opened the translation sheet
   const [playPauseFunction, setPlayPauseFunction] = useState<(() => void) | null>(null)
   const [clickPosition, setClickPosition] = useState<{ x: number, y: number, elementRect: DOMRect } | undefined>(undefined)
   const [lineLockMode, setLineLockMode] = useState(false) // When true, prevents auto-advancing lines
@@ -171,12 +172,16 @@ export function LyricsView({
 
   // Auto-open translation sheet when song starts playing
   useEffect(() => {
-    // Only auto-open once when playback starts
-    if (audioState.isPlaying && !hasEverPlayed && lines.length > 0 && !isModalOpen) {
+    // Only auto-open once when playback starts for the first time
+    // Check: playing, haven't auto-opened yet, have lines, modal not already open
+    if (audioState.isPlaying && !hasAutoOpened && lines.length > 0 && !isModalOpen) {
+      console.log('🎯 Auto-opening translation sheet for first line')
       // Open the first line's translation
       handleSentenceClick(lines[0], 0)
+      // Mark as opened to prevent re-triggering
+      setHasAutoOpened(true)
     }
-  }, [audioState.isPlaying, hasEverPlayed, lines, isModalOpen, handleSentenceClick])
+  }, [audioState.isPlaying, hasAutoOpened, lines, isModalOpen, handleSentenceClick])
 
   // Auto-advance modal content when playing
   useEffect(() => {
