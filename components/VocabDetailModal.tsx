@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Volume2, Loader2, Play, X, ChevronDown } from 'lucide-react'
+import { Volume2, Loader2, Play, X, ChevronDown, Bookmark } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { AudioWaveform } from './AudioWaveform'
 
@@ -34,6 +34,7 @@ interface VocabDetailModalProps {
   lyricLineTranslation?: string
   lyricLineIndex?: number
   songId?: string
+  frequencyRank?: number
 }
 
 export function VocabDetailModal({
@@ -53,17 +54,50 @@ export function VocabDetailModal({
   lyricLineTranslation,
   lyricLineIndex,
   songId,
+  frequencyRank,
 }: VocabDetailModalProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isPlayingLine, setIsPlayingLine] = useState(false)
+  const [isPlayingWord, setIsPlayingWord] = useState(false)
+  const [voicesLoaded, setVoicesLoaded] = useState(false)
   const isVerb = partOfSpeech.toLowerCase() === 'verb'
   const isNounOrAdjective = ['noun', 'adjective'].includes(partOfSpeech.toLowerCase())
+
+  // Helper function to get frequency label based on usefulness score
+  const getFrequencyLabel = (rank?: number): string => {
+    // Note: rank is estimated from usefulnessScore, not actual frequency data
+    if (!rank) return 'common'
+    if (rank <= 100) return 'very common'
+    if (rank <= 500) return 'common'
+    if (rank <= 1000) return 'fairly common'
+    return 'uncommon'
+  }
 
   // Animation state for bottom sheet
   const controls = useAnimation()
   const sheetRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
+
+  // Ensure voices are loaded for better TTS quality
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        setVoicesLoaded(true)
+      }
+    }
+
+    // Voices might already be loaded
+    loadVoices()
+
+    // Chrome needs this event listener
+    window.speechSynthesis.addEventListener('voiceschanged', loadVoices)
+
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
+    }
+  }, [])
 
   // Track window size for responsive positioning
   useEffect(() => {
@@ -144,8 +178,9 @@ export function VocabDetailModal({
       if (timing) {
         console.log('📖 [VocabModal] Opening - moving playhead to line', lyricLineIndex, 'at', timing.startTime, 'ms')
 
-        // Save current position and move playhead to this line
-        const event = new CustomEvent('vocab-modal-open', {
+        // Audio should already be paused by vocab-modal-will-open event
+        // Now just move playhead to this line
+        const event = new CustomEvent('vocab-modal-opened', {
           detail: {
             startTime: timing.startTime,
             songId
@@ -154,7 +189,6 @@ export function VocabDetailModal({
         window.dispatchEvent(event)
       }
     }
-    // Note: Close event is now handled in handleClose callback
   }, [isOpen, lyricLineIndex, lyricsData, songId])
 
   const playLineInSong = async () => {
@@ -196,6 +230,87 @@ export function VocabDetailModal({
     }, timing.endTime - timing.startTime)
   }
 
+  // Helper function to get the best voice for a language
+  const getBestVoice = (lang: string): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis.getVoices()
+
+    // Map language codes to preferred voice patterns
+    const voicePreferences: Record<string, string[]> = {
+      'es': ['es-ES', 'es-MX', 'es-US', 'Spanish'],
+      'fr': ['fr-FR', 'fr-CA', 'French']
+    }
+
+    const patterns = voicePreferences[lang] || [lang]
+
+    // Try to find a high-quality voice (prefer 'premium', 'enhanced', or system voices)
+    for (const pattern of patterns) {
+      // First, look for premium/enhanced voices
+      const premiumVoice = voices.find(v =>
+        (v.lang.startsWith(pattern) || v.name.includes(pattern)) &&
+        (v.name.toLowerCase().includes('premium') ||
+         v.name.toLowerCase().includes('enhanced') ||
+         v.name.toLowerCase().includes('google') ||
+         v.localService === false) // Cloud-based voices are usually better
+      )
+      if (premiumVoice) return premiumVoice
+
+      // Fall back to any voice matching the language
+      const standardVoice = voices.find(v =>
+        v.lang.startsWith(pattern) || v.name.includes(pattern)
+      )
+      if (standardVoice) return standardVoice
+    }
+
+    return null
+  }
+
+  // Text-to-speech for the vocab word
+  const speakWord = () => {
+    if (isPlayingWord) return
+
+    const textToSpeak = isVerb && root ? root : word
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel()
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak)
+
+    // Set language and get best voice
+    let langCode = language
+    if (language === 'es') {
+      langCode = 'es-ES'
+    } else if (language === 'fr') {
+      langCode = 'fr-FR'
+    }
+
+    utterance.lang = langCode
+
+    // Use the best available voice
+    const bestVoice = getBestVoice(language)
+    if (bestVoice) {
+      utterance.voice = bestVoice
+      console.log('🔊 Using voice:', bestVoice.name, bestVoice.lang)
+    } else {
+      console.warn('🔊 No preferred voice found, using default')
+    }
+
+    utterance.rate = 0.8 // Slightly slower for learning
+    utterance.pitch = 1.0
+
+    setIsPlayingWord(true)
+
+    utterance.onend = () => {
+      setIsPlayingWord(false)
+    }
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event)
+      setIsPlayingWord(false)
+    }
+
+    window.speechSynthesis.speak(utterance)
+  }
+
   // Get available tenses from conjugations
   const availableTenses = conjugations ? Object.keys(conjugations).filter(
     key => conjugations[key as keyof typeof conjugations]?.length ?? 0 > 0
@@ -204,9 +319,12 @@ export function VocabDetailModal({
   const [expandedTenses, setExpandedTenses] = useState<Set<string>>(new Set([availableTenses[0] || 'present']))
 
   // Language-specific conjugation labels
-  const pronouns = language === 'fr'
-    ? ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles']
-    : ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
+  const spanishPronouns = ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
+  const frenchPronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles']
+  const pronouns = language === 'fr' ? frenchPronouns : spanishPronouns
+
+  // English pronoun labels for left column
+  const englishPronouns = ['I', 'you', 'he/she', 'we', 'you all', 'they']
 
   const tenseInfo: Record<string, { label: string; description: string }> = language === 'fr' ? {
     present: { label: 'Présent', description: 'Describes actions happening now or habitual actions' },
@@ -299,25 +417,14 @@ export function VocabDetailModal({
     const targetLang = langMap[language] || language
     utterance.lang = targetLang
 
-    // Select the best quality voice for the language
-    const voices = window.speechSynthesis.getVoices()
-    const matchingVoices = voices.filter(voice =>
-      voice.lang.startsWith(targetLang.split('-')[0])
-    )
-
-    // Prioritize voices with quality indicators
-    const qualityIndicators = ['premium', 'enhanced', 'natural', 'google', 'microsoft', 'apple']
-    const bestVoice = matchingVoices.find(voice =>
-      qualityIndicators.some(indicator =>
-        voice.name.toLowerCase().includes(indicator)
-      )
-    ) || matchingVoices.find(voice => voice.localService) || matchingVoices[0]
-
+    // Use the shared getBestVoice helper for consistency
+    const bestVoice = getBestVoice(language)
     if (bestVoice) {
       utterance.voice = bestVoice
+      console.log('🔊 Example sentence using voice:', bestVoice.name, bestVoice.lang)
     }
 
-    utterance.rate = 0.85
+    utterance.rate = 0.66 // 66% speed for clear comprehension
     utterance.pitch = 1.0
     utterance.volume = 1.0
 
@@ -348,23 +455,14 @@ export function VocabDetailModal({
     const targetLang = langMap[language] || language
     utterance.lang = targetLang
 
-    const voices = window.speechSynthesis.getVoices()
-    const matchingVoices = voices.filter(voice =>
-      voice.lang.startsWith(targetLang.split('-')[0])
-    )
-
-    const qualityIndicators = ['premium', 'enhanced', 'natural', 'google', 'microsoft', 'apple']
-    const bestVoice = matchingVoices.find(voice =>
-      qualityIndicators.some(indicator =>
-        voice.name.toLowerCase().includes(indicator)
-      )
-    ) || matchingVoices.find(voice => voice.localService) || matchingVoices[0]
-
+    // Use the shared getBestVoice helper for consistency
+    const bestVoice = getBestVoice(language)
     if (bestVoice) {
       utterance.voice = bestVoice
+      console.log('🔊 Conjugation using voice:', bestVoice.name, bestVoice.lang)
     }
 
-    utterance.rate = 0.85
+    utterance.rate = 0.8 // Same speed as individual words
     utterance.pitch = 1.0
     utterance.volume = 1.0
 
@@ -496,14 +594,30 @@ export function VocabDetailModal({
                 </Button>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs bg-gray-200 text-gray-900">
-                  {partOfSpeech.toLowerCase()}
-                </Badge>
-                {count > 1 && (
-                  <Badge variant="outline" className="text-xs bg-gray-100 text-gray-700 border-gray-300">
-                    ×{count}
-                  </Badge>
-                )}
+                <button
+                  onClick={speakWord}
+                  disabled={isPlayingWord}
+                  className="h-10 w-10 rounded-full flex items-center justify-center transition-colors"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                  }}
+                  title="Pronounce word"
+                >
+                  {isPlayingWord ? (
+                    <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                  ) : (
+                    <Volume2 className="h-5 w-5" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                  )}
+                </button>
+                <button
+                  className="h-10 w-10 rounded-full flex items-center justify-center transition-colors"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                  }}
+                  title="Bookmark word"
+                >
+                  <Bookmark className="h-5 w-5" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                </button>
               </div>
             </motion.div>
 
@@ -519,8 +633,8 @@ export function VocabDetailModal({
                 <div className="flex flex-col items-center gap-2">
                   <span
                     style={{
-                      fontSize: '32px',
-                      lineHeight: '40px',
+                      fontSize: '44px',
+                      lineHeight: '52px',
                       fontWeight: 400,
                       color: '#000',
                       textTransform: 'capitalize',
@@ -530,14 +644,48 @@ export function VocabDetailModal({
                   </span>
                   <p
                     style={{
-                      fontSize: '20px',
-                      lineHeight: '28px',
+                      fontSize: '16px',
+                      lineHeight: '24px',
                       fontWeight: 400,
-                      color: 'rgba(0, 0, 0, 0.80)',
+                      color: 'rgba(0, 0, 0, 0.60)',
+                      marginTop: '4px',
                     }}
                   >
-                    {isVerb ? `to ${translation.toLowerCase()}` : translation}
+                    <span style={{ fontWeight: 500 }}>Meaning: </span>
+                    {translation.toLowerCase().startsWith('to ')
+                      ? translation.toLowerCase()
+                      : translation}
                   </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span
+                      className="text-xs rounded-full"
+                      style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                        color: 'rgba(0, 0, 0, 0.70)',
+                        paddingTop: '8px',
+                        paddingBottom: '8px',
+                        paddingLeft: '12px',
+                        paddingRight: '12px',
+                      }}
+                    >
+                      {partOfSpeech.charAt(0).toUpperCase() + partOfSpeech.slice(1).toLowerCase()}
+                    </span>
+                    {count > 1 && (
+                      <span
+                        className="text-xs rounded-full"
+                        style={{
+                          backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                          color: 'rgba(0, 0, 0, 0.70)',
+                          paddingTop: '8px',
+                          paddingBottom: '8px',
+                          paddingLeft: '12px',
+                          paddingRight: '12px',
+                        }}
+                      >
+                        {count}× in this song
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -668,7 +816,7 @@ export function VocabDetailModal({
                           }}
                           className="w-full flex items-center justify-between transition-colors"
                           style={{
-                            padding: '16px 24px',
+                            padding: '24px 24px',
                           }}
                         >
                           <span
@@ -705,17 +853,30 @@ export function VocabDetailModal({
                               <div style={{ padding: '0 24px 24px 24px' }}>
                                 {/* Tense Description */}
                                 {tenseInfo[tense]?.description && (
-                                  <p className="text-sm text-gray-600 mb-3 italic">
+                                  <div
+                                    className="text-left"
+                                    style={{
+                                      fontSize: '14px',
+                                      lineHeight: '20px',
+                                      fontWeight: 400,
+                                      color: 'rgba(0, 0, 0, 0.70)',
+                                      marginBottom: '16px',
+                                    }}
+                                  >
                                     {tenseInfo[tense].description}
-                                  </p>
+                                  </div>
                                 )}
 
                                 {/* Conjugation Table */}
                                 <div>
                                   <table className="w-full">
                                     <thead>
-                                      <tr className="border-b border-gray-300">
-                                        <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
+                                      <tr
+                                        style={{
+                                          borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+                                        }}
+                                      >
+                                        <th className="text-left py-2 pr-3 pl-0 font-medium text-gray-700 text-sm">
                                           Pronoun
                                         </th>
                                         <th className="text-left py-2 px-3 font-medium text-gray-700 text-sm">
@@ -726,10 +887,17 @@ export function VocabDetailModal({
                                     <tbody>
                                       {pronouns.map((pronoun, i) => {
                                         const conjugation = conjugations[tense as keyof typeof conjugations]?.[i]
+                                        const isLastRow = i === pronouns.length - 1
+                                        const englishPronoun = englishPronouns[i]
                                         return (
-                                          <tr key={i} className="border-b border-gray-200 last:border-0">
-                                            <td className="py-2 px-3 text-gray-700 text-sm font-light">
-                                              {pronoun}
+                                          <tr
+                                            key={i}
+                                            style={{
+                                              borderBottom: isLastRow ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
+                                            }}
+                                          >
+                                            <td className="py-2 pr-3 pl-0 text-gray-700 text-sm font-light">
+                                              {englishPronoun}
                                             </td>
                                             <td className="py-2 px-3">
                                               {conjugation && conjugation !== '-' ? (
@@ -737,7 +905,7 @@ export function VocabDetailModal({
                                                   onClick={() => speakConjugation(conjugation)}
                                                   className="font-normal text-base text-gray-900 hover:text-gray-700 transition-colors cursor-pointer"
                                                 >
-                                                  {conjugation}
+                                                  {pronoun} {conjugation}
                                                 </button>
                                               ) : (
                                                 <span className="font-normal text-base text-gray-400">-</span>

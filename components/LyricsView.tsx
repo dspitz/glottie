@@ -305,15 +305,28 @@ export function LyricsView({
 
   // Listen for vocab modal open/close for playhead management
   useEffect(() => {
-    const handleVocabModalOpen = async (event: CustomEvent) => {
-      console.log('📖 [LyricsView] Vocab modal opened', event.detail)
+    const handleVocabModalWillOpen = async (event: CustomEvent) => {
+      console.log('📖 [LyricsView] Vocab modal will open - pausing audio', event.detail)
+
+      if (audioControls) {
+        // Pause audio FIRST
+        const state = audioControls.getState()
+        if (state.isPlaying) {
+          console.log('🛑 [LyricsView] Pausing audio')
+          await audioControls.pause()
+        }
+
+        // Save current playback position
+        audioControls.savePlaybackPosition()
+      }
+    }
+
+    const handleVocabModalOpened = async (event: CustomEvent) => {
+      console.log('📖 [LyricsView] Vocab modal opened - seeking to line', event.detail)
       const { startTime } = event.detail
 
       if (audioControls) {
-        // Save current playback position
-        audioControls.savePlaybackPosition()
-
-        // Move playhead to the word's line (silently, without playing)
+        // Audio is already paused, now just seek
         await audioControls.seekSilent(startTime)
       }
     }
@@ -327,11 +340,13 @@ export function LyricsView({
       }
     }
 
-    window.addEventListener('vocab-modal-open', handleVocabModalOpen as EventListener)
+    window.addEventListener('vocab-modal-will-open', handleVocabModalWillOpen as EventListener)
+    window.addEventListener('vocab-modal-opened', handleVocabModalOpened as EventListener)
     window.addEventListener('vocab-modal-close', handleVocabModalClose as EventListener)
 
     return () => {
-      window.removeEventListener('vocab-modal-open', handleVocabModalOpen as EventListener)
+      window.removeEventListener('vocab-modal-will-open', handleVocabModalWillOpen as EventListener)
+      window.removeEventListener('vocab-modal-opened', handleVocabModalOpened as EventListener)
       window.removeEventListener('vocab-modal-close', handleVocabModalClose as EventListener)
     }
   }, [audioControls])

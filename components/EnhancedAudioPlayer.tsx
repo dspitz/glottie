@@ -93,8 +93,8 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState(1)
-  const [isMuted, setIsMuted] = useState(false)
+  const [volume, setVolume] = useState(0.7) // Start at 70% for when user unmutes
+  const [isMuted, setIsMuted] = useState(true) // Start muted to prevent audio during preload
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [playbackRate, setPlaybackRate] = useState(1.0)
@@ -241,11 +241,9 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
 
           try {
             console.log('🎵 [Preload] Starting Spotify track preload for:', track.title)
+            console.log('🔇 [Preload] Player is already muted by default')
 
-            // Step 1: Mute volume completely to prevent audible playback
-            console.log('🔇 [Preload] Muting volume...')
-            const savedVolume = volume
-            const savedMuted = isMuted
+            // Step 1: Ensure volume is at 0 (should already be 0 from initial state)
             await spotifyPlayerRef.current.setVolume?.(0)
 
             // Step 2: Play the track (this loads it into the player)
@@ -254,70 +252,31 @@ export function EnhancedAudioPlayer({ track, className = '', onStateChange, onCo
             const result = await spotifyPlayerRef.current.playTrack?.(trackUri)
 
             if (result === true) {
-              console.log('✅ [Preload] PlayTrack succeeded, waiting for playback state...')
+              console.log('✅ [Preload] PlayTrack succeeded, waiting 0.5s before pausing...')
               setHasEverPlayed(true)
 
-              // Step 3: Subscribe to state changes and pause when track starts playing
-              console.log('👂 [Preload] Subscribing to state changes...')
+              // Step 3: Wait 0.5 seconds for track to load, then pause
+              // Volume is already muted so no audio should be heard
+              await new Promise(resolve => setTimeout(resolve, 500))
 
-              const unsubscribe = await new Promise<() => void>((resolve) => {
-                let callbackFired = false
+              console.log('🛑 [Preload] Calling pause now...')
+              await spotifyPlayerRef.current?.pause?.()
+              setIsPlaying(false)
+              console.log('⏸️ [Preload] Paused successfully')
 
-                const unsub = spotifyPlayerRef.current?.subscribeToStateChanges?.((state) => {
-                  console.log('📊 [Preload] State change:', {
-                    hasState: !!state,
-                    paused: state?.paused,
-                    hasTrack: !!state?.track_window?.current_track,
-                    position: state?.position
-                  })
+              // Keep volume muted for 1 second after pausing to ensure no audio bleed
+              await new Promise(resolve => setTimeout(resolve, 1000))
 
-                  if (state && !state.paused && state.track_window?.current_track) {
-                    if (callbackFired) return // Only fire once
-                    callbackFired = true
-
-                    console.log('🎵 [Preload] Track is now playing, pausing immediately...')
-
-                    // Pause the track
-                    spotifyPlayerRef.current?.pause?.().then((pauseResult) => {
-                      console.log('🛑 [Preload] Pause result:', pauseResult)
-                      setIsPlaying(false)
-                      console.log('⏸️ [Preload] Paused successfully, isPlaying set to false')
-
-                      // Restore original volume
-                      spotifyPlayerRef.current?.setVolume?.(savedMuted ? 0 : savedVolume).then(() => {
-                        console.log('🔊 [Preload] Volume restored. Track ready for seeking/playback.')
-                        resolve(unsub)
-                      })
-                    })
-                  }
-                })
-
-                // Safety timeout in case state change never fires
-                setTimeout(() => {
-                  if (!callbackFired) {
-                    console.log('⏱️ [Preload] Timeout reached, forcing pause...')
-                    spotifyPlayerRef.current?.pause?.().then(() => {
-                      setIsPlaying(false)
-                      spotifyPlayerRef.current?.setVolume?.(savedMuted ? 0 : savedVolume)
-                    })
-                    resolve(unsub)
-                  }
-                }, 2000) // 2 second safety timeout
-              })
-
-              // Unsubscribe from state changes
-              if (unsubscribe) {
-                unsubscribe()
-              }
+              // Now restore volume to 100% and unmute
+              await spotifyPlayerRef.current?.setVolume?.(1)
+              setVolume(1)
+              setIsMuted(false)
+              console.log('🔊 [Preload] Volume restored to 100%. Track ready for playback.')
             } else {
               console.log('⚠️ [Preload] PlayTrack returned:', result)
-              // Restore volume even if preload failed
-              await spotifyPlayerRef.current.setVolume?.(savedMuted ? 0 : savedVolume)
             }
           } catch (error) {
             console.error('❌ [Preload] Error preloading Spotify track:', error)
-            // Restore volume on error
-            await spotifyPlayerRef.current.setVolume?.(isMuted ? 0 : volume)
           } finally {
             // Reset the preloading flag
             isPreloadingRef.current = false

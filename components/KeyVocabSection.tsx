@@ -38,6 +38,17 @@ interface KeyVocabSectionProps {
   userLanguage?: string // User's preferred language for translations
 }
 
+// Helper to convert usefulnessScore to frequency category
+// Note: Current data shows most words have score ~0.95, so this is a rough estimate
+function usefulnessToFrequencyRank(usefulnessScore?: number): number | undefined {
+  if (!usefulnessScore) return undefined
+  // Map to broad categories: very common, common, fairly common, uncommon
+  if (usefulnessScore >= 0.9) return 50   // "very common"
+  if (usefulnessScore >= 0.7) return 300  // "common"
+  if (usefulnessScore >= 0.5) return 800  // "fairly common"
+  return 1200 // "uncommon"
+}
+
 export function KeyVocabSection({
   songId,
   language,
@@ -193,10 +204,22 @@ export function KeyVocabSection({
     other: 'Other'
   }
 
-  const handleWordClick = (basic: VocabWord, enriched: EnrichedWord) => {
+  const handleWordClick = async (basic: VocabWord, enriched: EnrichedWord) => {
     // Find the lyric line that contains this word
     const lyricContext = findLyricLineWithWord(basic.word)
 
+    // Dispatch pause event BEFORE opening modal
+    if (lyricContext) {
+      const event = new CustomEvent('vocab-modal-will-open', {
+        detail: { songId }
+      })
+      window.dispatchEvent(event)
+
+      // Wait for pause to complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
+    // Now open modal (which will handle seeking)
     setSelectedWord(enriched)
     setSelectedBasic(basic)
     setSelectedLyricLine(lyricContext?.lyricLine || null)
@@ -297,6 +320,7 @@ export function KeyVocabSection({
           lyricLineTranslation={selectedTranslation || undefined}
           lyricLineIndex={selectedLineIndex ?? undefined}
           songId={songId}
+          frequencyRank={usefulnessToFrequencyRank(selectedWord.usefulnessScore)}
         />
       )}
 
