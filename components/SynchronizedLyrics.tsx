@@ -71,29 +71,6 @@ export function SynchronizedLyrics({
   const [showTranslations, setShowTranslations] = useState(false) // Translations now shown inline on hover
   const [isPreloadingTranslations, setIsPreloadingTranslations] = useState(false)
   const repeatIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const hasAutoOpenedRef = useRef(false) // Track if we've already auto-opened on this song
-
-  // Auto-open translation sheet when song starts playing
-  useEffect(() => {
-    // Only auto-open once per song when playback starts
-    if (isPlaying && !hasAutoOpenedRef.current && synchronizedLines.length > 0) {
-      hasAutoOpenedRef.current = true
-      // Open the first line's translation
-      const firstLine = synchronizedLines[0]
-      if (firstLine) {
-        handleSentenceClick(firstLine.text, 0)
-      }
-    }
-
-    // Reset flag when song stops/pauses
-    if (!isPlaying && hasAutoOpenedRef.current) {
-      // Don't reset immediately - only reset when currentTime is near 0
-      // This way pausing won't cause re-opening
-      if (currentTime < 1000) { // Less than 1 second
-        hasAutoOpenedRef.current = false
-      }
-    }
-  }, [isPlaying, currentTime, synchronizedLines, handleSentenceClick])
 
   // Process translations prop to always have an array
   const translationArray = useMemo(() => {

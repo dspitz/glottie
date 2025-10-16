@@ -169,6 +169,15 @@ export function LyricsView({
     }
   }, [onPlayStateChange])
 
+  // Auto-open translation sheet when song starts playing
+  useEffect(() => {
+    // Only auto-open once when playback starts
+    if (audioState.isPlaying && !hasEverPlayed && lines.length > 0 && !isModalOpen) {
+      // Open the first line's translation
+      handleSentenceClick(lines[0], 0)
+    }
+  }, [audioState.isPlaying, hasEverPlayed, lines, isModalOpen, handleSentenceClick])
+
   // Auto-advance modal content when playing
   useEffect(() => {
     // Only auto-advance if not in line lock mode
