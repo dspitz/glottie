@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2, RefreshCw, Volume2, ChevronDown } from 'lucide-react'
 import { parseTextIntoWords } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { defineWord } from '@/lib/client'
@@ -85,12 +85,269 @@ export function TranslationBottomSheet({
   const sheetRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [selectedWord, setSelectedWord] = useState<string | null>(null)
+  const [selectedEnrichedWord, setSelectedEnrichedWord] = useState<EnrichedWord | null>(null)
   const [wordDefinition, setWordDefinition] = useState<any>(null)
   const [isLoadingDefinition, setIsLoadingDefinition] = useState(false)
   const [isRepeatingLine, setIsRepeatingLine] = useState(false)
   // Removed looping functionality
   const lineMonitorRef = useRef<NodeJS.Timeout | null>(null)
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
+
+  // Enriched vocabulary data types (from VocabDetailModal)
+  interface EnrichedWord {
+    word: string
+    translations: Record<string, string>
+    root?: string
+    partOfSpeech: string
+    conjugations?: {
+      present?: string[]
+      preterite?: string[]
+      imperfect?: string[]
+      future?: string[]
+      conditional?: string[]
+      subjunctive?: string[]
+      'present-perfect'?: string[]
+      pluperfect?: string[]
+    }
+    synonyms?: string[]
+    antonyms?: string[]
+    definition?: string
+    exampleSentence?: string
+    exampleTranslation?: string
+    usefulnessScore?: number
+  }
+
+  interface EnrichedVocabData {
+    vocab: Array<{
+      word: string
+      translation: string
+      count: number
+      partOfSpeech?: string
+      score: number
+    }>
+    enrichedVocab: EnrichedWord[]
+    language: string
+    lyrics: string[]
+    translations: string[]
+  }
+
+  // New state for enriched vocabulary
+  const [enrichedData, setEnrichedData] = useState<EnrichedVocabData | null>(null)
+  const [isLoadingEnriched, setIsLoadingEnriched] = useState(false)
+
+  // Fetch enriched vocabulary when component opens with songId
+  useEffect(() => {
+    if (isOpen && songId && !enrichedData) {
+      setIsLoadingEnriched(true)
+      fetch(`/api/songs/${songId}/vocab?enrich=full`)
+        .then(res => res.json())
+        .then(data => {
+          setEnrichedData(data)
+          setIsLoadingEnriched(false)
+        })
+        .catch(error => {
+          console.error('Failed to fetch enriched vocabulary:', error)
+          setIsLoadingEnriched(false)
+        })
+    }
+  }, [isOpen, songId, enrichedData])
+
+  // Clear enriched data cache when sheet closes or song changes
+  useEffect(() => {
+    if (!isOpen) {
+      setEnrichedData(null)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    setEnrichedData(null)
+  }, [songId])
+
+  // TTS state
+  const [isPlayingWord, setIsPlayingWord] = useState(false)
+  const [isPlayingSentence, setIsPlayingSentence] = useState(false)
+
+  // Conjugation state
+  const [expandedTenses, setExpandedTenses] = useState<Set<string>>(new Set(['present']))
+
+  // Helper function to get the best voice for a language
+  const getBestVoice = (lang: string): SpeechSynthesisVoice | null => {
+    const voices = window.speechSynthesis.getVoices()
+
+    // Map language codes to preferred voice patterns
+    const voicePreferences: Record<string, string[]> = {
+      'es': ['es-ES', 'es-MX', 'es-US', 'Spanish'],
+      'fr': ['fr-FR', 'fr-CA', 'French']
+    }
+
+    const patterns = voicePreferences[lang] || [lang]
+
+    // Try to find a high-quality voice (prefer 'premium', 'enhanced', or system voices)
+    for (const pattern of patterns) {
+      // First, look for premium/enhanced voices
+      const premiumVoice = voices.find(v =>
+        (v.lang.startsWith(pattern) || v.name.includes(pattern)) &&
+        (v.name.toLowerCase().includes('premium') ||
+         v.name.toLowerCase().includes('enhanced') ||
+         v.name.toLowerCase().includes('google') ||
+         v.localService === false) // Cloud-based voices are usually better
+      )
+      if (premiumVoice) return premiumVoice
+
+      // Fall back to any voice matching the language
+      const standardVoice = voices.find(v =>
+        v.lang.startsWith(pattern) || v.name.includes(pattern)
+      )
+      if (standardVoice) return standardVoice
+    }
+
+    return null
+  }
+
+  // Text-to-speech for vocab word
+  const speakWord = (word: string, enrichedWord?: EnrichedWord) => {
+    if (isPlayingWord) return
+
+    const textToSpeak = enrichedWord?.partOfSpeech?.toLowerCase() === 'verb' && enrichedWord?.root
+      ? enrichedWord.root
+      : word
+
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel()
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak)
+
+    // Set language and get best voice
+    let langCode = songLanguage || 'es'
+    if (songLanguage === 'es') {
+      langCode = 'es-ES'
+    } else if (songLanguage === 'fr') {
+      langCode = 'fr-FR'
+    }
+
+    utterance.lang = langCode
+
+    // Use the best available voice
+    const bestVoice = getBestVoice(songLanguage || 'es')
+    if (bestVoice) {
+      utterance.voice = bestVoice
+    }
+
+    utterance.rate = 0.8 // Slightly slower for learning
+    utterance.pitch = 1.0
+
+    setIsPlayingWord(true)
+
+    utterance.onend = () => {
+      setIsPlayingWord(false)
+    }
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event)
+      setIsPlayingWord(false)
+    }
+
+    window.speechSynthesis.speak(utterance)
+  }
+
+  // Text-to-speech for example sentence
+  const speakSentence = async (exampleSentence: string) => {
+    if (!exampleSentence || isPlayingSentence) return
+
+    setIsPlayingSentence(true)
+
+    try {
+      // Try cloud TTS API first for better quality
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: exampleSentence,
+          language: songLanguage || 'es',
+        }),
+      })
+
+      const data = await response.json()
+
+      // If cloud TTS is available, play the audio
+      if (data.audio && !data.useBrowserTTS) {
+        const audio = new Audio(`data:audio/mp3;base64,${data.audio}`)
+        audio.playbackRate = 1.0
+        audio.onended = () => setIsPlayingSentence(false)
+        audio.onerror = () => {
+          setIsPlayingSentence(false)
+          // Fallback to browser TTS on error
+          useBrowserTTS(exampleSentence)
+        }
+        await audio.play()
+        return
+      }
+    } catch (error) {
+      console.log('Cloud TTS unavailable, using browser TTS')
+    }
+
+    // Fallback to browser TTS
+    useBrowserTTS(exampleSentence)
+  }
+
+  const useBrowserTTS = (text: string) => {
+    const utterance = new SpeechSynthesisUtterance(text)
+
+    // Map language codes to speech synthesis voices
+    const langMap: Record<string, string> = {
+      es: 'es-ES',
+      fr: 'fr-FR',
+      de: 'de-DE',
+      it: 'it-IT',
+      pt: 'pt-PT',
+    }
+
+    const targetLang = langMap[songLanguage || 'es'] || songLanguage || 'es-ES'
+    utterance.lang = targetLang
+
+    // Use the shared getBestVoice helper for consistency
+    const bestVoice = getBestVoice(songLanguage || 'es')
+    if (bestVoice) {
+      utterance.voice = bestVoice
+    }
+
+    utterance.rate = 0.66 // 66% speed for clear comprehension
+    utterance.pitch = 1.0
+    utterance.volume = 1.0
+
+    utterance.onend = () => setIsPlayingSentence(false)
+    utterance.onerror = () => setIsPlayingSentence(false)
+
+    window.speechSynthesis.speak(utterance)
+  }
+
+  // Text-to-speech for conjugations
+  const speakConjugation = (text: string) => {
+    // Use simple browser TTS for conjugations (no API call needed)
+    const utterance = new SpeechSynthesisUtterance(text)
+
+    const langMap: Record<string, string> = {
+      es: 'es-ES',
+      fr: 'fr-FR',
+      de: 'de-DE',
+      it: 'it-IT',
+      pt: 'pt-PT',
+    }
+
+    const targetLang = langMap[songLanguage || 'es'] || songLanguage || 'es-ES'
+    utterance.lang = targetLang
+
+    // Use the shared getBestVoice helper for consistency
+    const bestVoice = getBestVoice(songLanguage || 'es')
+    if (bestVoice) {
+      utterance.voice = bestVoice
+    }
+
+    utterance.rate = 0.8 // Same speed as individual words
+    utterance.pitch = 1.0
+
+    window.speechSynthesis.speak(utterance)
+  }
 
   // Track window size for responsive positioning
   useEffect(() => {
@@ -304,18 +561,107 @@ export function TranslationBottomSheet({
 
   // Debug state - removed for cleaner console
 
+  // Helper to normalize accents for matching
+  const normalizeAccents = (str: string): string => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }
+
   // Handle word click
   const handleWordClick = async (word: string, cleanWord: string) => {
     // Pause music when clicking on a word to look up definition
     audioControls?.pause()
 
     const normalizedWord = cleanWord.toLowerCase().trim()
+    const normalizedWordNoAccents = normalizeAccents(cleanWord)
 
-    // Select new word and fetch definition first
+    // Toggle selection
+    if (selectedWord === cleanWord) {
+      setSelectedWord(null)
+      setSelectedEnrichedWord(null)
+      setWordDefinition(null)
+      return
+    }
+
+    // Select new word
     setSelectedWord(cleanWord)
     setIsLoadingDefinition(true)
+    setSelectedEnrichedWord(null)
     setWordDefinition(null)
 
+    // Try to find enriched vocabulary data first
+    if (enrichedData?.enrichedVocab) {
+      console.log('🔍 Looking for word:', cleanWord, '→', normalizedWord, '→', normalizedWordNoAccents)
+      console.log('📚 Available enriched words:', enrichedData.enrichedVocab.map(e => e.word).join(', '))
+
+      const enriched = enrichedData.enrichedVocab.find(e => {
+        const eWordLower = e.word.toLowerCase()
+        const eWordNoAccents = normalizeAccents(e.word)
+        const eRootLower = e.root?.toLowerCase()
+        const eRootNoAccents = e.root ? normalizeAccents(e.root) : ''
+
+        return eWordLower === normalizedWord ||
+               eWordNoAccents === normalizedWordNoAccents ||
+               eRootLower === normalizedWord ||
+               eRootNoAccents === normalizedWordNoAccents
+      })
+
+      if (enriched) {
+        console.log('✅ Found enriched data for:', enriched.word)
+        setSelectedEnrichedWord(enriched)
+        setIsLoadingDefinition(false)
+
+        // Track word click with enriched data
+        fetch('/api/word-clicks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            word: normalizedWord,
+            translation: enriched.translations?.en || null,
+            definition: JSON.stringify(enriched)
+          }),
+        }).catch((err) => console.error('Failed to track word click:', err))
+
+        return
+      } else {
+        console.log('❌ No enriched data found in cache, trying on-the-fly enrichment...')
+
+        // Try to fetch enrichment on-the-fly from vocabulary database
+        try {
+          const enrichResponse = await fetch(`/api/vocabulary/enrich?word=${encodeURIComponent(normalizedWord)}&language=${songLanguage || 'es'}`)
+          if (enrichResponse.ok) {
+            const enrichData = await enrichResponse.json()
+            if (enrichData.word) {
+              console.log('✅ Got on-the-fly enrichment for:', enrichData.word)
+              setSelectedEnrichedWord(enrichData)
+              setIsLoadingDefinition(false)
+
+              // Track word click
+              fetch('/api/word-clicks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  word: normalizedWord,
+                  translation: enrichData.translations?.en || null,
+                  definition: JSON.stringify(enrichData)
+                }),
+              }).catch((err) => console.error('Failed to track word click:', err))
+
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Failed on-the-fly enrichment:', error)
+        }
+
+        console.log('❌ On-the-fly enrichment also failed, falling back to legacy API')
+      }
+    }
+
+    // Fall back to old defineWord API if enriched data not available
     let definition = null
     try {
       definition = await defineWord(normalizedWord)
@@ -327,28 +673,16 @@ export function TranslationBottomSheet({
       setIsLoadingDefinition(false)
     }
 
-    // Track word click with translation and definition
-    // console.log('📊 Tracking word click:', normalizedWord)
+    // Track word click with definition
     fetch('/api/word-clicks', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         word: normalizedWord,
         translation: definition?.definitions?.[0] || null,
         definition: definition ? JSON.stringify(definition) : null
       }),
-    }).catch((err) => {
-      console.error('Failed to track word click:', err)
-    })
-
-    // Toggle selection
-    if (selectedWord === cleanWord) {
-      setSelectedWord(null)
-      setWordDefinition(null)
-      return
-    }
+    }).catch((err) => console.error('Failed to track word click:', err))
   }
 
 
@@ -640,140 +974,334 @@ export function TranslationBottomSheet({
 
               {/* English Translation or Word Definition */}
               {selectedWord ? (
-                // Word Definition View - Match translation container style
+                // Enriched Word View or Legacy Definition View
                 <div>
-                  <div
-                    className="flex flex-col p-4 rounded-lg"
-                    style={{
-                      fontSize: '24px',
-                      lineHeight: '32px',
-                      fontWeight: 400,
-                      color: 'rgba(0, 0, 0, 0.80)',
-                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
-                      minHeight: '168px',
-                      maxHeight: 'none',
-                      overflow: 'auto'
-                    }}
-                  >
-                    {/* Word Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-2xl font-medium" style={{ color: 'rgba(0, 0, 0, 0.90)' }}>
-                        {selectedWord}
-                        {wordDefinition && wordDefinition.pos && (
-                          <span className="ml-2 text-sm opacity-60">
-                            ({wordDefinition.pos})
-                          </span>
-                        )}
-                      </h3>
-                      <button
-                        onClick={() => {
-                          setSelectedWord(null)
-                          setWordDefinition(null)
-                        }}
-                        className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
-                        style={{ color: 'rgba(0, 0, 0, 0.80)' }}
-                      >
-                        Got it
-                      </button>
-                    </div>
-
-                    {isLoadingDefinition ? (
-                      <div className="space-y-2">
-                        {/* Just 2 shimmer lines to maintain container size */}
-                        <div className="h-7 rounded animate-pulse" style={{
-                          width: '85%',
-                          background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%)',
-                          backgroundSize: '200% 100%',
-                          animation: 'shimmer 1.5s infinite'
-                        }} />
-                        <div className="h-7 rounded animate-pulse" style={{
-                          width: '70%',
-                          background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%)',
-                          backgroundSize: '200% 100%',
-                          animation: 'shimmer 1.5s infinite'
-                        }} />
-                      </div>
-                    ) : wordDefinition?.error ? (
-                      <p className="italic opacity-60">Definition not available</p>
-                    ) : wordDefinition ? (
-                      <div className="space-y-3">
-                        {/* Definitions */}
-                        {wordDefinition.definitions && (
-                          <div className="space-y-2">
-                            {wordDefinition.definitions.map((def: string, index: number) => (
-                              <p key={index} style={{ fontSize: '20px', lineHeight: '28px' }}>
-                                • {def}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Examples */}
-                        {wordDefinition.examples && wordDefinition.examples.length > 0 && (
-                          <div className="pt-3" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
-                            <h4 className="font-medium mb-2 opacity-60" style={{ fontSize: '18px' }}>Examples:</h4>
-                            {wordDefinition.examples.slice(0, 2).map((example: string, index: number) => (
-                              <p key={index} className="italic opacity-70 mb-1" style={{ fontSize: '18px', lineHeight: '26px' }}>
-                                "{example}"
-                              </p>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Conjugations for verbs */}
-                        {wordDefinition.conjugations && (
-                          <div className="pt-3" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
-                            <h4 className="font-medium mb-2 opacity-60" style={{ fontSize: '18px' }}>Conjugations:</h4>
-
-                            {/* Present tense as default open */}
-                            <details open>
-                              <summary className="cursor-pointer font-medium opacity-70 hover:opacity-100" style={{ fontSize: '16px' }}>
-                                Present
-                              </summary>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-2" style={{ fontSize: '16px' }}>
-                                {Object.entries(wordDefinition.conjugations.presente).map(([person, form]) => (
-                                  <span key={person} className="opacity-70">
-                                    {person}: <strong className="opacity-90">{form}</strong>
-                                  </span>
-                                ))}
-                              </div>
-                            </details>
-
-                            {/* Other tenses collapsed */}
-                            {wordDefinition.conjugations.preterito && (
-                              <details className="mt-2">
-                                <summary className="cursor-pointer font-medium opacity-70 hover:opacity-100" style={{ fontSize: '16px' }}>
-                                  Preterite
-                                </summary>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-2" style={{ fontSize: '16px' }}>
-                                  {Object.entries(wordDefinition.conjugations.preterito).map(([person, form]) => (
-                                    <span key={person} className="opacity-70">
-                                      {person}: <strong className="opacity-90">{form}</strong>
-                                    </span>
-                                  ))}
-                                </div>
-                              </details>
+                  {selectedEnrichedWord ? (
+                    // NEW: Enriched vocabulary UI
+                    <div
+                      className="flex flex-col p-4 rounded-lg space-y-4"
+                      style={{
+                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                        minHeight: '168px',
+                        maxHeight: 'none',
+                        overflow: 'auto'
+                      }}
+                    >
+                      {/* Word Header with TTS */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-3xl font-medium capitalize" style={{ color: 'rgba(0, 0, 0, 0.90)' }}>
+                            {selectedEnrichedWord.partOfSpeech?.toLowerCase() === 'verb' && selectedEnrichedWord.root
+                              ? selectedEnrichedWord.root
+                              : selectedWord
+                            }
+                          </h3>
+                          <button
+                            onClick={() => speakWord(selectedWord, selectedEnrichedWord)}
+                            disabled={isPlayingWord}
+                            className="h-8 w-8 rounded-full flex items-center justify-center transition-colors bg-white"
+                            title="Pronounce word"
+                          >
+                            {isPlayingWord ? (
+                              <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                            ) : (
+                              <Volume2 className="h-4 w-4" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
                             )}
-
-                            {wordDefinition.conjugations.imperfecto && (
-                              <details className="mt-2">
-                                <summary className="cursor-pointer font-medium opacity-70 hover:opacity-100" style={{ fontSize: '16px' }}>
-                                  Imperfect
-                                </summary>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 ml-3 mt-2" style={{ fontSize: '16px' }}>
-                                  {Object.entries(wordDefinition.conjugations.imperfecto).map(([person, form]) => (
-                                    <span key={person} className="opacity-70">
-                                      {person}: <strong className="opacity-90">{form}</strong>
-                                  </span>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-                          </div>
-                        )}
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedWord(null)
+                            setSelectedEnrichedWord(null)
+                          }}
+                          className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
+                          style={{ color: 'rgba(0, 0, 0, 0.80)' }}
+                        >
+                          Got it
+                        </button>
                       </div>
-                    ) : null}
-                  </div>
+
+                      {/* Part of Speech & Translation */}
+                      <div>
+                        <span
+                          className="inline-block text-xs rounded-full px-3 py-2 mb-2"
+                          style={{
+                            backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                            color: 'rgba(0, 0, 0, 0.70)',
+                          }}
+                        >
+                          {selectedEnrichedWord.partOfSpeech.charAt(0).toUpperCase() + selectedEnrichedWord.partOfSpeech.slice(1).toLowerCase()}
+                        </span>
+                        <p style={{ fontSize: '18px', lineHeight: '26px', color: 'rgba(0, 0, 0, 0.80)' }}>
+                          <span className="font-medium">Meaning: </span>
+                          {selectedEnrichedWord.translations?.en || 'Translation not available'}
+                        </p>
+                      </div>
+
+                      {/* Example Sentence */}
+                      {selectedEnrichedWord.exampleSentence && (
+                        <div
+                          className="rounded-lg p-3"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="italic flex-1" style={{ fontSize: '16px', lineHeight: '24px', color: 'rgba(0, 0, 0, 0.90)' }}>
+                              {selectedEnrichedWord.exampleSentence}
+                            </p>
+                            <button
+                              onClick={() => speakSentence(selectedEnrichedWord.exampleSentence!)}
+                              disabled={isPlayingSentence}
+                              className="h-7 w-7 flex-shrink-0 rounded-full flex items-center justify-center bg-white hover:bg-gray-100 transition-colors"
+                            >
+                              {isPlayingSentence ? (
+                                <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                              ) : (
+                                <Volume2 className="h-3 w-3" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                              )}
+                            </button>
+                          </div>
+                          {selectedEnrichedWord.exampleTranslation && (
+                            <p className="mt-1 opacity-70" style={{ fontSize: '14px', lineHeight: '20px' }}>
+                              {selectedEnrichedWord.exampleTranslation}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Synonyms */}
+                      {selectedEnrichedWord.synonyms && selectedEnrichedWord.synonyms.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold opacity-60 mb-2 uppercase tracking-wide">Synonyms</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedEnrichedWord.synonyms.map((synonym, index) => (
+                              <span
+                                key={index}
+                                className="text-sm px-3 py-1 rounded-full"
+                                style={{
+                                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                                  color: 'rgba(0, 0, 0, 0.80)',
+                                }}
+                              >
+                                {synonym}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Conjugation Tables for Verbs */}
+                      {selectedEnrichedWord.partOfSpeech?.toLowerCase() === 'verb' && selectedEnrichedWord.conjugations && (() => {
+                        const conjugations = selectedEnrichedWord.conjugations
+                        const availableTenses = Object.keys(conjugations).filter(
+                          key => conjugations[key as keyof typeof conjugations]?.length ?? 0 > 0
+                        )
+
+                        if (availableTenses.length === 0) return null
+
+                        // Pronouns for Spanish and French
+                        const spanishPronouns = ['yo', 'tú', 'él/ella', 'nosotros', 'vosotros', 'ellos/ellas']
+                        const frenchPronouns = ['je', 'tu', 'il/elle', 'nous', 'vous', 'ils/elles']
+                        const pronouns = songLanguage === 'fr' ? frenchPronouns : spanishPronouns
+                        const englishPronouns = ['I', 'you', 'he/she', 'we', 'you all', 'they']
+
+                        // Tense labels
+                        const tenseInfo: Record<string, { label: string }> = songLanguage === 'fr' ? {
+                          present: { label: 'Présent' },
+                          'passe-compose': { label: 'Passé Composé' },
+                          preterite: { label: 'Passé Composé' },
+                          imperfect: { label: 'Imparfait' },
+                          'futur-simple': { label: 'Futur Simple' },
+                          future: { label: 'Futur Simple' },
+                          conditionnel: { label: 'Conditionnel' },
+                          conditional: { label: 'Conditionnel' },
+                          'subjonctif-present': { label: 'Subjonctif Présent' },
+                          subjunctive: { label: 'Subjonctif Présent' },
+                          'plus-que-parfait': { label: 'Plus-que-Parfait' },
+                          pluperfect: { label: 'Plus-que-Parfait' },
+                        } : {
+                          present: { label: 'Presente' },
+                          preterite: { label: 'Pretérito' },
+                          imperfect: { label: 'Imperfecto' },
+                          future: { label: 'Futuro' },
+                          conditional: { label: 'Condicional' },
+                          subjunctive: { label: 'Subjuntivo Presente' },
+                          'present-perfect': { label: 'Pretérito Perfecto' },
+                          pluperfect: { label: 'Pluscuamperfecto' },
+                        }
+
+                        return (
+                          <div className="space-y-2">
+                            {availableTenses.map((tense) => {
+                              const isExpanded = expandedTenses.has(tense)
+                              const conjugationArray = conjugations[tense as keyof typeof conjugations]
+
+                              return (
+                                <div
+                                  key={tense}
+                                  className="rounded-lg"
+                                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+                                >
+                                  {/* Collapsible Header */}
+                                  <button
+                                    onClick={() => {
+                                      const newExpanded = new Set(expandedTenses)
+                                      if (isExpanded) {
+                                        newExpanded.delete(tense)
+                                      } else {
+                                        newExpanded.add(tense)
+                                      }
+                                      setExpandedTenses(newExpanded)
+                                    }}
+                                    className="w-full flex items-center justify-between transition-colors p-3"
+                                  >
+                                    <span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(0, 0, 0, 0.90)' }}>
+                                      {tenseInfo[tense]?.label || tense}
+                                    </span>
+                                    <ChevronDown
+                                      className="transition-transform duration-200"
+                                      style={{
+                                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        color: 'rgba(0, 0, 0, 0.60)',
+                                        width: '20px',
+                                        height: '20px'
+                                      }}
+                                    />
+                                  </button>
+
+                                  {/* Expandable Content */}
+                                  <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                      >
+                                        <div className="px-3 pb-3">
+                                          <table className="w-full">
+                                            <thead>
+                                              <tr style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
+                                                <th className="text-left py-2 pr-3 pl-0 font-medium text-sm" style={{ color: 'rgba(0, 0, 0, 0.70)' }}>
+                                                  Pronoun
+                                                </th>
+                                                <th className="text-left py-2 px-3 font-medium text-sm" style={{ color: 'rgba(0, 0, 0, 0.70)' }}>
+                                                  Conjugation
+                                                </th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {conjugationArray?.map((conjugation, i) => (
+                                                <tr key={i}>
+                                                  <td className="py-2 pr-3 pl-0 text-sm font-light" style={{ color: 'rgba(0, 0, 0, 0.70)' }}>
+                                                    {englishPronouns[i]}
+                                                  </td>
+                                                  <td className="py-2 px-3">
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        speakConjugation(`${pronouns[i]} ${conjugation}`)
+                                                      }}
+                                                      className="font-normal text-base hover:text-gray-700 transition-colors text-left"
+                                                      style={{ color: 'rgba(0, 0, 0, 0.90)' }}
+                                                    >
+                                                      {pronouns[i]} {conjugation}
+                                                    </button>
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  ) : (
+                    // Legacy definition UI (fallback)
+                    <div
+                      className="flex flex-col p-4 rounded-lg"
+                      style={{
+                        fontSize: '24px',
+                        lineHeight: '32px',
+                        fontWeight: 400,
+                        color: 'rgba(0, 0, 0, 0.80)',
+                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                        minHeight: '168px',
+                        maxHeight: 'none',
+                        overflow: 'auto'
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-2xl font-medium" style={{ color: 'rgba(0, 0, 0, 0.90)' }}>
+                          {selectedWord}
+                          {wordDefinition && wordDefinition.pos && (
+                            <span className="ml-2 text-sm opacity-60">
+                              ({wordDefinition.pos})
+                            </span>
+                          )}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setSelectedWord(null)
+                            setWordDefinition(null)
+                          }}
+                          className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
+                          style={{ color: 'rgba(0, 0, 0, 0.80)' }}
+                        >
+                          Got it
+                        </button>
+                      </div>
+
+                      {isLoadingDefinition ? (
+                        <div className="space-y-2">
+                          <div className="h-7 rounded animate-pulse" style={{
+                            width: '85%',
+                            background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'shimmer 1.5s infinite'
+                          }} />
+                          <div className="h-7 rounded animate-pulse" style={{
+                            width: '70%',
+                            background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'shimmer 1.5s infinite'
+                          }} />
+                        </div>
+                      ) : wordDefinition?.error ? (
+                        <p className="italic opacity-60">Definition not available</p>
+                      ) : wordDefinition ? (
+                        <div className="space-y-3">
+                          {wordDefinition.definitions && (
+                            <div className="space-y-2">
+                              {wordDefinition.definitions.map((def: string, index: number) => (
+                                <p key={index} style={{ fontSize: '20px', lineHeight: '28px' }}>
+                                  • {def}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {wordDefinition.examples && wordDefinition.examples.length > 0 && (
+                            <div className="pt-3" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
+                              <h4 className="font-medium mb-2 opacity-60" style={{ fontSize: '18px' }}>Examples:</h4>
+                              {wordDefinition.examples.slice(0, 2).map((example: string, index: number) => (
+                                <p key={index} className="italic opacity-70 mb-1" style={{ fontSize: '18px', lineHeight: '26px' }}>
+                                  "{example}"
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               ) : (
                 // Full Translation View - Same container style as lyrics

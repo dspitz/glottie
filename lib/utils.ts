@@ -103,9 +103,21 @@ export function parseTextIntoWords(text: string): WordToken[] {
 }
 
 export function cleanWordForLookup(word: string): string {
-  // Remove punctuation and convert to lowercase for dictionary lookup
-  return word
-    .toLowerCase()
+  // Handle French/Spanish contractions with apostrophes
+  // l'homme → homme, j'aime → aime, d'accord → accord
+  const lowerWord = word.toLowerCase()
+
+  // Check if it's a French contraction (l', j', d', m', t', s', c', n', qu')
+  const contractionMatch = lowerWord.match(/^([ljdmtscnq]'|qu')(.+)$/)
+  if (contractionMatch) {
+    // Return the word after the apostrophe
+    return contractionMatch[2]
+      .replace(/[¡¿""''"",.:;!?()[\]{}\-–—]/g, '')
+      .trim()
+  }
+
+  // Otherwise, remove punctuation and convert to lowercase for dictionary lookup
+  return lowerWord
     .replace(/[¡¿""''"",.:;!?()[\]{}\-–—]/g, '') // Remove common punctuation
     .trim()
 }

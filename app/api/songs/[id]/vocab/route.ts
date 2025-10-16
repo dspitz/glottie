@@ -62,7 +62,7 @@ export async function GET(
       lyrics,
       translations,
       song.language,
-      12, // Get top 12 words
+      25, // Get top 25 words (increased from 12 for better coverage)
       prisma
     )
 
