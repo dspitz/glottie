@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2, RefreshCw, Volume2, ChevronDown } from 'lucide-react'
+import { Slider } from '@/components/ui/slider'
+import { ChevronLeft, ChevronRight, X, Play, Pause, Loader2, RefreshCw, Volume2, ChevronDown, Music, List } from 'lucide-react'
 import { parseTextIntoWords } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { defineWord } from '@/lib/client'
-import { AudioPlayerControls } from '@/components/EnhancedAudioPlayer'
+import { AudioPlayerControls, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
 import { LineBookmarkButton } from '@/components/LineBookmarkButton'
 import confetti from 'canvas-confetti'
 
@@ -47,6 +48,11 @@ interface TranslationBottomSheetProps {
   songTitle?: string
   songArtist?: string
   songLanguage?: string
+  // Audio state for progress bar
+  audioState?: AudioPlayerState
+  // Track info for mini-player below progress bar
+  albumArtSmall?: string
+  albumName?: string
 }
 
 export function TranslationBottomSheet({
@@ -75,7 +81,10 @@ export function TranslationBottomSheet({
   songId,
   songTitle,
   songArtist,
-  songLanguage
+  songLanguage,
+  audioState,
+  albumArtSmall,
+  albumName
 }: TranslationBottomSheetProps) {
   // Debug: Log bookmark props
   // console.log('📑 TranslationBottomSheet bookmark props:', { songId, songTitle, songArtist, currentLineIndex })
@@ -837,10 +846,10 @@ export function TranslationBottomSheet({
               top: windowSize.width >= 640 ? '50%' : 'auto',
               bottom: windowSize.width >= 640 ? 'auto' : '0',
               width: windowSize.width >= 640 ? '672px' : '100%',
-              height: windowSize.width >= 640 ? 'min(800px, 90vh)' : '90vh',
+              height: windowSize.width >= 640 ? 'min(800px, 95vh)' : '95vh',
               marginLeft: windowSize.width >= 640 ? '-336px' : '0',
               marginTop: windowSize.width >= 640 ? (
-                windowSize.height * 0.9 > 800 ? '-400px' : `${-(windowSize.height * 0.9 / 2)}px`
+                windowSize.height * 0.95 > 800 ? '-400px' : `${-(windowSize.height * 0.95 / 2)}px`
               ) : '0',
               borderRadius: windowSize.width >= 640 ? '24px' : '24px 24px 0 0',
               border: windowSize.width >= 640 ? '1px solid rgba(229, 231, 235, 0.5)' : undefined,
@@ -849,55 +858,48 @@ export function TranslationBottomSheet({
           >
             {/* Drag Handle */}
             <div className="flex justify-center pt-3 pb-2">
-              <div className="w-12 h-1 rounded-full bg-gray-400" />
+              <div className="w-12 h-1 rounded-full" style={{ backgroundColor: 'rgba(0, 0, 0, 0.08)' }} />
             </div>
 
-            {/* Header */}
+            {/* Header - Title and Close button */}
             <motion.div
-              className="px-3 pb-3 mb-10 flex items-center justify-between relative"
+              className="px-3 pb-3 mb-8"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
-              <div className="bg-background/80 backdrop-blur-sm rounded-full">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    onClose()
-                  }}
-                  className="h-9 w-9 rounded-full"
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              <div className="absolute left-1/2 transform -translate-x-1/2">
-                {totalLines > 0 && (
-                  <span className="text-sm font-medium text-gray-900">
-                    Line {currentLineIndex + 1} of {totalLines}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1" />
-              {songId && (
-                <div className="bg-background/80 backdrop-blur-sm rounded-full">
-                  <LineBookmarkButton
-                    songId={songId}
-                    songTitle={songTitle}
-                    songArtist={songArtist}
-                    songLanguage={songLanguage}
-                    lineText={sentence}
-                    lineTranslation={translation}
-                    lineIndex={currentLineIndex}
-                    className="h-9 w-9"
-                  />
+              <div className="flex items-center justify-between relative">
+                <div className="rounded-full" style={{ backgroundColor: 'rgba(0, 0, 0, 0)' }}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      onClose()
+                    }}
+                    className="h-9 w-9 rounded-full"
+                    aria-label="Close"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
                 </div>
-              )}
+                <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+                  <h2 className="text-base font-semibold text-gray-900">Lyrics</h2>
+                </div>
+                <div className="rounded-full" style={{ backgroundColor: 'rgba(0, 0, 0, 0)' }}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full"
+                    aria-label="View list"
+                  >
+                    <List className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
             </motion.div>
 
             {/* Content */}
             <motion.div
-              className="px-3 pb-4 space-y-4 overflow-y-auto flex-1"
+              className="px-3 pb-4 overflow-y-auto flex-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
@@ -911,24 +913,64 @@ export function TranslationBottomSheet({
               {/* Spanish Text - No box, just the text with tappable words */}
               <div>
                 <div
-                  className="bubble flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
+                  className="bubble rounded-t-lg"
                   style={{
-                    fontSize: '28px',
-                    lineHeight: '36px',
-                    fontWeight: 400,
-                    color: '#000',
-                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                    boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
-                    // Height calculation for 3 lines minimum:
-                    // 3 lines × 36px line height = 108px
-                    // + word wrapper padding (4px per line) = 12px
-                    // + container padding (16px top + 16px bottom) = 32px
-                    // + gap between lines (2 gaps × 8px) = 16px
-                    // Total: 168px
-                    minHeight: '168px',
-                    maxHeight: 'none', // Allow expansion for 4-5 lines
-                    overflow: 'auto'
+                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                    borderBottomLeftRadius: 0,
+                    borderBottomRightRadius: 0,
                   }}>
+                  {/* Lyric Header - Left aligned with thumbnail and text */}
+                  <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b" style={{ borderColor: 'rgba(0, 0, 0, 0.08)' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {albumArtSmall ? (
+                          <img
+                            src={albumArtSmall}
+                            alt={`${albumName || songTitle} cover`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                              const parent = e.currentTarget.parentElement
+                              const musicIcon = parent?.querySelector('.music-icon')
+                              if (musicIcon) {
+                                musicIcon.classList.remove('hidden')
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <Music className={`music-icon w-4 h-4 text-gray-500 ${albumArtSmall ? 'hidden' : ''}`} />
+                      </div>
+                      <div className="flex flex-col">
+                        <p className="font-medium text-sm text-gray-900">Line {currentLineIndex + 1} of {totalLines}</p>
+                        <p className="text-xs text-gray-600">{songTitle}</p>
+                      </div>
+                    </div>
+                    {songId && (
+                      <LineBookmarkButton
+                        songId={songId}
+                        songTitle={songTitle}
+                        songArtist={songArtist}
+                        songLanguage={songLanguage}
+                        lineText={sentence}
+                        lineTranslation={translation}
+                        lineIndex={currentLineIndex}
+                        className="h-9 w-9"
+                      />
+                    )}
+                  </div>
+
+                  {/* Lyric Text */}
+                  <div
+                    className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 px-4 pb-4 pt-4"
+                    style={{
+                      fontSize: '28px',
+                      lineHeight: '36px',
+                      fontWeight: 400,
+                      color: '#000',
+                      minHeight: '168px',
+                      maxHeight: 'none',
+                      overflow: 'auto'
+                    }}>
                   {parseTextIntoWords(sentence).map((token, index) => {
                     // Only wrap actual words in containers, not spaces
                     if (token.word.trim() === '') {
@@ -969,8 +1011,12 @@ export function TranslationBottomSheet({
                       </span>
                     )
                   })}
+                  </div>
                 </div>
               </div>
+
+              {/* Divider */}
+              <div style={{ height: '1px', backgroundColor: 'rgba(0, 0, 0, 0.08)' }} />
 
               {/* English Translation or Word Definition */}
               {selectedWord ? (
@@ -979,12 +1025,14 @@ export function TranslationBottomSheet({
                   {selectedEnrichedWord ? (
                     // NEW: Enriched vocabulary UI
                     <div
-                      className="flex flex-col p-4 rounded-lg space-y-4"
+                      className="flex flex-col p-4 rounded-b-lg space-y-4"
                       style={{
-                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
                         minHeight: '168px',
                         maxHeight: 'none',
-                        overflow: 'auto'
+                        overflow: 'auto',
+                        borderTopLeftRadius: 0,
+                        borderTopRightRadius: 0,
                       }}
                     >
                       {/* Word Header with TTS */}
@@ -1227,16 +1275,19 @@ export function TranslationBottomSheet({
                   ) : (
                     // Legacy definition UI (fallback)
                     <div
-                      className="flex flex-col p-4 rounded-lg"
+                      className="flex flex-col p-4 rounded-b-lg"
                       style={{
                         fontSize: '24px',
                         lineHeight: '32px',
                         fontWeight: 400,
                         color: 'rgba(0, 0, 0, 0.80)',
-                        backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                        boxShadow: 'inset rgba(255,255,255,0.4) 20px 30px 70px, rgba(0,0,0,0.1) 10px 20px 40px',
                         minHeight: '168px',
                         maxHeight: 'none',
-                        overflow: 'auto'
+                        overflow: 'auto',
+                        borderTopLeftRadius: 0,
+                        borderTopRightRadius: 0,
                       }}
                     >
                       <div className="flex items-center justify-between mb-3">
@@ -1307,17 +1358,19 @@ export function TranslationBottomSheet({
                 // Full Translation View - Same container style as lyrics
                 <div>
                   <div
-                    className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-lg"
+                    className="flex flex-wrap items-start content-start gap-x-0.5 gap-y-2 p-4 rounded-b-lg"
                     style={{
                       fontSize: '28px',
                       lineHeight: '36px',
                       fontWeight: 400,
                       color: 'rgba(0, 0, 0, 0.80)',
-                      backgroundColor: 'rgba(0, 0, 0, 0.06)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
                       // Match the lyrics container height (3 lines minimum)
                       minHeight: '168px',
                       maxHeight: 'none', // Allow expansion for 4-5 lines
-                      overflow: 'auto'
+                      overflow: 'auto',
+                      borderTopLeftRadius: 0,
+                      borderTopRightRadius: 0,
                     }}
                   >
                     {translation ? (
@@ -1331,260 +1384,15 @@ export function TranslationBottomSheet({
 
             </motion.div>
 
-            {/* Controls - Fixed to bottom */}
-            <motion.div
-              className="px-2 pt-4 pb-6 space-y-3 no-pause-zone"
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
-              exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
-              {/* Navigation */}
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // No loop mode to reset anymore
-                    // Navigate to previous line
-                    if (onNavigatePrevious) {
-                      onNavigatePrevious()
-                    }
-                  }}
-                  disabled={currentLineIndex === 0}
-                  className="text-gray-700 hover:bg-gray-100 disabled:opacity-30 h-8 w-8"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-
-                {/* Play Line Button - Plays current line from start and auto-pauses at end */}
-                <Button
-                  variant="outline"
-                  size="default"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // console.log('🎵 Play Line button clicked', {
-                    //   currentLineIndex,
-                    //   hasOnSetLineLock: !!onSetLineLock,
-                    //   hasSynchronizedData: !!synchronizedData,
-                    //   linesCount: synchronizedData?.lines?.length
-                    // })
-
-                    // Get line timing if available
-                    if (synchronizedData?.lines?.[currentLineIndex]) {
-                      setIsRepeatingLine(true) // Start rotating animation
-                      const currentLine = synchronizedData.lines[currentLineIndex]
-                      const nextLine = synchronizedData.lines[currentLineIndex + 1]
-
-                      // Debug log to see what timing data we have
-                      // console.log('📊 Line timing data:', {
-                      //   currentLineIndex,
-                      //   currentLine: {
-                      //     text: currentLine.text,
-                      //     time: currentLine.time,
-                      //     startTime: currentLine.startTime,
-                      //     endTime: currentLine.endTime,
-                      //     duration: currentLine.duration,
-                      //     words: currentLine.words?.length,
-                      //     rawData: currentLine
-                      //   },
-                      //   nextLine: nextLine ? {
-                      //     text: nextLine.text,
-                      //     time: nextLine.time,
-                      //     startTime: nextLine.startTime,
-                      //     endTime: nextLine.endTime,
-                      //     rawData: nextLine
-                      //   } : null,
-                      //   previousLine: currentLineIndex > 0 ? {
-                      //     text: synchronizedData.lines[currentLineIndex - 1].text,
-                      //     endTime: synchronizedData.lines[currentLineIndex - 1].endTime
-                      //   } : null
-                      // })
-
-                      // Expand the raw data to see all properties
-                      // console.log('🔍 Current line raw data:', JSON.stringify(currentLine, null, 2))
-                      if (nextLine) {
-                        // console.log('🔍 Next line raw data:', JSON.stringify(nextLine, null, 2))
-                      }
-
-                      // Calculate start time
-                      let startTimeMs: number
-                      if (typeof currentLine.time === 'number') {
-                        // Check if it's likely in seconds (< 1000) or milliseconds
-                        startTimeMs = currentLine.time < 1000 ? currentLine.time * 1000 : currentLine.time
-                      } else if (typeof currentLine.startTime === 'number') {
-                        startTimeMs = currentLine.startTime
-                      } else {
-                        // console.warn('No timing data for current line')
-                        return
-                      }
-
-                      // Calculate end time for auto-pause
-                      let endTimeMs: number | undefined
-                      let endTimeSource = 'unknown'
-
-                      // ALWAYS use next line's start time as the end time
-                      // Ignore stored endTime as it may be incorrect (set by fallback logic)
-                      if (nextLine) {
-                        // Use next line's start time as end time
-                        if (typeof nextLine.time === 'number') {
-                          // LRC format - convert seconds to milliseconds
-                          endTimeMs = nextLine.time * 1000
-                          endTimeSource = 'nextLine.time (converted from seconds)'
-                        } else if (typeof nextLine.startTime === 'number') {
-                          endTimeMs = nextLine.startTime
-                          endTimeSource = 'nextLine.startTime'
-                        }
-                      } else {
-                        // Last line - use remaining song duration
-                        // This is the only case where we might need to estimate
-                        // console.warn('⚠️ Last line - using remaining song duration')
-                        // Could potentially use song duration here if available
-                        // For now, use a longer default for last line
-                        endTimeMs = startTimeMs + 5000 // 5 seconds for last line
-                        endTimeSource = 'last line default (5s)'
-                      }
-
-                      // Log where we got the end time from
-                      // console.log('⏰ End time source:', endTimeSource, 'value:', endTimeMs)
-
-                      // Add 200ms buffer to the end to let the line finish completely
-                      const endBufferMs = 200
-
-                      // No buffer - use exact start time to prevent display jumping
-                      const bufferMs = 0  // No buffer to avoid display issues
-                      const adjustedStartMs = startTimeMs  // Use exact start time
-
-                      // console.log('🎯 Playing line:', {
-                      //   startTime: startTimeMs,
-                      //   endTime: endTimeMs,
-                      //   duration: endTimeMs - startTimeMs,
-                      //   endTimeSource,
-                      //   lineText: currentLine.text,
-                      //   currentLineIndex
-                      // })
-
-                      // FIRST: Enable line lock mode BEFORE seeking to prevent display issues
-                      if (onSetLineLock) {
-                        // console.log('🔒 Enabling line lock mode for line', currentLineIndex)
-                        onSetLineLock(true, currentLineIndex)
-                      }
-
-                      // Clear any existing pause timer
-                      if (lineMonitorRef.current) {
-                        clearInterval(lineMonitorRef.current)
-                        lineMonitorRef.current = null
-                      }
-
-                      // THEN: Seek to buffered start position and play
-                      if (audioControls) {
-                        // Longer delay to ensure React state updates have propagated
-                        setTimeout(() => {
-                          // console.log('⏩ Seeking to adjusted start time:', adjustedStartMs)
-                          audioControls.seek(adjustedStartMs)
-
-                          // Another small delay to ensure seek completes, then play
-                          setTimeout(() => {
-                            if (!audioControls.getState().isPlaying) {
-                              // console.log('▶️ Starting playback')
-                              audioControls.play()
-                            }
-
-                            // Set up auto-pause at line end (always enabled now that looping is removed)
-                            // Calculate pause duration from original start (not buffered) plus end buffer
-                            const pauseDuration = (endTimeMs! - startTimeMs) + endBufferMs
-                            // console.log('⏱️ Setting auto-pause timer for:', pauseDuration, 'ms (includes', endBufferMs, 'ms buffer)')
-
-                            // Use a single timeout for precise pause timing
-                            setTimeout(() => {
-                              const state = audioControls.getState()
-                              // Only pause if we're still playing
-                              if (state.isPlaying) {
-                                // console.log('⏸️ Auto-pausing at line end')
-                                audioControls.pause()
-                                setIsRepeatingLine(false) // Stop rotating animation
-                                // Disable line lock after playing the line
-                                if (onSetLineLock) {
-                                  // console.log('🔓 Disabling line lock mode')
-                                  onSetLineLock(false)
-                                }
-                              }
-                            }, pauseDuration)
-                          }, 50)
-                        }, 100)  // Increased delay to ensure state updates propagate
-                      } else if (onTimeSeek) {
-                        onTimeSeek(adjustedStartMs)
-                        if (onPlay && !isPlaying) {
-                          setTimeout(() => onPlay(), 50)
-                        }
-                      }
-                    }
-                  }}
-                  disabled={!synchronizedData || !audioControls}
-                  className="text-gray-700 hover:bg-gray-100 flex flex-1 h-12 items-center justify-between pl-5 pr-3.5 rounded-full"
-                  title="Repeat current line from start"
-                >
-                  <span>Repeat line</span>
-                  <RefreshCw className={`h-4 w-4 ${isRepeatingLine ? 'animate-spin' : ''}`} />
-                </Button>
-
-                {/* Play/Pause Button */}
-                <Button
-                  variant="default"
-                  size="default"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // Toggle play/pause
-                    if (isPlaying) {
-                      audioControls?.pause()
-                    } else {
-                      // When starting song playback, always disable line lock to allow auto-advancing
-                      if (onSetLineLock) {
-                        // console.log('🔓 Play song clicked - disabling line lock for auto-advance')
-                        onSetLineLock(false)
-                      } else {
-                        // console.warn('⚠️ onSetLineLock is not defined!')
-                      }
-                      audioControls?.play()
-                    }
-                  }}
-                  disabled={!audioControls}
-                  className="bg-black hover:bg-gray-800 text-white flex flex-1 h-12 items-center justify-between pl-5 pr-3.5 rounded-full"
-                >
-                  {isPlaying ? (
-                    <>
-                      <span>Pause song</span>
-                      <Pause className="h-4 w-4" />
-                    </>
-                  ) : (
-                    <>
-                      <span>Play song</span>
-                      <Play className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    // No loop mode to reset anymore
-                    // Navigate to next line
-                    if (onNavigateNext) {
-                      onNavigateNext()
-                    }
-                  }}
-                  disabled={currentLineIndex === totalLines - 1}
-                  className="text-gray-700 hover:bg-gray-100 disabled:opacity-30 h-8 w-8"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </div>
-
-
-              {/* Playback Speed */}
-              {hasAudioControl && onPlaybackRateChange && (
+            {/* Playback Speed - if needed */}
+            {hasAudioControl && onPlaybackRateChange && (
+              <motion.div
+                className="px-2 pt-4 pb-6 no-pause-zone"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.06)' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+                exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
+              >
                 <div className="flex items-center justify-center gap-2">
                   <span className="text-xs text-gray-500">Speed:</span>
                   <div className="flex gap-1">
@@ -1606,11 +1414,189 @@ export function TranslationBottomSheet({
                     ))}
                   </div>
                 </div>
-              )}
-            </motion.div>
+              </motion.div>
+            )}
+
+            {/* Track Info, Progress Bar, and Navigation - Fixed to bottom */}
+            {audioState && audioState.duration > 0 && (
+              <motion.div
+                className="px-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+                exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
+              >
+                {!selectedWord && (
+                <div className="pt-3 space-y-3">
+                  {/* Navigation Buttons */}
+                  <div className="flex items-center justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (onNavigatePrevious) {
+                            onNavigatePrevious()
+                          }
+                        }}
+                        disabled={currentLineIndex === 0}
+                        className="h-12 w-12 disabled:opacity-30 rounded-full"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </Button>
+
+                      <Button
+                        variant="default"
+                        size="default"
+                        className="flex-1 bg-black hover:bg-gray-800 text-white h-12 items-center justify-center gap-4 rounded-full shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (audioState.isPlaying) {
+                            audioControls?.pause()
+                          } else {
+                            audioControls?.play()
+                          }
+                        }}
+                        disabled={!audioState.duration}
+                        title="Play/Pause song"
+                      >
+                        {audioState.isPlaying ? (
+                          <>
+                            <Pause className="h-4 w-4 fill-current" />
+                            <span>Pause song</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 fill-current" />
+                            <span>Play song</span>
+                          </>
+                        )}
+                      </Button>
+
+                      <Button
+                        variant="default"
+                        size="default"
+                        className="flex-1 bg-black hover:bg-gray-800 text-white h-12 items-center justify-center gap-4 rounded-full shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (synchronizedData?.lines?.[currentLineIndex]) {
+                            setIsRepeatingLine(true)
+                            const currentLine = synchronizedData.lines[currentLineIndex]
+                            const nextLine = synchronizedData.lines[currentLineIndex + 1]
+
+                            let startTimeMs: number
+                            if (typeof currentLine.time === 'number') {
+                              startTimeMs = currentLine.time < 1000 ? currentLine.time * 1000 : currentLine.time
+                            } else if (typeof currentLine.startTime === 'number') {
+                              startTimeMs = currentLine.startTime
+                            } else {
+                              return
+                            }
+
+                            let endTimeMs: number | undefined
+                            if (nextLine && typeof nextLine.time === 'number') {
+                              endTimeMs = nextLine.time < 1000 ? nextLine.time * 1000 : nextLine.time
+                            } else if (nextLine && typeof nextLine.startTime === 'number') {
+                              endTimeMs = nextLine.startTime
+                            }
+
+                            if (!endTimeMs) {
+                              return
+                            }
+
+                            const startBufferMs = 100
+                            const endBufferMs = 300
+                            const adjustedStartMs = Math.max(0, startTimeMs - startBufferMs)
+
+                            if (audioControls) {
+                              setTimeout(() => {
+                                audioControls.seek(adjustedStartMs / 1000)
+                                setTimeout(() => {
+                                  if (!audioControls.getState().isPlaying) {
+                                    audioControls.play()
+                                  }
+                                  const pauseDuration = (endTimeMs! - startTimeMs) + endBufferMs
+                                  setTimeout(() => {
+                                    const state = audioControls.getState()
+                                    if (state.isPlaying) {
+                                      audioControls.pause()
+                                      setIsRepeatingLine(false)
+                                      if (onSetLineLock) {
+                                        onSetLineLock(false)
+                                      }
+                                    }
+                                  }, pauseDuration)
+                                }, 50)
+                              }, 100)
+                            }
+                          }
+                        }}
+                        disabled={!synchronizedData || !audioControls}
+                        title="Repeat current line from start"
+                      >
+                        <span>Repeat line</span>
+                        <RefreshCw className={`h-4 w-4 ${isRepeatingLine ? 'animate-spin' : ''}`} />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (onNavigateNext) {
+                            onNavigateNext()
+                          }
+                        }}
+                        disabled={currentLineIndex === totalLines - 1}
+                        className="h-12 w-12 disabled:opacity-30 rounded-full"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </Button>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="mt-6 px-4">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-600 min-w-[40px]">
+                        {formatTime(audioState.currentTime, audioState.playbackMode)}
+                      </span>
+                      <Slider
+                        value={[(audioState.currentTime / audioState.duration) * 100]}
+                        onValueChange={(value) => {
+                          const newTime = (value[0] / 100) * audioState.duration
+                          audioControls?.seek(newTime)
+                        }}
+                        max={100}
+                        step={0.1}
+                        className="flex-1 [&>span[data-orientation]]:h-1 [&>span[data-orientation]]:bg-gray-300/30 [&>span>span]:bg-gray-800 [&_[role=slider]]:bg-gray-800 [&_[role=slider]]:border-0 [&_[role=slider]]:rounded-full [&_[role=slider]]:shadow-md [&_[role=slider]]:w-3 [&_[role=slider]]:h-3"
+                        disabled={!audioState.duration}
+                      />
+                      <span className="text-xs text-gray-600 min-w-[40px] text-right">
+                        {formatTime(audioState.duration, audioState.playbackMode)}
+                      </span>
+                    </div>
+                    {audioState.playbackMode === 'preview' && (
+                      <div className="text-center mt-1">
+                        <span className="text-xs text-gray-500">30s Preview</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                )}
+              </motion.div>
+            )}
           </motion.div>
         </>
       )}
     </AnimatePresence>
   )
+}
+
+// Helper function to format time
+function formatTime(time: number, playbackMode?: 'preview' | 'spotify' | 'unavailable'): string {
+  if (!isFinite(time)) return '0:00'
+  // Convert milliseconds to seconds for Spotify tracks
+  const timeInSeconds = playbackMode === 'spotify' ? time / 1000 : time
+  const minutes = Math.floor(timeInSeconds / 60)
+  const seconds = Math.floor(timeInSeconds % 60)
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
