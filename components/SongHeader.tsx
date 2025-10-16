@@ -462,14 +462,15 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
         />
 
         {/* Content */}
-        <div className="relative px-2 pt-13">
+        <div className="relative pt-13">
 
         {/* Centered header content */}
         <div className="flex flex-col items-center text-center space-y-4">
           {/* Large album art */}
-          <div className="relative mt-12">
+          <div className="relative" style={{ marginTop: '36px' }}>
             <motion.div
-              className="w-80 h-80 bg-muted/20 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5"
+              className="bg-muted/20 rounded-full overflow-hidden shadow-2xl ring-1 ring-black/5"
+              style={{ width: '120px', height: '120px' }}
               layoutId={`album-container-${track.id}`}
               transition={getSharedElementTransition(isExiting)}
             >
@@ -512,31 +513,50 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
               delay: 0.1
             }}
           >
-            <h1 className="text-white font-medium" style={{ fontSize: '36px', lineHeight: '42px', fontFamily: 'Outfit' }}>
-              {track.title}
+            <h1 className="text-white" style={{ fontSize: '40px', lineHeight: '44px', fontFamily: 'Outfit', fontWeight: 500, letterSpacing: '-0.02em' }}>
+              {track.title}<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}> by {track.artist}</span>
             </h1>
-            <p className="text-white/80" style={{ fontSize: '12px', lineHeight: '16px' }}>
-              {track.artist}
-            </p>
-            {track.songSummary && (
-              <p className="text-white/70 mt-2 max-w-md text-center leading-relaxed" style={{ fontSize: '14px', lineHeight: '20px' }}>
-                {track.songSummary}
-              </p>
-            )}
           </motion.div>
 
-          {/* Playback Controls */}
-          <motion.div
-            className="flex items-center gap-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 600,
-              damping: 40,
-              delay: 0.15
-            }}
-          >
+          {/* Song Summary */}
+          {track.songSummary && (
+            <motion.div
+              className="max-w-md mt-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 600,
+                damping: 40,
+                delay: 0.2
+              }}
+            >
+              <p className="text-white/70 text-center leading-relaxed" style={{ fontSize: '14px', lineHeight: '20px' }}>
+                {track.songSummary}
+              </p>
+            </motion.div>
+          )}
+        </div>
+
+      </div>
+    </div>
+
+      {/* Fixed Playback Controls at Bottom */}
+      <motion.div
+        className="fixed bottom-0 left-0 right-0 py-6 z-50"
+        style={{
+          background: `linear-gradient(to top, ${dominantColor} 20%, ${dominantColor.replace('rgb', 'rgba').replace(')', ', 0.75)')} 50%, ${dominantColor.replace('rgb', 'rgba').replace(')', ', 0)')} 100%)`
+        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          type: "spring",
+          stiffness: 600,
+          damping: 40,
+          delay: 0.15
+        }}
+      >
+        <div className="flex items-center justify-center gap-2">
             <Button
               size="lg"
               variant="ghost"
@@ -621,14 +641,28 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
                 }
               }}
               disabled={false}  // Always enabled
-              className="w-14 h-14 p-0 bg-white/20 hover:bg-white/30 text-white shadow-lg relative z-10"
-              style={{ cursor: 'pointer' }}  // Force pointer cursor
+              className="pl-6 rounded-full bg-black hover:bg-black/80 text-white text-sm relative z-10 flex items-center gap-6"
+              style={{
+                cursor: 'pointer',
+                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.2)',
+                paddingTop: '28px',
+                paddingBottom: '28px',
+                paddingRight: '20px'
+              }}
               title={localIsPlaying ? "Pause" : "Play"}
             >
               {localIsPlaying ? (
-                <Pause className="w-6 h-6" />
+                <>
+                  <span className="font-medium">Pause</span>
+                  <Pause className="w-4 h-4" />
+                </>
               ) : (
-                <Play className="w-6 h-6" />
+                <>
+                  <span className="font-medium">Learn song</span>
+                  <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                    <Play className="w-3.5 h-3.5 fill-black ml-0.5" />
+                  </div>
+                </>
               )}
             </Button>
 
@@ -650,11 +684,8 @@ export function SongHeader({ track, backHref, backText, level, levelName, diffic
             >
               <SkipForward className="w-5 h-5" />
             </Button>
-          </motion.div>
         </div>
-
-      </div>
-    </div>
+      </motion.div>
     </>
   )
 }
