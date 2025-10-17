@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
@@ -9,6 +9,70 @@ import { defineWord } from '@/lib/client'
 import { AudioPlayerControls, AudioPlayerState } from '@/components/EnhancedAudioPlayer'
 import { LineBookmarkButton } from '@/components/LineBookmarkButton'
 import confetti from 'canvas-confetti'
+
+// Helper function to generate conjugated translation
+function generateConjugatedTranslation(
+  selectedWord: string,
+  enrichedWord: any
+): { translation: string; tenseInfo: string } {
+  if (enrichedWord.partOfSpeech?.toLowerCase() === 'verb' && enrichedWord.conjugations && enrichedWord.root) {
+    const conjugations = enrichedWord.conjugations
+    let tenseInfo = ''
+    let personIndex = -1
+
+    // Find which tense and person this conjugation is
+    if (typeof conjugations === 'object') {
+      for (const [tense, forms] of Object.entries(conjugations)) {
+        if (Array.isArray(forms)) {
+          const index = forms.findIndex(form =>
+            typeof form === 'string' && form.toLowerCase() === selectedWord.toLowerCase()
+          )
+          if (index !== -1) {
+            tenseInfo = tense
+            personIndex = index
+            break
+          }
+        }
+      }
+    }
+
+    // Generate English translation based on tense and person
+    if (tenseInfo && personIndex !== -1) {
+      const rootTranslation = enrichedWord.translations?.en || ''
+      const infinitive = rootTranslation.replace(/^to /, '')
+      const persons = ['I', 'you', 'he/she', 'we', 'you', 'they']
+      const person = persons[personIndex]
+
+      let conjugatedTranslation = ''
+      switch (tenseInfo) {
+        case 'present':
+          conjugatedTranslation = `${person} ${infinitive}`
+          if (personIndex === 2) conjugatedTranslation = `${person} ${infinitive}s`
+          break
+        case 'imperfect':
+          conjugatedTranslation = `${person} was ${infinitive}ing`
+          if (personIndex >= 3) conjugatedTranslation = `${person} were ${infinitive}ing`
+          break
+        case 'preterite':
+          conjugatedTranslation = `${person} ${infinitive}ed`
+          break
+        case 'future':
+          conjugatedTranslation = `${person} will ${infinitive}`
+          break
+        case 'conditional':
+          conjugatedTranslation = `${person} would ${infinitive}`
+          break
+        default:
+          conjugatedTranslation = enrichedWord.translations?.en || 'Translation not available'
+      }
+      return { translation: conjugatedTranslation, tenseInfo: `${tenseInfo} of ${enrichedWord.root}` }
+    }
+  }
+  return {
+    translation: enrichedWord.translations?.en || 'Translation not available',
+    tenseInfo: enrichedWord.root && enrichedWord.root !== selectedWord ? `from ${enrichedWord.root}` : ''
+  }
+}
 
 interface TranslationBottomSheetProps {
   isOpen: boolean
@@ -863,7 +927,7 @@ export function TranslationBottomSheet({
 
             {/* Header - Title and Close button */}
             <motion.div
-              className="px-3 pb-3 mb-8"
+              className="px-3 pb-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}>
@@ -900,6 +964,7 @@ export function TranslationBottomSheet({
             {/* Content */}
             <motion.div
               className="px-3 pb-4 overflow-y-auto flex-1"
+              style={{ paddingTop: '24px' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
               exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
@@ -945,17 +1010,27 @@ export function TranslationBottomSheet({
                         <p className="text-xs text-gray-600">{songTitle}</p>
                       </div>
                     </div>
-                    {songId && (
-                      <LineBookmarkButton
-                        songId={songId}
-                        songTitle={songTitle}
-                        songArtist={songArtist}
-                        songLanguage={songLanguage}
-                        lineText={sentence}
-                        lineTranslation={translation}
-                        lineIndex={currentLineIndex}
-                        className="h-9 w-9"
-                      />
+                    {audioState && audioState.duration > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (audioState.isPlaying) {
+                            audioControls?.pause()
+                          } else {
+                            audioControls?.play()
+                          }
+                        }}
+                        disabled={!audioState.duration}
+                        className="rounded-full bg-black hover:bg-gray-800 transition-colors flex items-center justify-center"
+                        style={{ width: '28px', height: '28px' }}
+                        title="Play/Pause song"
+                      >
+                        {audioState.isPlaying ? (
+                          <Pause className="h-4 w-4 fill-white text-white" />
+                        ) : (
+                          <Play className="h-4 w-4 fill-white text-white ml-0.5" />
+                        )}
+                      </button>
                     )}
                   </div>
 
@@ -1035,109 +1110,34 @@ export function TranslationBottomSheet({
                         borderTopRightRadius: 0,
                       }}
                     >
-                      {/* Word Header with TTS */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-3xl font-medium capitalize" style={{ color: 'rgba(0, 0, 0, 0.90)' }}>
-                            {selectedEnrichedWord.partOfSpeech?.toLowerCase() === 'verb' && selectedEnrichedWord.root
-                              ? selectedEnrichedWord.root
-                              : selectedWord
-                            }
-                          </h3>
-                          <button
-                            onClick={() => speakWord(selectedWord, selectedEnrichedWord)}
-                            disabled={isPlayingWord}
-                            className="h-8 w-8 rounded-full flex items-center justify-center transition-colors bg-white"
-                            title="Pronounce word"
-                          >
-                            {isPlayingWord ? (
-                              <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
-                            ) : (
-                              <Volume2 className="h-4 w-4" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
-                            )}
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedWord(null)
-                            setSelectedEnrichedWord(null)
-                          }}
-                          className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded-full transition-colors"
-                          style={{ color: 'rgba(0, 0, 0, 0.80)' }}
-                        >
-                          Got it
-                        </button>
-                      </div>
+                      {/* Word Header with TTS and Part of Speech Tag */}
+                      {(() => {
+                        const { translation, tenseInfo } = generateConjugatedTranslation(selectedWord, selectedEnrichedWord)
 
-                      {/* Part of Speech & Translation */}
-                      <div>
-                        <span
-                          className="inline-block text-xs rounded-full px-3 py-2 mb-2"
-                          style={{
-                            backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                            color: 'rgba(0, 0, 0, 0.70)',
-                          }}
-                        >
-                          {selectedEnrichedWord.partOfSpeech.charAt(0).toUpperCase() + selectedEnrichedWord.partOfSpeech.slice(1).toLowerCase()}
-                        </span>
-                        <p style={{ fontSize: '18px', lineHeight: '26px', color: 'rgba(0, 0, 0, 0.80)' }}>
-                          <span className="font-medium">Meaning: </span>
-                          {selectedEnrichedWord.translations?.en || 'Translation not available'}
-                        </p>
-                      </div>
-
-                      {/* Example Sentence */}
-                      {selectedEnrichedWord.exampleSentence && (
-                        <div
-                          className="rounded-lg p-3"
-                          style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                          }}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="italic flex-1" style={{ fontSize: '16px', lineHeight: '24px', color: 'rgba(0, 0, 0, 0.90)' }}>
-                              {selectedEnrichedWord.exampleSentence}
-                            </p>
-                            <button
-                              onClick={() => speakSentence(selectedEnrichedWord.exampleSentence!)}
-                              disabled={isPlayingSentence}
-                              className="h-7 w-7 flex-shrink-0 rounded-full flex items-center justify-center bg-white hover:bg-gray-100 transition-colors"
-                            >
-                              {isPlayingSentence ? (
-                                <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
-                              ) : (
-                                <Volume2 className="h-3 w-3" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                        return (
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-3xl font-medium" style={{ color: 'rgba(0, 0, 0, 0.90)' }}>
+                                {translation}
+                              </h3>
+                              {tenseInfo && (
+                                <p className="text-sm mt-1" style={{ color: 'rgba(0, 0, 0, 0.60)' }}>
+                                  {tenseInfo}
+                                </p>
                               )}
-                            </button>
+                            </div>
+                            <span
+                              className="text-xs rounded-full px-3 py-2"
+                              style={{
+                                backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                                color: 'rgba(0, 0, 0, 0.60)',
+                              }}
+                            >
+                              {selectedEnrichedWord.partOfSpeech.charAt(0).toUpperCase() + selectedEnrichedWord.partOfSpeech.slice(1).toLowerCase()}
+                            </span>
                           </div>
-                          {selectedEnrichedWord.exampleTranslation && (
-                            <p className="mt-1 opacity-70" style={{ fontSize: '14px', lineHeight: '20px' }}>
-                              {selectedEnrichedWord.exampleTranslation}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Synonyms */}
-                      {selectedEnrichedWord.synonyms && selectedEnrichedWord.synonyms.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold opacity-60 mb-2 uppercase tracking-wide">Synonyms</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedEnrichedWord.synonyms.map((synonym, index) => (
-                              <span
-                                key={index}
-                                className="text-sm px-3 py-1 rounded-full"
-                                style={{
-                                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                                  color: 'rgba(0, 0, 0, 0.80)',
-                                }}
-                              >
-                                {synonym}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        )
+                      })()}
 
                       {/* Conjugation Tables for Verbs */}
                       {selectedEnrichedWord.partOfSpeech?.toLowerCase() === 'verb' && selectedEnrichedWord.conjugations && (() => {
@@ -1189,7 +1189,7 @@ export function TranslationBottomSheet({
                                 <div
                                   key={tense}
                                   className="rounded-lg"
-                                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+                                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.12)' }}
                                 >
                                   {/* Collapsible Header */}
                                   <button
@@ -1202,7 +1202,8 @@ export function TranslationBottomSheet({
                                       }
                                       setExpandedTenses(newExpanded)
                                     }}
-                                    className="w-full flex items-center justify-between transition-colors p-3"
+                                    className="w-full flex items-center justify-between transition-colors"
+                                    style={{ padding: '20px' }}
                                   >
                                     <span style={{ fontSize: '16px', fontWeight: 500, color: 'rgba(0, 0, 0, 0.90)' }}>
                                       {tenseInfo[tense]?.label || tense}
@@ -1227,7 +1228,7 @@ export function TranslationBottomSheet({
                                         exit={{ height: 0, opacity: 0 }}
                                         transition={{ duration: 0.2 }}
                                       >
-                                        <div className="px-3 pb-3">
+                                        <div style={{ paddingLeft: '20px', paddingRight: '20px', paddingBottom: '20px' }}>
                                           <table className="w-full">
                                             <thead>
                                               <tr style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
@@ -1271,6 +1272,60 @@ export function TranslationBottomSheet({
                           </div>
                         )
                       })()}
+
+                      {/* Example Sentence */}
+                      {selectedEnrichedWord.exampleSentence && (
+                        <div
+                          className="rounded-lg"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                            padding: '20px',
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="italic flex-1" style={{ fontSize: '16px', lineHeight: '24px', color: 'rgba(0, 0, 0, 0.90)' }}>
+                              {selectedEnrichedWord.exampleSentence}
+                            </p>
+                            <button
+                              onClick={() => speakSentence(selectedEnrichedWord.exampleSentence!)}
+                              disabled={isPlayingSentence}
+                              className="h-7 w-7 flex-shrink-0 rounded-full flex items-center justify-center bg-white hover:bg-gray-100 transition-colors"
+                            >
+                              {isPlayingSentence ? (
+                                <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                              ) : (
+                                <Volume2 className="h-3 w-3" style={{ color: 'rgba(0, 0, 0, 0.70)' }} />
+                              )}
+                            </button>
+                          </div>
+                          {selectedEnrichedWord.exampleTranslation && (
+                            <p className="mt-1 opacity-70" style={{ fontSize: '14px', lineHeight: '20px' }}>
+                              {selectedEnrichedWord.exampleTranslation}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Synonyms */}
+                      {selectedEnrichedWord.synonyms && selectedEnrichedWord.synonyms.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold opacity-60 mb-2 uppercase tracking-wide">Synonyms</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedEnrichedWord.synonyms.map((synonym, index) => (
+                              <span
+                                key={index}
+                                className="text-sm px-3 py-1 rounded-full"
+                                style={{
+                                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                                  color: 'rgba(0, 0, 0, 0.80)',
+                                }}
+                              >
+                                {synonym}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     // Legacy definition UI (fallback)
@@ -1421,17 +1476,26 @@ export function TranslationBottomSheet({
             {audioState && audioState.duration > 0 && (
               <motion.div
                 className="px-3"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, transition: { delay: 0.3, duration: 0.3 } }}
+                style={{ pointerEvents: selectedWord ? 'none' : 'auto', paddingBottom: '24px' }}
+                initial={{ opacity: 0, y: 0 }}
+                animate={{
+                  opacity: selectedWord ? 0 : 1,
+                  y: selectedWord ? 100 : 0,
+                  transition: {
+                    type: "spring",
+                    stiffness: 500,
+                    damping: 40,
+                    mass: 1
+                  }
+                }}
                 exit={{ opacity: 0, transition: { delay: 0, duration: 0.05 } }}
               >
-                {!selectedWord && (
                 <div className="pt-3 space-y-3">
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-center gap-2">
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="default"
                         onClick={(e) => {
                           e.stopPropagation()
                           if (onNavigatePrevious) {
@@ -1439,37 +1503,10 @@ export function TranslationBottomSheet({
                           }
                         }}
                         disabled={currentLineIndex === 0}
-                        className="h-12 w-12 disabled:opacity-30 rounded-full"
+                        className="h-12 disabled:opacity-30 rounded-full flex items-center gap-2"
                       >
                         <ChevronLeft className="h-5 w-5" />
-                      </Button>
-
-                      <Button
-                        variant="default"
-                        size="default"
-                        className="flex-1 bg-black hover:bg-gray-800 text-white h-12 items-center justify-center gap-4 rounded-full shadow-lg"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (audioState.isPlaying) {
-                            audioControls?.pause()
-                          } else {
-                            audioControls?.play()
-                          }
-                        }}
-                        disabled={!audioState.duration}
-                        title="Play/Pause song"
-                      >
-                        {audioState.isPlaying ? (
-                          <>
-                            <Pause className="h-4 w-4 fill-current" />
-                            <span>Pause song</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play className="h-4 w-4 fill-current" />
-                            <span>Play song</span>
-                          </>
-                        )}
+                        <span>Prev</span>
                       </Button>
 
                       <Button
@@ -1539,7 +1576,7 @@ export function TranslationBottomSheet({
 
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="default"
                         onClick={(e) => {
                           e.stopPropagation()
                           if (onNavigateNext) {
@@ -1547,14 +1584,15 @@ export function TranslationBottomSheet({
                           }
                         }}
                         disabled={currentLineIndex === totalLines - 1}
-                        className="h-12 w-12 disabled:opacity-30 rounded-full"
+                        className="h-12 disabled:opacity-30 rounded-full flex items-center gap-2"
                       >
+                        <span>Next</span>
                         <ChevronRight className="h-5 w-5" />
                       </Button>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="mt-6 px-4">
+                  <div className="px-4" style={{ marginTop: '24px' }}>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-gray-600 min-w-[40px]">
                         {formatTime(audioState.currentTime, audioState.playbackMode)}
@@ -1581,9 +1619,50 @@ export function TranslationBottomSheet({
                     )}
                   </div>
                 </div>
-                )}
               </motion.div>
             )}
+
+            {/* Fixed "Got it" button when word is selected */}
+            <AnimatePresence>
+              {selectedWord && (
+                <motion.div
+                  className="fixed bottom-0 left-0 right-0 z-[70]"
+                  style={{ paddingLeft: '24px', paddingRight: '24px', paddingBottom: '24px' }}
+                  initial={{ y: 100, opacity: 0 }}
+                  animate={{
+                    y: 0,
+                    opacity: 1,
+                    transition: {
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 40,
+                      mass: 1,
+                      delay: 0.15
+                    }
+                  }}
+                  exit={{
+                    y: 100,
+                    opacity: 0,
+                    transition: {
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 40,
+                      mass: 1
+                    }
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setSelectedWord(null)
+                      setSelectedEnrichedWord(null)
+                    }}
+                    className="w-full h-12 bg-black hover:bg-gray-800 text-white rounded-full transition-colors shadow-lg font-medium"
+                  >
+                    Got it
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </>
       )}
